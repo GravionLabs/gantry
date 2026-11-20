@@ -9,6 +9,7 @@ mod detect;
 mod endpoint;
 mod engine;
 mod error;
+mod ssh;
 
 pub use context::{
     ContextList, DEFAULT_CONTEXT, current_context, docker_config_dir, import_contexts,
@@ -19,5 +20,6 @@ pub use detect::{
     status_of,
 };
 pub use endpoint::{Endpoint, EndpointKind, TlsFiles};
-pub use engine::{EngineInfo, connect, ping};
+pub use engine::{Connections, EngineInfo, connect, ping};
 pub use error::{Error, ErrorKind, ErrorPayload, Result};
+pub use ssh::SshTarget;

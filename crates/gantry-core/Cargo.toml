@@ -11,6 +11,9 @@ license.workspace = true
 
 [dependencies]
 bollard = { version = "0.21.1", features = ["ssl"] }
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
+tower-service = "0.3"
 serde.workspace = true
 specta = { version = "2.0.0-rc.25", features = ["derive"] }
 specta-serde = "0.0.12"
@@ -18,7 +21,7 @@ specta-typescript = "0.0.12"
 serde_json.workspace = true
 sha2 = "0.10"
 thiserror.workspace = true
-tokio = { workspace = true, features = ["time"] }
+tokio = { workspace = true, features = ["io-util", "process", "rt", "sync", "time"] }
 
 [dev-dependencies]
 tempfile = "3"

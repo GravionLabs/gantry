@@ -502,3 +502,57 @@ mod tests {
         assert_eq!(json["hint"], "h");
     }
 }
+
+#[cfg(all(test, unix))]
+mod socket_tests {
+    use std::os::unix::{fs::PermissionsExt, net::UnixListener};
+
+    use super::*;
+
+    fn root() -> bool {
+        // Root ignores file modes, so the permission test cannot fail there.
+        fs::metadata("/proc/self")
+            .map(|m| m.uid_is_zero())
+            .unwrap_or(false)
+    }
+
+    trait Uid {
+        fn uid_is_zero(&self) -> bool;
+    }
+    impl Uid for fs::Metadata {
+        fn uid_is_zero(&self) -> bool {
+            std::os::unix::fs::MetadataExt::uid(self) == 0
+        }
+    }
+
+    #[tokio::test]
+    async fn a_socket_without_access_is_permission_denied() {
+        if root() {
+            return;
+        }
+        let dir = env::temp_dir().join(format!("gantry-detect-perm-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("docker.sock");
+        let _listener = UnixListener::bind(&path).unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o000)).unwrap();
+
+        let endpoint = unix_endpoint("x", &path);
+        let status = status_of(crate::ping(&endpoint).await);
+        assert!(
+            matches!(status, EngineStatus::PermissionDenied { .. }),
+            "{status:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_dead_socket_is_not_running() {
+        let dir = env::temp_dir().join(format!("gantry-detect-dead-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("docker.sock");
+        drop(UnixListener::bind(&path).unwrap()); // file remains, nobody listens
+        let status = status_of(crate::ping(&unix_endpoint("x", &path)).await);
+        assert_eq!(status, EngineStatus::NotRunning);
+    }
+}

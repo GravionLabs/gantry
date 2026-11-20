@@ -74,25 +74,42 @@ fn classify(error: &BollardError) -> ErrorKind {
             400 | 422 => ErrorKind::InvalidInput,
             _ => ErrorKind::Engine,
         },
-        BollardError::IOError { err } => match err.kind() {
-            io::ErrorKind::PermissionDenied => ErrorKind::PermissionDenied,
-            // A missing socket file means there is no engine to talk to.
-            io::ErrorKind::NotFound
-            | io::ErrorKind::ConnectionRefused
-            | io::ErrorKind::ConnectionReset
-            | io::ErrorKind::ConnectionAborted
-            | io::ErrorKind::NotConnected
-            | io::ErrorKind::AddrNotAvailable
-            | io::ErrorKind::BrokenPipe
-            | io::ErrorKind::TimedOut => ErrorKind::Unreachable,
-            _ => ErrorKind::Engine,
-        },
+        BollardError::IOError { err } => classify_io(err.kind()),
         BollardError::RequestTimeoutError
         | BollardError::HyperResponseError { .. }
         | BollardError::HttpClientError { .. } => ErrorKind::Unreachable,
         BollardError::URLParseError { .. } | BollardError::URLEncodedError { .. } => {
             ErrorKind::InvalidInput
         }
+        // Request-time failures of the socket transports arrive wrapped; look for the I/O cause.
+        other => io_cause(other).map_or(ErrorKind::Engine, classify_io),
+    }
+}
+
+/// The first `io::Error` in the source chain of the error.
+fn io_cause<'a>(error: &'a (dyn std::error::Error + 'static)) -> Option<io::ErrorKind> {
+    let mut current = error.source();
+    while let Some(cause) = current {
+        if let Some(io) = cause.downcast_ref::<io::Error>() {
+            return Some(io.kind());
+        }
+        current = cause.source();
+    }
+    None
+}
+
+fn classify_io(kind: io::ErrorKind) -> ErrorKind {
+    match kind {
+        io::ErrorKind::PermissionDenied => ErrorKind::PermissionDenied,
+        // A missing socket file means there is no engine to talk to.
+        io::ErrorKind::NotFound
+        | io::ErrorKind::ConnectionRefused
+        | io::ErrorKind::ConnectionReset
+        | io::ErrorKind::ConnectionAborted
+        | io::ErrorKind::NotConnected
+        | io::ErrorKind::AddrNotAvailable
+        | io::ErrorKind::BrokenPipe
+        | io::ErrorKind::TimedOut => ErrorKind::Unreachable,
         _ => ErrorKind::Engine,
     }
 }

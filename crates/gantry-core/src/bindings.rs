@@ -6,7 +6,10 @@
 use specta::Types;
 use specta_typescript::Typescript;
 
-use crate::{ContextList, Endpoint, EndpointKind, EngineInfo, ErrorKind, ErrorPayload, TlsFiles};
+use crate::{
+    ContextList, DetectedEngine, Endpoint, EndpointKind, EngineInfo, EngineStatus, ErrorKind,
+    ErrorPayload, TlsFiles,
+};
 
 /// All types exposed to the frontend.
 pub fn ipc_types() -> Types {
@@ -14,7 +17,9 @@ pub fn ipc_types() -> Types {
         .register::<ContextList>()
         .register::<Endpoint>()
         .register::<EndpointKind>()
+        .register::<DetectedEngine>()
         .register::<EngineInfo>()
+        .register::<EngineStatus>()
         .register::<ErrorKind>()
         .register::<ErrorPayload>()
         .register::<TlsFiles>()

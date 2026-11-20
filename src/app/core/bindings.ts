@@ -10,6 +10,14 @@ export type ContextList = {
 	warnings: string[],
 };
 
+/**  A candidate with the result of probing it. */
+export type DetectedEngine = {
+	/**  Where the candidate comes from, e.g. `Colima (default)`. Also the endpoint name. */
+	source: string,
+	endpoint: Endpoint,
+	status: EngineStatus,
+};
+
 /**  A Docker engine the user can connect to. */
 export type Endpoint = {
 	name: string,
@@ -42,6 +50,15 @@ export type EngineInfo = {
 	os: string | null,
 	arch: string | null,
 };
+
+/**  Whether a detected engine can be used. */
+export type EngineStatus = 
+/**  The engine answered. */
+{ state: "reachable"; info: EngineInfo } | 
+/**  Nothing listens there (no socket, connection refused, timeout). */
+{ state: "notRunning" } | 
+/**  The socket exists but the user may not use it. */
+{ state: "permissionDenied"; hint: string };
 
 /**  What went wrong, in terms the UI can act on. */
 export type ErrorKind = 

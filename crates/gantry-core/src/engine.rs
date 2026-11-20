@@ -1,12 +1,13 @@
 use bollard::{API_DEFAULT_VERSION, Docker};
 use serde::Serialize;
+use specta::Type;
 
 use crate::{Endpoint, EndpointKind, Error, Result};
 
 const TIMEOUT_SECS: u64 = 10;
 
 /// Version information of a connected engine.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct EngineInfo {
     pub version: Option<String>,

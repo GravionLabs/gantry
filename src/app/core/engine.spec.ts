@@ -1,5 +1,26 @@
-import { describe, expect, it } from "vitest";
-import { describeEngine } from "./engine";
+import { describe, expect, it, vi } from "vitest";
+
+const tauri = vi.hoisted(() => ({ invoke: vi.fn() }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: tauri.invoke, Channel: class {} }));
+
+import { describeEngine, pingEngine } from "./engine";
+import { GantryError } from "./invoke";
+
+describe("pingEngine", () => {
+  it("calls engine_ping", async () => {
+    const info = { version: "28", apiVersion: "1.49", os: "linux", arch: "amd64" };
+    tauri.invoke.mockResolvedValue(info);
+    await expect(pingEngine()).resolves.toEqual(info);
+    expect(tauri.invoke).toHaveBeenCalledWith("engine_ping", undefined);
+  });
+
+  it("fails with a typed error", async () => {
+    tauri.invoke.mockRejectedValue({ kind: "unreachable", message: "no socket" });
+    const error = await pingEngine().catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(GantryError);
+    expect(error).toMatchObject({ kind: "unreachable" });
+  });
+});
 
 describe("describeEngine", () => {
   it("names version, API and platform", () => {

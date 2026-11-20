@@ -10,6 +10,7 @@ export default tseslint.config(
       "node_modules/**",
       "src-tauri/**",
       "crates/**",
+      "src/app/core/bindings.ts",
       "target/**",
       ".agents/**",
       ".claude/**",

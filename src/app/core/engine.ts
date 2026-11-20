@@ -1,12 +1,7 @@
-import { invoke } from "@tauri-apps/api/core";
+import type { EngineInfo } from "./bindings";
+import { invoke } from "./invoke";
 
-/** Mirrors `gantry_core::EngineInfo`. */
-export interface EngineInfo {
-  version: string | null;
-  apiVersion: string | null;
-  os: string | null;
-  arch: string | null;
-}
+export type { EngineInfo } from "./bindings";
 
 /** Reads the version of the default local engine through the Tauri command `engine_ping`. */
 export function pingEngine(): Promise<EngineInfo> {

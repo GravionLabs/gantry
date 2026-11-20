@@ -2,7 +2,6 @@
   "name": "gantry",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@11.11.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -12,9 +11,9 @@
     "bindings": "UPDATE_BINDINGS=1 cargo test -p gantry-core --test bindings",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "changelog": "git-cliff -c cliff.toml -o CHANGELOG.md"
   },
   "dependencies": {
@@ -38,13 +37,11 @@
     "@angular/build": "^22.2.1",
     "@angular/cli": "^22.2.1",
     "@angular/compiler-cli": "^22.2.1",
-    "@eslint/js": "^10.0.1",
     "@tauri-apps/cli": "^2",
-    "angular-eslint": "^22.5.0",
-    "eslint": "^10.11.0",
-    "prettier": "^3.9.9",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.71.0",
     "vitest": "^4.1.11"
-  }
+  },
+  "packageManager": "pnpm@11.11.0"
 }

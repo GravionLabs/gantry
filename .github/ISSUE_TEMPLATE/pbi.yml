@@ -1,0 +1,33 @@
+name: PBI
+description: Product backlog item — a scoped, demoable slice of a Feature, delivered in one pull request.
+title: "[PBI] "
+labels: ["pbi"]
+body:
+  - type: input
+    id: feature
+    attributes:
+      label: Parent Feature
+      description: "#<issue number>"
+    validations:
+      required: true
+  - type: textarea
+    id: overview
+    attributes:
+      label: Overview
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: One checkbox per criterion.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Technical Notes
+  - type: markdown
+    attributes:
+      value: |
+        Set this issue's **Parent** to the Feature above with GitHub's native sub-issues panel. Dependencies go in the native "blocked by" relationship.

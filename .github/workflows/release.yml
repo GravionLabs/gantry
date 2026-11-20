@@ -1,0 +1,30 @@
+name: release
+
+# A push to main versions the build with GitVersion (GitVersion.yml), builds the installers for Linux,
+# macOS and Windows and publishes one GitHub release tagged v<version>. The jobs live in the shared
+# workflow GravionLabs/ci/.github/workflows/tauri-app.yml. Run it via workflow_dispatch to validate the
+# matrix on a branch: such a run gets a throw-away version (0.0.<run number>) and creates no release.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    uses: GravionLabs/ci/.github/workflows/tauri-app.yml@main
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: read
+    with:
+      # The application crate needs system libraries; ci.yml checks it.
+      ci-exclude: gantry-app
+      tauri: true
+    secrets: inherit

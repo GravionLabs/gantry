@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22436b"/>
+      <stop offset="1" stop-color="#0e1b2e"/>
+    </linearGradient>
+    <linearGradient id="box" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3cc7d4"/>
+      <stop offset="1" stop-color="#1d8fa0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <!-- gantry frame -->
+  <polygon points="214,300 280,300 248,832 170,832" fill="#f2a900"/>
+  <polygon points="744,300 810,300 854,832 776,832" fill="#f2a900"/>
+  <rect x="150" y="226" width="724" height="84" rx="14" fill="#f7b928"/>
+  <rect x="150" y="294" width="724" height="16" fill="#c98a00"/>
+  <!-- trolley and cables -->
+  <rect x="440" y="310" width="144" height="46" rx="8" fill="#c98a00"/>
+  <rect x="468" y="356" width="14" height="128" fill="#d6dde6"/>
+  <rect x="542" y="356" width="14" height="128" fill="#d6dde6"/>
+  <rect x="380" y="476" width="264" height="26" rx="6" fill="#d6dde6"/>
+  <!-- container -->
+  <rect x="360" y="502" width="304" height="200" rx="14" fill="url(#box)"/>
+  <g stroke="#14707e" stroke-width="12" stroke-linecap="round">
+    <line x1="420" y1="538" x2="420" y2="666"/>
+    <line x1="481" y1="538" x2="481" y2="666"/>
+    <line x1="543" y1="538" x2="543" y2="666"/>
+    <line x1="604" y1="538" x2="604" y2="666"/>
+  </g>
+  <!-- ground -->
+  <rect x="130" y="832" width="764" height="22" rx="11" fill="#3a5578"/>
+</svg>

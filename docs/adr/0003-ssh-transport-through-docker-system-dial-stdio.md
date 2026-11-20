@@ -1,6 +1,6 @@
 # ADR 0003: SSH transport through docker system dial-stdio
 
-- Status: Proposed
+- Status: Accepted (decided by the owner on 2026-11-20)
 - Date: 2026-11-20
 - Issues: #13
 

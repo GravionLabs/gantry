@@ -1,6 +1,6 @@
-# ADR 0002: Lint and format with oxlint and oxfmt
+# ADR 0004: Lint and format with oxlint and oxfmt
 
-- Status: Proposed
+- Status: Accepted (decided by the owner on 2026-11-20)
 - Date: 2026-11-20
 - Issues: #38
 

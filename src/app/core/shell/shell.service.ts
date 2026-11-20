@@ -73,3 +73,6 @@ export class ShellService {
     }
   }
 }
+
+// Re-exported so that no file outside core/shell imports the /tauri entry.
+export { HxStatusAppVersion } from "@gravionlabs/helix-desktop/tauri";

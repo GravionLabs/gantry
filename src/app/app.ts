@@ -17,9 +17,8 @@ import {
   HxStatusItem,
   HxStatusVersion,
 } from "@gravionlabs/helix-desktop";
-import { HxStatusAppVersion } from "@gravionlabs/helix-desktop/tauri";
 
-import { ShellService } from "./core/shell/shell.service";
+import { HxStatusAppVersion, ShellService } from "./core/shell/shell.service";
 
 /** Marks the template of an activity bar icon with the icon name of the views registry. */
 @Directive({ selector: "ng-template[appNavIcon]" })

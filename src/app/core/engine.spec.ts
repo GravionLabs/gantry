@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 const tauri = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: tauri.invoke, Channel: class {} }));
 
-import { describeEngine, pingEngine } from "./engine";
+import { describeEngine, pingEndpoint, pingEngine } from "./engine";
 import { GantryError } from "./invoke";
 
 describe("pingEngine", () => {
@@ -19,6 +19,17 @@ describe("pingEngine", () => {
     const error = await pingEngine().catch((e: unknown) => e);
     expect(error).toBeInstanceOf(GantryError);
     expect(error).toMatchObject({ kind: "unreachable" });
+  });
+});
+
+describe("pingEndpoint", () => {
+  it("calls endpoint_ping with name and address", async () => {
+    tauri.invoke.mockResolvedValue({});
+    await pingEndpoint({ name: "build", address: "ssh://deploy@build-01" });
+    expect(tauri.invoke).toHaveBeenCalledWith("endpoint_ping", {
+      name: "build",
+      address: "ssh://deploy@build-01",
+    });
   });
 });
 

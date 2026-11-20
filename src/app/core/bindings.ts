@@ -39,6 +39,10 @@ export type ErrorKind =
 "conflict" | 
 /**  The request or the endpoint address is malformed. */
 "invalidInput" | 
+/**  The SSH host key is unknown or has changed; the user must trust it with `ssh` first. */
+"hostKey" | 
+/**  SSH authentication failed (no usable key, agent or password-less login). */
+"authentication" | 
 /**  Any other engine or client error. */
 "engine";
 

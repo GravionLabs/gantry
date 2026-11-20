@@ -18,6 +18,10 @@ pub enum ErrorKind {
     Conflict,
     /// The request or the endpoint address is malformed.
     InvalidInput,
+    /// The SSH host key is unknown or has changed; the user must trust it with `ssh` first.
+    HostKey,
+    /// SSH authentication failed (no usable key, agent or password-less login).
+    Authentication,
     /// Any other engine or client error.
     Engine,
 }
@@ -35,8 +39,39 @@ pub struct ErrorPayload {
 pub enum Error {
     #[error("invalid endpoint address: {0}")]
     InvalidAddress(String),
+    #[error("SSH error: {message}")]
+    Ssh { kind: ErrorKind, message: String },
     #[error("Docker engine error: {0}")]
-    Docker(#[from] BollardError),
+    Docker(BollardError),
+}
+
+/// A failed `ssh` run, carried through bollard's I/O error so the transport can report it.
+#[derive(Debug)]
+pub(crate) struct SshFailure {
+    pub kind: ErrorKind,
+    pub message: String,
+}
+
+impl std::fmt::Display for SshFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for SshFailure {}
+
+impl From<BollardError> for Error {
+    fn from(error: BollardError) -> Self {
+        if let BollardError::IOError { err } = &error
+            && let Some(failure) = err.get_ref().and_then(|e| e.downcast_ref::<SshFailure>())
+        {
+            return Self::Ssh {
+                kind: failure.kind,
+                message: failure.message.clone(),
+            };
+        }
+        Self::Docker(error)
+    }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -46,6 +81,7 @@ impl Error {
     pub fn kind(&self) -> ErrorKind {
         match self {
             Self::InvalidAddress(_) => ErrorKind::InvalidInput,
+            Self::Ssh { kind, .. } => *kind,
             Self::Docker(error) => classify(error),
         }
     }
@@ -135,6 +171,13 @@ mod tests {
             (server(409), ErrorKind::Conflict),
             (server(400), ErrorKind::InvalidInput),
             (Error::InvalidAddress("x".into()), ErrorKind::InvalidInput),
+            (
+                Error::Ssh {
+                    kind: ErrorKind::HostKey,
+                    message: "x".into(),
+                },
+                ErrorKind::HostKey,
+            ),
             (server(500), ErrorKind::Engine),
             (io_error(io::ErrorKind::InvalidData), ErrorKind::Engine),
             (

@@ -7,7 +7,9 @@ pub mod bindings;
 mod endpoint;
 mod engine;
 mod error;
+mod ssh;
 
 pub use endpoint::{Endpoint, EndpointKind};
-pub use engine::{EngineInfo, connect, ping};
+pub use engine::{Connections, EngineInfo, connect, ping};
 pub use error::{Error, ErrorKind, ErrorPayload, Result};
+pub use ssh::SshTarget;

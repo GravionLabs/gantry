@@ -7,6 +7,8 @@ const ERROR_KINDS: readonly ErrorKind[] = [
   "notFound",
   "conflict",
   "invalidInput",
+  "hostKey",
+  "authentication",
   "engine",
 ];
 

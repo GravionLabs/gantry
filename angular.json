@@ -22,9 +22,13 @@
           "options": {
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
-            "inlineStyleLanguage": "scss",
+            "inlineStyleLanguage": "css",
             "assets": [{ "glob": "favicon.svg", "input": "src" }],
-            "styles": ["src/styles.scss"]
+            "styles": [
+              "node_modules/@gravionlabs/helix-ui/tokens.css",
+              "node_modules/@gravionlabs/helix-desktop/styles.css",
+              "src/styles.scss"
+            ]
           },
           "configurations": {
             "production": {

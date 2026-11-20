@@ -1,28 +1,21 @@
+// Gantry tokens: the accent (amber) and the container colour (teal). They refine the helix tokens; light and
+// dark follow the system through HxTheme, which sets `.app-dark` on <html>.
 :root {
-  color-scheme: light dark;
-  --bg: #f7f8fa;
-  --fg: #1d2430;
-  --muted: #5d6878;
-  --accent: #e8a317;
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14181f;
-    --fg: #e6e9ee;
-    --muted: #9aa4b2;
-  }
+  --gantry-accent: #f2a900;
+  --gantry-container: #2bb3c0;
+  --h-primary-color: var(--gantry-accent);
+  --h-primary-contrast-color: #1a1300;
 }
 
 html,
 body {
   margin: 0;
   height: 100%;
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--h-content-background);
+  color: var(--h-text-color);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
 }

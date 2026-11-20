@@ -44,3 +44,35 @@
 .dot[data-state="unreachable"] {
   background: var(--h-red-500, #e5484d);
 }
+.buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+.switcher ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.switcher button {
+  display: block;
+  width: 100%;
+  padding: 0.25rem 0.75rem;
+  text-align: start;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+}
+.switcher button:hover {
+  background: var(--h-surface-hover-color, rgb(128 128 128 / 15%));
+}
+.switcher .none {
+  padding: 0.25rem 0.75rem;
+  color: var(--h-text-muted-color);
+}
+.switcher .manage {
+  border-top: 1px solid var(--h-border-color, rgb(128 128 128 / 30%));
+}
+.dot[data-state="denied"] {
+  background: var(--h-red-500, #e5484d);
+}

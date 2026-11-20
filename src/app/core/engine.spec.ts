@@ -3,20 +3,29 @@ import { describe, expect, it, vi } from "vitest";
 const tauri = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: tauri.invoke, Channel: class {} }));
 
-import { describeEngine, pingEngine } from "./engine";
+import { describeEngine, pingEndpoint } from "./engine";
 import { GantryError } from "./invoke";
 
-describe("pingEngine", () => {
-  it("calls engine_ping", async () => {
+const endpoint = {
+  name: "local",
+  kind: "unix" as const,
+  address: "unix:///var/run/docker.sock",
+  tls: null,
+  skipTlsVerify: false,
+  readOnly: false,
+};
+
+describe("pingEndpoint", () => {
+  it("calls endpoint_test with the endpoint", async () => {
     const info = { version: "28", apiVersion: "1.49", os: "linux", arch: "amd64" };
     tauri.invoke.mockResolvedValue(info);
-    await expect(pingEngine()).resolves.toEqual(info);
-    expect(tauri.invoke).toHaveBeenCalledWith("engine_ping", undefined);
+    await expect(pingEndpoint(endpoint)).resolves.toEqual(info);
+    expect(tauri.invoke).toHaveBeenCalledWith("endpoint_test", { endpoint });
   });
 
   it("fails with a typed error", async () => {
     tauri.invoke.mockRejectedValue({ kind: "unreachable", message: "no socket" });
-    const error = await pingEngine().catch((e: unknown) => e);
+    const error = await pingEndpoint(endpoint).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(GantryError);
     expect(error).toMatchObject({ kind: "unreachable" });
   });

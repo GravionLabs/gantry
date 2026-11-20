@@ -6,6 +6,7 @@ import {
   TemplateRef,
   computed,
   inject,
+  signal,
   input,
   viewChildren,
 } from "@angular/core";
@@ -15,10 +16,16 @@ import {
   HxAppShell,
   HxStatusBar,
   HxStatusItem,
+  HxStatusPopover,
   HxStatusVersion,
 } from "@gravionlabs/helix-desktop";
 
+import { HxButton } from "@gravionlabs/helix-ui";
+
+import { EndpointStore } from "./core/endpoint-store";
 import { HxStatusAppVersion, ShellService } from "./core/shell/shell.service";
+import { requiresEndpoint } from "./core/shell/views";
+import { EndpointsView } from "./endpoints/endpoints-view";
 
 /** Marks the template of an activity bar icon with the icon name of the views registry. */
 @Directive({ selector: "ng-template[appNavIcon]" })
@@ -35,15 +42,21 @@ export class NavIconDirective {
     HxAppShell,
     HxStatusBar,
     HxStatusItem,
+    HxStatusPopover,
     HxStatusVersion,
     HxStatusAppVersion,
     NavIconDirective,
+    HxButton,
+    EndpointsView,
   ],
   templateUrl: "./app.html",
   styleUrl: "./app.css",
 })
 export class App implements OnInit {
   protected readonly shell = inject(ShellService);
+  protected readonly endpoints = inject(EndpointStore);
+  protected readonly switcherOpen = signal(false);
+  protected readonly needsEndpoint = computed(() => requiresEndpoint(this.shell.activeId()));
   private readonly icons = viewChildren(NavIconDirective);
 
   /** The items of the activity bar with the icon names resolved to the inline SVG templates. */
@@ -56,7 +69,7 @@ export class App implements OnInit {
   });
 
   protected readonly connectionLabel = computed(() => {
-    switch (this.shell.connection()) {
+    switch (this.endpoints.connection()) {
       case "connected":
         return "Connected";
       case "unreachable":
@@ -67,6 +80,17 @@ export class App implements OnInit {
   });
 
   ngOnInit(): void {
-    void this.shell.refreshEngine();
+    void this.endpoints.init();
+  }
+
+  protected switchTo(id: string): void {
+    this.endpoints.select(id);
+    this.switcherOpen.set(false);
+  }
+
+  protected manage(): void {
+    this.shell.activeId.set("endpoints");
+    this.shell.collapsed.set(false);
+    this.switcherOpen.set(false);
   }
 }

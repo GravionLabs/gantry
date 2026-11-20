@@ -11,6 +11,8 @@ export default tseslint.config(
       "src-tauri/**",
       "crates/**",
       "target/**",
+      ".agents/**",
+      ".claude/**",
       "site/.vitepress/dist/**",
       "site/.vitepress/cache/**",
     ],

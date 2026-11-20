@@ -2,7 +2,7 @@
 //!
 //! Commands return `gantry_core::Error`, which serializes to `{ kind, message }`.
 
-use gantry_core::{Connections, Endpoint, EngineInfo};
+use gantry_core::{Connections, DetectedEngine, Endpoint, EngineInfo};
 use tauri::{Manager, RunEvent};
 
 /// Reads the version of the default local engine.
@@ -29,11 +29,21 @@ async fn endpoint_ping(
     })
 }
 
+/// Finds the Docker engines on this machine and reports whether each is reachable.
+#[tauri::command]
+async fn endpoints_detect() -> Vec<DetectedEngine> {
+    gantry_core::detect().await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .manage(Connections::default())
-        .invoke_handler(tauri::generate_handler![engine_ping, endpoint_ping])
+        .invoke_handler(tauri::generate_handler![
+            engine_ping,
+            endpoint_ping,
+            endpoints_detect
+        ])
         .build(tauri::generate_context!())
         .expect("error while building Gantry")
         .run(|app, event| {

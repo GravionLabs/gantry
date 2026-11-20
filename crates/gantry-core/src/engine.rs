@@ -7,7 +7,7 @@ use crate::{Endpoint, EndpointKind, Result};
 const TIMEOUT_SECS: u64 = 10;
 
 /// Version information of a connected engine.
-#[derive(Debug, Clone, Serialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct EngineInfo {
     pub version: Option<String>,

@@ -10,15 +10,17 @@ publish.workspace = true
 license.workspace = true
 
 [dependencies]
-bollard = "0.21.1"
+bollard = { version = "0.21.1", features = ["ssl"] }
 serde.workspace = true
 specta = { version = "2.0.0-rc.25", features = ["derive"] }
 specta-serde = "0.0.12"
 specta-typescript = "0.0.12"
+serde_json.workspace = true
+sha2 = "0.10"
 thiserror.workspace = true
 
 [dev-dependencies]
-serde_json.workspace = true
+tempfile = "3"
 tokio.workspace = true
 
 [lints]

@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 use crate::{Error, Result};
 
 /// How Gantry reaches a Docker engine.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum EndpointKind {
     /// A Unix socket, e.g. `unix:///var/run/docker.sock`.
@@ -17,7 +18,7 @@ pub enum EndpointKind {
 }
 
 /// A Docker engine the user can connect to.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Endpoint {
     pub name: String,

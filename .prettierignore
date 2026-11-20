@@ -9,3 +9,4 @@ Cargo.lock
 CHANGELOG.md
 .agents
 .claude
+src/app/core/bindings.ts

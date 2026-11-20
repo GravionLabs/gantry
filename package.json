@@ -9,6 +9,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "tauri": "tauri",
+    "bindings": "UPDATE_BINDINGS=1 cargo test -p gantry-core --test bindings",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",

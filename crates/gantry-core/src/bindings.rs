@@ -7,12 +7,14 @@ use specta::Types;
 use specta_typescript::Typescript;
 
 use crate::{
-    DetectedEngine, Endpoint, EndpointKind, EngineInfo, EngineStatus, ErrorKind, ErrorPayload,
+    ContextList, DetectedEngine, Endpoint, EndpointKind, EngineInfo, EngineStatus, ErrorKind,
+    ErrorPayload, TlsFiles,
 };
 
 /// All types exposed to the frontend.
 pub fn ipc_types() -> Types {
     Types::default()
+        .register::<ContextList>()
         .register::<Endpoint>()
         .register::<EndpointKind>()
         .register::<DetectedEngine>()
@@ -20,6 +22,7 @@ pub fn ipc_types() -> Types {
         .register::<EngineStatus>()
         .register::<ErrorKind>()
         .register::<ErrorPayload>()
+        .register::<TlsFiles>()
 }
 
 /// Renders the TypeScript bindings file.

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_VIEW, STATUS_ITEMS, VIEWS, findView, resolveView, statusItems } from "./views";
+import {
+  DEFAULT_VIEW,
+  STATUS_ITEMS,
+  VIEWS,
+  findView,
+  requiresEndpoint,
+  resolveView,
+  statusItems,
+} from "./views";
 
 describe("VIEWS", () => {
   it("has unique ids", () => {
@@ -54,5 +62,14 @@ describe("STATUS_ITEMS", () => {
   it("puts the endpoint at the start and the versions at the end", () => {
     expect(statusItems("start")).toEqual(["endpoint"]);
     expect(statusItems("end")).toEqual(["engine-version", "app-version"]);
+  });
+});
+
+describe("requiresEndpoint", () => {
+  it("is false for the endpoint manager and the settings only", () => {
+    expect(VIEWS.filter((v) => !requiresEndpoint(v.id)).map((v) => v.id)).toEqual([
+      "endpoints",
+      "settings",
+    ]);
   });
 });

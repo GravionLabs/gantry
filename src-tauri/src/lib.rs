@@ -2,24 +2,38 @@
 //!
 //! Commands return `gantry_core::Error`, which serializes to `{ kind, message }`.
 
-use gantry_core::{Connections, DetectedEngine, Endpoint, EngineInfo};
+use gantry_core::{Connections, ContextList, DetectedEngine, Endpoint, EngineInfo, TlsFiles};
 use tauri::{Manager, RunEvent};
 
-/// Reads the version of the default local engine.
+/// Connects to an endpoint and reads the engine version ("Test connection" and the status bar).
 #[tauri::command]
-async fn engine_ping() -> Result<EngineInfo, gantry_core::Error> {
-    gantry_core::ping(&Endpoint::local_default()).await
+async fn endpoint_test(endpoint: Endpoint) -> Result<EngineInfo, gantry_core::Error> {
+    gantry_core::ping(&endpoint).await
 }
 
-/// Reads the version of the engine at `address`; it becomes the active endpoint and its
-/// connection (an `ssh` process for `ssh://`) is reused until another endpoint is activated.
+/// Validates what the user typed for a manual endpoint and builds the endpoint.
 #[tauri::command]
-async fn endpoint_ping(
-    connections: tauri::State<'_, Connections>,
+fn endpoint_build(
     name: String,
     address: String,
+    tls: Option<TlsFiles>,
+) -> Result<Endpoint, gantry_core::Error> {
+    Endpoint::manual(&name, &address, tls)
+}
+
+/// The Docker CLI contexts as read-only endpoints.
+#[tauri::command]
+fn endpoints_contexts() -> ContextList {
+    gantry_core::import_contexts()
+}
+
+/// Makes `endpoint` the active one and reads its engine version. Its connection (an `ssh`
+/// process for `ssh://`) is reused until another endpoint is activated.
+#[tauri::command]
+async fn endpoint_activate(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
 ) -> Result<EngineInfo, gantry_core::Error> {
-    let endpoint = Endpoint::parse(name, &address)?;
     let version = connections.activate(&endpoint)?.version().await?;
     Ok(EngineInfo {
         version: version.version,
@@ -39,9 +53,12 @@ async fn endpoints_detect() -> Vec<DetectedEngine> {
 pub fn run() {
     tauri::Builder::default()
         .manage(Connections::default())
+        .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
-            engine_ping,
-            endpoint_ping,
+            endpoint_test,
+            endpoint_activate,
+            endpoint_build,
+            endpoints_contexts,
             endpoints_detect
         ])
         .build(tauri::generate_context!())

@@ -93,6 +93,11 @@ export const STATUS_ITEMS: readonly StatusItemDecl[] = [
   { id: "app-version", side: "end" },
 ];
 
+/** The views that show data of the active endpoint; the others work without a reachable engine. */
+export function requiresEndpoint(id: string): boolean {
+  return id !== "endpoints" && id !== "settings";
+}
+
 export function findView(id: string): GantryView | undefined {
   return VIEWS.find((v) => v.id === id);
 }

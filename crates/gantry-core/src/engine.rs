@@ -23,7 +23,20 @@ pub fn connect(endpoint: &Endpoint) -> Result<Docker> {
         EndpointKind::Unix | EndpointKind::NamedPipe => {
             Docker::connect_with_local(address, TIMEOUT_SECS, API_DEFAULT_VERSION)?
         }
-        EndpointKind::Tcp => Docker::connect_with_http(address, TIMEOUT_SECS, API_DEFAULT_VERSION)?,
+        EndpointKind::Tcp => match &endpoint.tls {
+            Some(tls) => {
+                let (ca, cert, key) = tls.paths();
+                Docker::connect_with_ssl(
+                    address,
+                    &key,
+                    &cert,
+                    &ca,
+                    TIMEOUT_SECS,
+                    API_DEFAULT_VERSION,
+                )?
+            }
+            None => Docker::connect_with_http(address, TIMEOUT_SECS, API_DEFAULT_VERSION)?,
+        },
         EndpointKind::Ssh => crate::ssh::connect(address, TIMEOUT_SECS)?,
     };
     Ok(docker)

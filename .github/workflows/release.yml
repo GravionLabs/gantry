@@ -18,11 +18,14 @@ permissions:
 
 jobs:
   release:
-    uses: GravionLabs/ci/.github/workflows/tauri-app.yml@main
+    uses: GravionLabs/ci/.github/workflows/tauri-app.yml@v1
     permissions:
       contents: write
       issues: write
       pull-requests: read
+      # Build provenance attestations of the release artifacts.
+      id-token: write
+      attestations: write
     with:
       # The application crate needs system libraries; ci.yml checks it.
       ci-exclude: gantry-app

@@ -41,7 +41,7 @@ jobs:
       CARGO_PROFILE_TEST_DEBUG: 0
     steps:
       - uses: actions/checkout@v4
-      - uses: GravionLabs/ci/rust/setup@main
+      - uses: GravionLabs/ci/rust/setup@v1
         with:
           tauri-linux-deps: "true"
       # tauri::generate_context! embeds the built frontend.

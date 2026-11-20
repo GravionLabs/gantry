@@ -4,10 +4,15 @@
 //! without system libraries.
 
 pub mod bindings;
+mod detect;
 mod endpoint;
 mod engine;
 mod error;
 
+pub use detect::{
+    DEFAULT_TIMEOUT, DetectEnv, DetectedEngine, EngineStatus, Os, candidates, detect, detect_with,
+    status_of,
+};
 pub use endpoint::{Endpoint, EndpointKind};
 pub use engine::{EngineInfo, connect, ping};
 pub use error::{Error, ErrorKind, ErrorPayload, Result};

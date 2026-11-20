@@ -3,3 +3,6 @@ allowBuilds:
   esbuild: true
   lmdb: true
   msgpackr-extract: true
+# Own design system: a new helix release installs at once (helix ADR 0005).
+minimumReleaseAgeExclude:
+  - "@gravionlabs/helix-*"

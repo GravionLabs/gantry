@@ -1,5 +1,49 @@
-import { describe, expect, it } from "vitest";
-import { describeEngine } from "./engine";
+import { describe, expect, it, vi } from "vitest";
+
+const tauri = vi.hoisted(() => ({ invoke: vi.fn() }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: tauri.invoke, Channel: class {} }));
+
+import { activateEndpoint, describeEngine, pingEndpoint } from "./engine";
+import { GantryError } from "./invoke";
+
+const endpoint = {
+  name: "local",
+  kind: "unix" as const,
+  address: "unix:///var/run/docker.sock",
+  tls: null,
+  skipTlsVerify: false,
+  readOnly: false,
+};
+
+describe("pingEndpoint", () => {
+  it("calls endpoint_test with the endpoint", async () => {
+    const info = { version: "28", apiVersion: "1.49", os: "linux", arch: "amd64" };
+    tauri.invoke.mockResolvedValue(info);
+    await expect(pingEndpoint(endpoint)).resolves.toEqual(info);
+    expect(tauri.invoke).toHaveBeenCalledWith("endpoint_test", { endpoint });
+  });
+
+  it("fails with a typed error", async () => {
+    tauri.invoke.mockRejectedValue({ kind: "unreachable", message: "no socket" });
+    const error = await pingEndpoint(endpoint).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(GantryError);
+    expect(error).toMatchObject({ kind: "unreachable" });
+  });
+});
+
+describe("activateEndpoint", () => {
+  it("calls endpoint_activate with the endpoint", async () => {
+    tauri.invoke.mockResolvedValue({});
+    const ssh = {
+      ...endpoint,
+      name: "build",
+      kind: "ssh" as const,
+      address: "ssh://deploy@build-01",
+    };
+    await activateEndpoint(ssh);
+    expect(tauri.invoke).toHaveBeenCalledWith("endpoint_activate", { endpoint: ssh });
+  });
+});
 
 describe("describeEngine", () => {
   it("names version, API and platform", () => {

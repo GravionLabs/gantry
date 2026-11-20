@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "trailingComma": "all",
+  "ignorePatterns": [
+    "dist",
+    ".angular",
+    "node_modules",
+    "target",
+    "src-tauri/gen",
+    "src-tauri/icons",
+    "pnpm-lock.yaml",
+    "Cargo.lock",
+    "CHANGELOG.md",
+    ".agents",
+    ".claude",
+    "src/app/core/bindings.ts"
+  ]
+}

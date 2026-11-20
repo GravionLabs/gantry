@@ -3,19 +3,23 @@
 //! This crate has no Tauri dependency, so the desktop shell stays thin and the logic is testable
 //! without system libraries.
 
+pub mod bindings;
+mod context;
+mod detect;
 mod endpoint;
 mod engine;
+mod error;
+mod ssh;
 
-pub use endpoint::{Endpoint, EndpointKind};
-pub use engine::{EngineInfo, connect, ping};
-
-/// Errors of the core, serialized to the frontend as `{ kind, message }`.
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("invalid endpoint address: {0}")]
-    InvalidAddress(String),
-    #[error("Docker engine error: {0}")]
-    Docker(#[from] bollard::errors::Error),
-}
-
-pub type Result<T> = std::result::Result<T, Error>;
+pub use context::{
+    ContextList, DEFAULT_CONTEXT, current_context, docker_config_dir, import_contexts,
+    read_contexts,
+};
+pub use detect::{
+    DEFAULT_TIMEOUT, DetectEnv, DetectedEngine, EngineStatus, Os, candidates, detect, detect_with,
+    status_of,
+};
+pub use endpoint::{Endpoint, EndpointKind, TlsFiles};
+pub use engine::{Connections, EngineInfo, connect, ping};
+pub use error::{Error, ErrorKind, ErrorPayload, Result};
+pub use ssh::SshTarget;

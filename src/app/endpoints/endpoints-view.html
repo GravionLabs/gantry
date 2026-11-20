@@ -1,0 +1,149 @@
+<section class="endpoints" aria-labelledby="endpoints-title">
+  <header class="head">
+    <h1 id="endpoints-title">Endpoints</h1>
+    <div class="actions">
+      <button hx-button variant="outlined" type="button" (click)="store.refresh()">Refresh</button>
+      <button hx-button type="button" (click)="startAdd()">Add endpoint</button>
+    </div>
+  </header>
+
+  @for (warning of store.warnings(); track warning) {
+  <hx-message severity="warn">{{ warning }}</hx-message>
+  }
+
+  <div class="hx-table-scroll">
+    <table hx-table>
+      <caption class="sr-only">
+        Docker endpoints
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Source</th>
+          <th scope="col">Kind</th>
+          <th scope="col">Address</th>
+          <th scope="col">Status</th>
+          <th scope="col">Engine</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (entry of store.entries(); track entry.id) {
+        <tr [attr.aria-selected]="entry.id === store.activeId() ? 'true' : null">
+          <th scope="row">
+            {{ entry.endpoint.name }} @if (entry.id === store.activeId()) {
+            <span class="active">(active)</span>
+            }
+          </th>
+          <td>{{ origin(entry) }}</td>
+          <td>{{ kind(entry) }}</td>
+          <td class="address">{{ entry.endpoint.address }}</td>
+          <td [attr.title]="entry.status.error">
+            <span class="dot" [attr.data-state]="entry.status.state"></span>{{ state(entry) }}
+          </td>
+          <td>{{ version(entry) }}</td>
+          <td class="row-actions">
+            <button
+              hx-button
+              variant="text"
+              type="button"
+              [disabled]="entry.id === store.activeId()"
+              [attr.aria-label]="'Use ' + entry.endpoint.name"
+              (click)="store.select(entry.id)"
+            >
+              Use
+            </button>
+            <button
+              hx-button
+              variant="text"
+              type="button"
+              [attr.aria-label]="'Test connection to ' + entry.endpoint.name"
+              (click)="store.recheck(entry.id)"
+            >
+              Test connection
+            </button>
+            @if (entry.origin === 'manual') {
+            <button
+              hx-button
+              variant="text"
+              type="button"
+              [attr.aria-label]="'Edit ' + entry.endpoint.name"
+              (click)="startEdit(entry)"
+            >
+              Edit
+            </button>
+            <button
+              hx-button
+              variant="text"
+              severity="danger"
+              type="button"
+              [attr.aria-label]="'Remove ' + entry.endpoint.name"
+              (click)="removing.set(entry.id)"
+            >
+              Remove
+            </button>
+            }
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="7">No endpoints yet. Start Docker or add an endpoint.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (removing()) {
+  <hx-message severity="warn" role="alertdialog" aria-label="Confirm removal">
+    Remove the endpoint “{{ removingName() }}”? Only Gantry forgets it; the engine is untouched.
+    <button hx-button severity="danger" type="button" (click)="confirmRemove()">Remove</button>
+    <button hx-button variant="outlined" type="button" (click)="removing.set(null)">Cancel</button>
+  </hx-message>
+  } @if (editing(); as mode) {
+  <form class="form" (submit)="$event.preventDefault(); save()" aria-label="Endpoint">
+    <h2>{{ mode === 'new' ? 'Add endpoint' : 'Edit endpoint' }}</h2>
+    <label for="ep-name">Name</label>
+    <input hx-input id="ep-name" [value]="name()" (input)="input(name, $event)" />
+    <label for="ep-address">Address</label>
+    <input
+      hx-input
+      id="ep-address"
+      placeholder="tcp://host:2375 or ssh://user@host"
+      [value]="address()"
+      (input)="input(address, $event)"
+    />
+    @if (canUseTls()) {
+    <label class="inline">
+      <input
+        type="checkbox"
+        hx-checkbox
+        [checked]="useTls()"
+        (change)="useTls.set($any($event.target).checked)"
+      />
+      Use TLS
+    </label>
+    @if (useTls()) {
+    <label for="ep-ca">CA certificate (ca.pem)</label>
+    <input hx-input id="ep-ca" [value]="ca()" (input)="input(ca, $event)" />
+    <label for="ep-cert">Client certificate (cert.pem)</label>
+    <input hx-input id="ep-cert" [value]="cert()" (input)="input(cert, $event)" />
+    <label for="ep-key">Client key (key.pem)</label>
+    <input hx-input id="ep-key" [value]="key()" (input)="input(key, $event)" />
+    } }
+    <p class="hint">SSH uses your SSH agent and config; Gantry stores no passwords.</p>
+    @if (formError(); as error) {
+    <hx-message severity="error">{{ error }}</hx-message>
+    } @if (testResult(); as result) {
+    <hx-message severity="success">{{ result }}</hx-message>
+    }
+    <div class="actions">
+      <button hx-button variant="outlined" type="button" [disabled]="busy()" (click)="test()">
+        Test connection
+      </button>
+      <button hx-button variant="text" type="button" (click)="cancel()">Cancel</button>
+      <button hx-button type="submit" [disabled]="busy()">Save</button>
+    </div>
+  </form>
+  }
+</section>

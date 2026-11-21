@@ -228,7 +228,7 @@ pub struct NetworkAttachment {
 }
 
 /// A label of the container.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, serde::Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Label {
     pub key: String,

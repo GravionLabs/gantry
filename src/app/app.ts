@@ -30,6 +30,7 @@ import { ContainersView } from "./containers/containers-view";
 import { UpdateService } from "./core/updater/update.service";
 import { ImagesView } from "./images/images-view";
 import { StacksView } from "./stacks/stacks-view";
+import { VolumesView } from "./volumes/volumes-view";
 import { EndpointsView } from "./endpoints/endpoints-view";
 
 /** Marks the template of an activity bar icon with the icon name of the views registry. */
@@ -56,6 +57,7 @@ export class NavIconDirective {
     ContainersView,
     StacksView,
     ImagesView,
+    VolumesView,
     ContainerDetailsView,
   ],
   templateUrl: "./app.html",

@@ -6,8 +6,8 @@ use gantry_core::{
     ActionEvent, ActionTarget, ComposeAction, ComposeAvailability, ComposeEvent, ComposeProject,
     Connections, Container, ContainerAction, ContainerDetails, ContainerWatchEvent, ContextList,
     DetectedEngine, Endpoint, EngineInfo, ExecEvent, ExecOptions, ExecSessions, Image, LogEvent,
-    LogOptions, PruneOutcome, PullEvent, RemoveOutcome, Stack, StatsEvent, TlsFiles, WatchTiming,
-    Watches,
+    LogOptions, PruneOutcome, PullEvent, RemoveOutcome, Stack, StatsEvent, TlsFiles, Volume,
+    VolumePruneOutcome, VolumeSpec, WatchTiming, Watches,
 };
 use tauri::ipc::Channel;
 use tauri::{Manager, RunEvent};
@@ -262,6 +262,45 @@ async fn images_prune(
     gantry_core::prune_images(&connections.activate(&endpoint)?, all).await
 }
 
+/// Lists the volumes of `endpoint` with their size and the containers that use them.
+#[tauri::command]
+async fn volumes_list(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<Vec<Volume>, gantry_core::Error> {
+    gantry_core::list_volumes(&connections.activate(&endpoint)?).await
+}
+
+/// Creates a volume.
+#[tauri::command]
+async fn volumes_create(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    spec: VolumeSpec,
+) -> Result<(), gantry_core::Error> {
+    gantry_core::create_volume(&connections.activate(&endpoint)?, spec).await
+}
+
+/// Removes a volume by name.
+#[tauri::command]
+async fn volumes_remove(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    name: String,
+    force: bool,
+) -> Result<(), gantry_core::Error> {
+    gantry_core::remove_volume(&connections.activate(&endpoint)?, &name, force).await
+}
+
+/// Removes every volume no container uses.
+#[tauri::command]
+async fn volumes_prune(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<VolumePruneOutcome, gantry_core::Error> {
+    gantry_core::prune_volumes(&connections.activate(&endpoint)?).await
+}
+
 /// Tells whether Compose actions can run for `project`: the plugin is installed and the Compose
 /// files exist on this machine.
 #[tauri::command]
@@ -341,6 +380,10 @@ pub fn run() {
             images_pull,
             images_remove,
             images_prune,
+            volumes_list,
+            volumes_create,
+            volumes_remove,
+            volumes_prune,
             containers_inspect,
             containers_watch,
             containers_unwatch,

@@ -13,7 +13,7 @@ use crate::{
     EngineStatus, EnvVar, ErrorKind, ErrorPayload, ExecEvent, ExecOptions, Image, Label, LogEvent,
     LogLine, LogOptions, LogStream, MountInfo, NetworkAttachment, PortMapping, PruneOutcome,
     PullEvent, RemoveOutcome, RestartPolicy, Stack, StackService, StatsEvent, StatsSample,
-    TlsFiles,
+    TlsFiles, Volume, VolumePruneOutcome, VolumeSpec,
 };
 
 /// All types exposed to the frontend.
@@ -60,6 +60,9 @@ pub fn ipc_types() -> Types {
         .register::<StatsEvent>()
         .register::<StatsSample>()
         .register::<TlsFiles>()
+        .register::<Volume>()
+        .register::<VolumePruneOutcome>()
+        .register::<VolumeSpec>()
 }
 
 /// Renders the TypeScript bindings file.

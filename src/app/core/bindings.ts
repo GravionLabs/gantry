@@ -383,3 +383,36 @@ export type TlsFiles = {
 	cert: string,
 	key: string,
 };
+
+/**  One row of the volume list. */
+export type Volume = {
+	name: string,
+	driver: string,
+	mountpoint: string,
+	/**
+	 *  Disk space in bytes as `system df` reports it; absent when the engine does not know it
+	 *  (a driver that cannot measure, or an engine that does not report volume usage).
+	 */
+	size: number | null,
+	/**  Creation time as the engine reports it (RFC 3339). */
+	created: string | null,
+	labels: Label[],
+	/**  The names of the containers (in any state) that mount the volume. */
+	containers: string[],
+};
+
+/**  What a prune removed. */
+export type VolumePruneOutcome = {
+	/**  The names of the volumes the engine deleted. */
+	removed: string[],
+	/**  The disk space that was freed, in bytes. */
+	reclaimed: number | null,
+};
+
+/**  What creating a volume takes. */
+export type VolumeSpec = {
+	name: string,
+	/**  The volume driver; empty for the engine's default (`local`). */
+	driver: string,
+	labels: Label[],
+};

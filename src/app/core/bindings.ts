@@ -281,6 +281,20 @@ export type MountInfo = {
 	readWrite: boolean,
 };
 
+/**  One row of the network list. */
+export type Network = {
+	id: string,
+	name: string,
+	driver: string,
+	scope: string,
+	/**  The subnets of the address pool (IPv4 and IPv6); empty for `host` and `none`. */
+	subnets: string[],
+	/**  The names of the containers (in any state) that are connected to the network. */
+	containers: string[],
+	/**  `bridge`, `host` and `none`: the engine does not remove them. */
+	builtin: boolean,
+};
+
 /**  The attachment of a container to a network. */
 export type NetworkAttachment = {
 	name: string,
@@ -289,6 +303,19 @@ export type NetworkAttachment = {
 	gateway: string,
 	macAddress: string,
 	aliases: string[],
+};
+
+/**  What a prune removed. */
+export type NetworkPruneOutcome = {
+	/**  The names of the networks the engine deleted. */
+	removed: string[],
+};
+
+/**  What creating a network takes: a bridge network with an optional subnet. */
+export type NetworkSpec = {
+	name: string,
+	/**  The subnet in CIDR notation; empty for the engine's choice. */
+	subnet: string,
 };
 
 /**  A published port: a container port that is reachable on the host. */

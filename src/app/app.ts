@@ -25,6 +25,7 @@ import { HxButton } from "@gravionlabs/helix-ui";
 import { EndpointStore } from "./core/endpoint-store";
 import { HxStatusAppVersion, ShellService } from "./core/shell/shell.service";
 import { requiresEndpoint } from "./core/shell/views";
+import { ContainerDetailsView } from "./containers/container-details";
 import { ContainersView } from "./containers/containers-view";
 import { EndpointsView } from "./endpoints/endpoints-view";
 
@@ -50,6 +51,7 @@ export class NavIconDirective {
     HxButton,
     EndpointsView,
     ContainersView,
+    ContainerDetailsView,
   ],
   templateUrl: "./app.html",
   styleUrl: "./app.css",

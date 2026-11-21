@@ -3,13 +3,14 @@ import type {
   ActionTarget,
   Container,
   ContainerAction,
+  ContainerDetails,
   ContainerState,
   ContainerWatchEvent,
   Endpoint,
 } from "./bindings";
 import { invoke, stream } from "./invoke";
 
-export type { Container, ContainerWatchEvent } from "./bindings";
+export type { Container, ContainerDetails, ContainerWatchEvent } from "./bindings";
 
 /** Lists the containers of an endpoint through the Tauri command `containers_list`. */
 export function listContainers(endpoint: Endpoint): Promise<Container[]> {
@@ -163,7 +164,7 @@ const STATE_LABEL: Record<ContainerState, string> = {
 };
 
 /** `Running`, or `Running (healthy)` for a container with a health check. */
-export function stateLabel(container: Container): string {
+export function stateLabel(container: Pick<Container, "state" | "health">): string {
   const state = STATE_LABEL[container.state];
   return container.health ? `${state} (${container.health})` : state;
 }
@@ -228,4 +229,62 @@ export function runContainerAction(
   onEvent: (event: ActionEvent) => void,
 ): Promise<number> {
   return stream<ActionEvent, number>("containers_action", onEvent, { endpoint, action, targets });
+}
+
+/** Reads everything `docker inspect` shows for one container through `containers_inspect`. */
+export function inspectContainer(endpoint: Endpoint, id: string): Promise<ContainerDetails> {
+  return invoke<ContainerDetails>("containers_inspect", { endpoint, id });
+}
+
+/** The command line as one string; an argument with whitespace is quoted. `–` when it is empty. */
+export function commandLine(args: readonly string[]): string {
+  if (!args.length) return "–";
+  return args.map((a) => (a === "" || /\s/.test(a) ? JSON.stringify(a) : a)).join(" ");
+}
+
+/** `unless-stopped`, or `on-failure (max 3 retries)`. */
+export function restartPolicyLabel(policy: ContainerDetails["restartPolicy"]): string {
+  if (policy.name !== "on-failure" || policy.maxRetries === 0) return policy.name;
+  return `${policy.name} (max ${policy.maxRetries} retries)`;
+}
+
+/** The shown form of a value that is masked until the user reveals it. */
+export function maskValue(value: string): string {
+  return value === "" ? "" : "••••••••";
+}
+
+/** A published port as `host:8080→80/tcp`; the host address is left out for `0.0.0.0` and `::`. */
+export function boundPortLabel(port: ContainerDetails["ports"][number]): string {
+  const label = portLabel(port);
+  return port.ip && port.ip !== "0.0.0.0" && port.ip !== "::" ? `${port.ip}:${label}` : label;
+}
+
+/** The path of the detail route of a container. */
+export function containerPath(id: string): string {
+  return `/containers/${encodeURIComponent(id)}`;
+}
+
+/** The container id of a `/containers/:id` path; null for any other path. */
+export function parseContainerPath(path: string): string | null {
+  const match = /^\/containers\/([^/]+)\/?$/.exec(path);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/** The raw inspect JSON with the values of `Config.Env` masked, unless `reveal` is set. */
+export function rawJson(raw: string, reveal: boolean): string {
+  if (reveal) return raw;
+  try {
+    const parsed = JSON.parse(raw) as { Config?: { Env?: unknown } };
+    const env = parsed.Config?.Env;
+    if (Array.isArray(env)) {
+      parsed.Config!.Env = env.map((entry) => {
+        if (typeof entry !== "string") return entry;
+        const i = entry.indexOf("=");
+        return i < 0 ? entry : `${entry.slice(0, i + 1)}${maskValue(entry.slice(i + 1))}`;
+      });
+    }
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return raw;
+  }
 }

@@ -1,0 +1,90 @@
+:host {
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+}
+.details {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  align-content: start;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.head h1 {
+  margin: 0;
+}
+.state {
+  margin: 2rem 0;
+  text-align: center;
+  color: var(--h-text-muted-color);
+}
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--h-border-color, currentColor);
+}
+.tab {
+  all: unset;
+  cursor: pointer;
+  padding: 0.5rem 0.9rem;
+  border-bottom: 2px solid transparent;
+}
+.tab[aria-selected="true"] {
+  border-bottom-color: currentColor;
+  font-weight: 600;
+}
+.tab:focus-visible,
+.panel:focus-visible,
+.raw:focus-visible {
+  outline: 2px solid currentColor;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+}
+.facts dt {
+  color: var(--h-text-muted-color);
+}
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.muted {
+  color: var(--h-text-muted-color);
+  margin-inline-start: 0.5rem;
+}
+.chip {
+  margin-inline-end: 0.75rem;
+}
+.toolbar {
+  margin-bottom: 0.75rem;
+}
+.grid {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: start;
+}
+.grid th,
+.grid td {
+  padding: 0.35rem 0.75rem;
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.mono {
+  font-family: var(--h-font-mono, monospace);
+}
+.raw {
+  margin: 0;
+  max-height: 70vh;
+  overflow: auto;
+  white-space: pre;
+}

@@ -3,8 +3,9 @@
 //! Commands return `gantry_core::Error`, which serializes to `{ kind, message }`.
 
 use gantry_core::{
-    ActionEvent, ActionTarget, Connections, Container, ContainerAction, ContainerWatchEvent,
-    ContextList, DetectedEngine, Endpoint, EngineInfo, TlsFiles, WatchTiming, Watches,
+    ActionEvent, ActionTarget, Connections, Container, ContainerAction, ContainerDetails,
+    ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EngineInfo, TlsFiles, WatchTiming,
+    Watches,
 };
 use tauri::ipc::Channel;
 use tauri::{Manager, RunEvent};
@@ -61,6 +62,16 @@ async fn containers_list(
     endpoint: Endpoint,
 ) -> Result<Vec<Container>, gantry_core::Error> {
     gantry_core::list_containers(&connections.activate(&endpoint)?).await
+}
+
+/// Reads the full details of one container (`docker inspect`).
+#[tauri::command]
+async fn containers_inspect(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    id: String,
+) -> Result<ContainerDetails, gantry_core::Error> {
+    gantry_core::inspect_container(&connections.activate(&endpoint)?, &id).await
 }
 
 /// Streams the container list of `endpoint` through `on_event` until `containers_unwatch` stops
@@ -131,6 +142,7 @@ pub fn run() {
             endpoints_contexts,
             endpoints_detect,
             containers_list,
+            containers_inspect,
             containers_watch,
             containers_unwatch,
             containers_action,

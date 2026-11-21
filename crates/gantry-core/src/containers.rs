@@ -14,8 +14,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use bollard::Docker;
 use bollard::models::{
-    ContainerSummary, ContainerSummaryHealthStatusEnum, ContainerSummaryStateEnum,
-    PortSummaryTypeEnum,
+    ContainerInspectResponse, ContainerStateStatusEnum, ContainerSummary,
+    ContainerSummaryHealthStatusEnum, ContainerSummaryStateEnum, HealthStatusEnum,
+    PortSummaryTypeEnum, RestartPolicyNameEnum,
 };
 use bollard::query_parameters::{
     EventsOptionsBuilder, ListContainersOptionsBuilder, RemoveContainerOptionsBuilder,
@@ -181,6 +182,251 @@ pub async fn list_containers(docker: &Docker) -> Result<Vec<Container>> {
         .collect();
     containers.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(containers)
+}
+
+/// A restart policy, e.g. `on-failure` with at most 3 retries.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RestartPolicy {
+    /// `no`, `always`, `unless-stopped` or `on-failure`.
+    pub name: String,
+    /// Only meaningful for `on-failure`; 0 means unlimited.
+    pub max_retries: u32,
+}
+
+/// One environment variable of the container configuration.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvVar {
+    pub name: String,
+    pub value: String,
+}
+
+/// A mount of a container.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct MountInfo {
+    /// `bind`, `volume`, `tmpfs`, ...
+    pub kind: String,
+    /// The volume name; only for volumes.
+    pub name: Option<String>,
+    pub source: String,
+    pub destination: String,
+    pub read_write: bool,
+}
+
+/// The attachment of a container to a network.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkAttachment {
+    pub name: String,
+    pub network_id: String,
+    pub ip_address: String,
+    pub gateway: String,
+    pub mac_address: String,
+    pub aliases: Vec<String>,
+}
+
+/// A label of the container.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Label {
+    pub key: String,
+    pub value: String,
+}
+
+/// Everything `docker inspect` shows about a container, in a form the UI can lay out.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ContainerDetails {
+    pub id: String,
+    pub name: String,
+    /// The image reference the container was created from, e.g. `nginx:latest`.
+    pub image: String,
+    /// The ID of the image, `sha256:...`.
+    pub image_id: String,
+    pub state: ContainerState,
+    pub health: Option<ContainerHealth>,
+    /// Creation time in RFC 3339 format.
+    pub created: String,
+    pub command: Vec<String>,
+    pub entrypoint: Vec<String>,
+    pub restart_policy: RestartPolicy,
+    pub ports: Vec<PortMapping>,
+    pub env: Vec<EnvVar>,
+    pub mounts: Vec<MountInfo>,
+    pub networks: Vec<NetworkAttachment>,
+    pub labels: Vec<Label>,
+    pub compose_project: Option<String>,
+    /// The complete inspect response as pretty printed JSON.
+    pub raw: String,
+}
+
+impl ContainerDetails {
+    fn from_inspect(inspect: ContainerInspectResponse) -> Result<Self> {
+        let raw = serde_json::to_string_pretty(&inspect).map_err(bollard::errors::Error::from)?;
+        let id = inspect.id.unwrap_or_default();
+        let config = inspect.config.unwrap_or_default();
+        let state = inspect.state.unwrap_or_default();
+        let host = inspect.host_config.unwrap_or_default();
+        let network = inspect.network_settings.unwrap_or_default();
+        let labels = config.labels.unwrap_or_default();
+        let compose_project = labels
+            .get(COMPOSE_PROJECT_LABEL)
+            .filter(|p| !p.is_empty())
+            .cloned();
+
+        // Command and entrypoint as shown by `docker inspect`: the entrypoint can be empty, and
+        // the command is what the image or the user configured (`Path`/`Args` include the entrypoint).
+        let mut env: Vec<EnvVar> = config
+            .env
+            .unwrap_or_default()
+            .into_iter()
+            .map(|entry| match entry.split_once('=') {
+                Some((name, value)) => EnvVar {
+                    name: name.to_owned(),
+                    value: value.to_owned(),
+                },
+                None => EnvVar {
+                    name: entry,
+                    value: String::new(),
+                },
+            })
+            .collect();
+        env.sort_by(|a, b| a.name.cmp(&b.name));
+
+        let mut mounts: Vec<MountInfo> = inspect
+            .mounts
+            .unwrap_or_default()
+            .into_iter()
+            .map(|m| MountInfo {
+                kind: m.typ.map(|t| t.to_string()).unwrap_or_default(),
+                name: m.name.filter(|n| !n.is_empty()),
+                source: m.source.unwrap_or_default(),
+                destination: m.destination.unwrap_or_default(),
+                read_write: m.rw.unwrap_or(true),
+            })
+            .collect();
+        mounts.sort_by(|a, b| a.destination.cmp(&b.destination));
+
+        let mut networks: Vec<NetworkAttachment> = network
+            .networks
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(name, e)| NetworkAttachment {
+                name,
+                network_id: e.network_id.unwrap_or_default(),
+                ip_address: e.ip_address.unwrap_or_default(),
+                gateway: e.gateway.unwrap_or_default(),
+                mac_address: e.mac_address.unwrap_or_default(),
+                aliases: e.aliases.unwrap_or_default(),
+            })
+            .collect();
+        networks.sort_by(|a, b| a.name.cmp(&b.name));
+
+        let mut labels: Vec<Label> = labels
+            .into_iter()
+            .map(|(key, value)| Label { key, value })
+            .collect();
+        labels.sort_by(|a, b| a.key.cmp(&b.key));
+
+        let health = state.health.and_then(|h| h.status).and_then(|s| match s {
+            HealthStatusEnum::STARTING => Some(ContainerHealth::Starting),
+            HealthStatusEnum::HEALTHY => Some(ContainerHealth::Healthy),
+            HealthStatusEnum::UNHEALTHY => Some(ContainerHealth::Unhealthy),
+            _ => None,
+        });
+        let restart = host.restart_policy.unwrap_or_default();
+
+        Ok(Self {
+            name: inspect
+                .name
+                .map(|n| n.trim_start_matches('/').to_owned())
+                .filter(|n| !n.is_empty())
+                .unwrap_or_else(|| id.chars().take(12).collect()),
+            id,
+            image: config.image.unwrap_or_default(),
+            image_id: inspect.image.unwrap_or_default(),
+            state: match state.status {
+                Some(ContainerStateStatusEnum::CREATED) => ContainerState::Created,
+                Some(ContainerStateStatusEnum::RUNNING) => ContainerState::Running,
+                Some(ContainerStateStatusEnum::PAUSED) => ContainerState::Paused,
+                Some(ContainerStateStatusEnum::RESTARTING) => ContainerState::Restarting,
+                Some(ContainerStateStatusEnum::EXITED) => ContainerState::Exited,
+                Some(ContainerStateStatusEnum::REMOVING) => ContainerState::Removing,
+                Some(ContainerStateStatusEnum::DEAD) => ContainerState::Dead,
+                _ => ContainerState::Unknown,
+            },
+            health,
+            created: inspect.created.map(|d| d.to_string()).unwrap_or_default(),
+            command: config.cmd.unwrap_or_default(),
+            entrypoint: config.entrypoint.unwrap_or_default(),
+            restart_policy: RestartPolicy {
+                name: match host_policy_name(restart.name) {
+                    "" => "no",
+                    name => name,
+                }
+                .to_owned(),
+                max_retries: restart
+                    .maximum_retry_count
+                    .unwrap_or(0)
+                    .clamp(0, i64::from(u32::MAX)) as u32,
+            },
+            ports: published_ports(network.ports.unwrap_or_default()),
+            env,
+            mounts,
+            networks,
+            labels,
+            compose_project,
+            raw,
+        })
+    }
+}
+
+fn host_policy_name(name: Option<RestartPolicyNameEnum>) -> &'static str {
+    match name {
+        Some(RestartPolicyNameEnum::NO) => "no",
+        Some(RestartPolicyNameEnum::ALWAYS) => "always",
+        Some(RestartPolicyNameEnum::UNLESS_STOPPED) => "unless-stopped",
+        Some(RestartPolicyNameEnum::ON_FAILURE) => "on-failure",
+        _ => "",
+    }
+}
+
+/// The published ports of the network settings (`80/tcp` -> host bindings), like the list shows them.
+fn published_ports(
+    map: HashMap<String, Option<Vec<bollard::models::PortBinding>>>,
+) -> Vec<PortMapping> {
+    let mut seen = HashSet::new();
+    let mut ports: Vec<PortMapping> = map
+        .into_iter()
+        .flat_map(|(key, bindings)| {
+            let (port, protocol) = key.split_once('/').unwrap_or((&key, "tcp"));
+            let private_port = port.parse::<u16>().ok();
+            let protocol = protocol.to_owned();
+            bindings
+                .unwrap_or_default()
+                .into_iter()
+                .filter_map(move |b| {
+                    let public_port = b.host_port?.parse::<u16>().ok()?;
+                    Some(PortMapping {
+                        ip: b.host_ip.filter(|ip| !ip.is_empty()),
+                        private_port: private_port?,
+                        public_port: Some(public_port),
+                        protocol: protocol.clone(),
+                    })
+                })
+        })
+        .filter(|p| seen.insert((p.public_port, p.private_port, p.protocol.clone())))
+        .collect();
+    ports.sort_by_key(|p| (p.public_port, p.private_port));
+    ports
+}
+
+/// Reads everything the engine knows about one container. `id` is an ID, a prefix or a name; a
+/// container that does not exist fails with `ErrorKind::NotFound`.
+pub async fn inspect_container(docker: &Docker, id: &str) -> Result<ContainerDetails> {
+    ContainerDetails::from_inspect(docker.inspect_container(id, None).await?)
 }
 
 /// A lifecycle action on a container.
@@ -843,5 +1089,100 @@ mod tests {
     fn a_non_engine_error_keeps_its_text() {
         let error = Error::InvalidAddress("x".to_owned());
         assert_eq!(engine_message(&error), error.to_string());
+    }
+
+    fn inspect_json() -> ContainerInspectResponse {
+        serde_json::from_value(serde_json::json!({
+            "Id": "abc123",
+            "Name": "/web",
+            "Created": "2024-01-02T03:04:05.123456789Z",
+            "Image": "sha256:feed",
+            "State": {"Status": "running", "Health": {"Status": "healthy"}},
+            "HostConfig": {"RestartPolicy": {"Name": "on-failure", "MaximumRetryCount": 3}},
+            "Config": {
+                "Image": "nginx:latest",
+                "Cmd": ["nginx", "-g", "daemon off;"],
+                "Entrypoint": ["/docker-entrypoint.sh"],
+                "Env": ["PATH=/usr/bin", "TOKEN=a=b", "EMPTY"],
+                "Labels": {"com.docker.compose.project": "shop", "a": "1"}
+            },
+            "Mounts": [
+                {"Type": "volume", "Name": "data", "Source": "/var/lib/docker/volumes/data/_data",
+                 "Destination": "/data", "RW": true},
+                {"Type": "bind", "Source": "/etc/conf", "Destination": "/conf", "RW": false}
+            ],
+            "NetworkSettings": {
+                "Ports": {
+                    "80/tcp": [{"HostIp": "0.0.0.0", "HostPort": "8080"}, {"HostIp": "::", "HostPort": "8080"}],
+                    "443/tcp": null
+                },
+                "Networks": {
+                    "shop_default": {"NetworkID": "net1", "IPAddress": "172.18.0.2", "Gateway": "172.18.0.1",
+                                     "MacAddress": "02:42", "Aliases": ["web"]},
+                    "bridge": {"NetworkID": "net0"}
+                }
+            }
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn maps_an_inspect_response() {
+        let d = ContainerDetails::from_inspect(inspect_json()).unwrap();
+        assert_eq!((d.id.as_str(), d.name.as_str()), ("abc123", "web"));
+        assert_eq!(
+            (d.image.as_str(), d.image_id.as_str()),
+            ("nginx:latest", "sha256:feed")
+        );
+        assert_eq!(d.state, ContainerState::Running);
+        assert_eq!(d.health, Some(ContainerHealth::Healthy));
+        assert!(
+            d.created.starts_with("2024-01-02T03:04:05"),
+            "{}",
+            d.created
+        );
+        assert_eq!(d.command, ["nginx", "-g", "daemon off;"]);
+        assert_eq!(d.entrypoint, ["/docker-entrypoint.sh"]);
+        assert_eq!(d.restart_policy.name, "on-failure");
+        assert_eq!(d.restart_policy.max_retries, 3);
+        assert_eq!(d.compose_project.as_deref(), Some("shop"));
+        assert_eq!(d.labels[0].key, "a");
+        // The first `=` splits; a value may contain more.
+        let env: Vec<_> = d
+            .env
+            .iter()
+            .map(|e| (e.name.as_str(), e.value.as_str()))
+            .collect();
+        assert_eq!(env, [("EMPTY", ""), ("PATH", "/usr/bin"), ("TOKEN", "a=b")]);
+        assert_eq!(d.mounts[0].destination, "/conf");
+        assert!(!d.mounts[0].read_write);
+        assert_eq!(d.mounts[1].name.as_deref(), Some("data"));
+        assert_eq!(d.mounts[1].kind, "volume");
+        let nets: Vec<_> = d.networks.iter().map(|n| n.name.as_str()).collect();
+        assert_eq!(nets, ["bridge", "shop_default"]);
+        assert_eq!(d.networks[1].ip_address, "172.18.0.2");
+        assert_eq!(d.networks[1].aliases, ["web"]);
+        // IPv4 and IPv6 bindings count once; an exposed but unpublished port is left out.
+        assert_eq!(d.ports.len(), 1);
+        assert_eq!(
+            (d.ports[0].public_port, d.ports[0].private_port),
+            (Some(8080), 80)
+        );
+        let raw: serde_json::Value = serde_json::from_str(&d.raw).unwrap();
+        assert_eq!(raw["Id"], "abc123");
+    }
+
+    #[test]
+    fn an_empty_inspect_response_has_defaults() {
+        let d = ContainerDetails::from_inspect(ContainerInspectResponse {
+            id: Some("0123456789abcdef".to_owned()),
+            ..Default::default()
+        })
+        .unwrap();
+        assert_eq!(d.name, "0123456789ab");
+        assert_eq!(d.state, ContainerState::Unknown);
+        assert_eq!(d.restart_policy.name, "no");
+        assert_eq!(d.health, None);
+        assert!(d.env.is_empty() && d.mounts.is_empty() && d.networks.is_empty());
     }
 }

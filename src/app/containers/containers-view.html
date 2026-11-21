@@ -120,7 +120,14 @@
               (change)="toggle(container)"
             />
           </td>
-          <th scope="row">{{ container.name }}</th>
+          <th scope="row">
+            <a
+              [href]="'/containers/' + container.id"
+              [attr.aria-label]="'Details of ' + container.name"
+              (click)="details($event, container)"
+              >{{ container.name }}</a
+            >
+          </th>
           <td class="mono">{{ container.image }}</td>
           <td [attr.title]="container.status">
             <span

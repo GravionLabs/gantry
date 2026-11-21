@@ -36,6 +36,31 @@ export type ContainerAction = { type: "start" } | { type: "stop" } | { type: "re
 /**  Removes the container; `volumes` also removes its anonymous volumes. */
 { type: "remove"; volumes: boolean };
 
+/**  Everything `docker inspect` shows about a container, in a form the UI can lay out. */
+export type ContainerDetails = {
+	id: string,
+	name: string,
+	/**  The image reference the container was created from, e.g. `nginx:latest`. */
+	image: string,
+	/**  The ID of the image, `sha256:...`. */
+	imageId: string,
+	state: ContainerState,
+	health: ContainerHealth | null,
+	/**  Creation time in RFC 3339 format. */
+	created: string,
+	command: string[],
+	entrypoint: string[],
+	restartPolicy: RestartPolicy,
+	ports: PortMapping[],
+	env: EnvVar[],
+	mounts: MountInfo[],
+	networks: NetworkAttachment[],
+	labels: Label[],
+	composeProject: string | null,
+	/**  The complete inspect response as pretty printed JSON. */
+	raw: string,
+};
+
 /**  The result of the health check of a container that defines one. */
 export type ContainerHealth = "starting" | "healthy" | "unhealthy";
 
@@ -109,6 +134,12 @@ export type EngineStatus =
 /**  The socket exists but the user may not use it. */
 { state: "permissionDenied"; hint: string };
 
+/**  One environment variable of the container configuration. */
+export type EnvVar = {
+	name: string,
+	value: string,
+};
+
 /**  What went wrong, in terms the UI can act on. */
 export type ErrorKind = 
 /**  The engine cannot be reached (no socket, connection refused, timeout). */
@@ -134,6 +165,33 @@ export type ErrorPayload = {
 	message: string,
 };
 
+/**  A label of the container. */
+export type Label = {
+	key: string,
+	value: string,
+};
+
+/**  A mount of a container. */
+export type MountInfo = {
+	/**  `bind`, `volume`, `tmpfs`, ... */
+	kind: string,
+	/**  The volume name; only for volumes. */
+	name: string | null,
+	source: string,
+	destination: string,
+	readWrite: boolean,
+};
+
+/**  The attachment of a container to a network. */
+export type NetworkAttachment = {
+	name: string,
+	networkId: string,
+	ipAddress: string,
+	gateway: string,
+	macAddress: string,
+	aliases: string[],
+};
+
 /**  A published port: a container port that is reachable on the host. */
 export type PortMapping = {
 	/**  The host address the port is bound to, e.g. `0.0.0.0`. */
@@ -143,6 +201,14 @@ export type PortMapping = {
 	publicPort: number | null,
 	/**  `tcp`, `udp` or `sctp`. */
 	protocol: string,
+};
+
+/**  A restart policy, e.g. `on-failure` with at most 3 retries. */
+export type RestartPolicy = {
+	/**  `no`, `always`, `unless-stopped` or `on-failure`. */
+	name: string,
+	/**  Only meaningful for `on-failure`; 0 means unlimited. */
+	maxRetries: number,
 };
 
 /**  Client certificates for a TLS-secured TCP endpoint (Docker's `ca.pem`, `cert.pem`, `key.pem`). */

@@ -12,6 +12,7 @@ mod endpoint;
 mod engine;
 mod error;
 mod exec;
+mod images;
 mod logs;
 mod ssh;
 mod stacks;
@@ -40,6 +41,10 @@ pub use endpoint::{Endpoint, EndpointKind, TlsFiles};
 pub use engine::{Connections, EngineInfo, connect, ping};
 pub use error::{Error, ErrorKind, ErrorPayload, Result};
 pub use exec::{ExecEvent, ExecOptions, ExecSessions, run_exec};
+pub use images::{
+    Image, PruneOutcome, PullEvent, RemoveOutcome, images_of, list_images, prune_images,
+    pull_image, remove_image, split_reference,
+};
 pub use logs::{LogBatching, LogEvent, LogLine, LogOptions, LogStream, stream_logs};
 pub use ssh::SshTarget;
 pub use stacks::{Stack, StackService, list_stacks, stacks_of};

@@ -25,6 +25,7 @@
             "inlineStyleLanguage": "css",
             "assets": [{ "glob": "favicon.svg", "input": "src" }],
             "styles": [
+              "node_modules/@gravionlabs/helix-ui/styles.css",
               "node_modules/@gravionlabs/helix-ui/tokens.css",
               "node_modules/@gravionlabs/helix-desktop/styles.css",
               "src/styles.scss"

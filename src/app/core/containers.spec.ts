@@ -26,6 +26,7 @@ import {
   inspectContainer,
   maskValue,
   parseContainerPath,
+  rawJson,
   restartPolicyLabel,
   filterContainers,
   isLocalEndpoint,
@@ -301,5 +302,15 @@ describe("container details", () => {
     expect(parseContainerPath(containerPath("a/b"))).toBe("a/b");
     expect(parseContainerPath("/containers")).toBeNull();
     expect(parseContainerPath("/images/abc")).toBeNull();
+  });
+
+  it("masks the environment values of the raw JSON until revealed", () => {
+    const raw = JSON.stringify({ Config: { Env: ["DB_PASSWORD=hunter2", "EMPTY=", "NOEQ"] } });
+    const masked = rawJson(raw, false);
+    expect(masked).not.toContain("hunter2");
+    expect(masked).toContain("DB_PASSWORD=");
+    expect(JSON.parse(masked).Config.Env[2]).toBe("NOEQ");
+    expect(rawJson(raw, true)).toBe(raw);
+    expect(rawJson("not json", false)).toBe("not json");
   });
 });

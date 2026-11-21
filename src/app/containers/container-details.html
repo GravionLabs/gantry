@@ -207,7 +207,12 @@
       </tbody>
     </table>
     } } @case ('raw') {
-    <pre class="raw mono" tabindex="0" aria-label="Raw inspect JSON">{{ d.raw }}</pre>
+    <div class="toolbar">
+      <button hx-button variant="outlined" type="button" (click)="toggleRevealAll()">
+        {{ revealAll() ? 'Hide environment values' : 'Reveal environment values' }}
+      </button>
+    </div>
+    <pre class="raw mono" tabindex="0" aria-label="Raw inspect JSON">{{ rawText() }}</pre>
     } }
   </div>
   } } }

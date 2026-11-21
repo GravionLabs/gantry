@@ -269,3 +269,22 @@ export function parseContainerPath(path: string): string | null {
   const match = /^\/containers\/([^/]+)\/?$/.exec(path);
   return match ? decodeURIComponent(match[1]) : null;
 }
+
+/** The raw inspect JSON with the values of `Config.Env` masked, unless `reveal` is set. */
+export function rawJson(raw: string, reveal: boolean): string {
+  if (reveal) return raw;
+  try {
+    const parsed = JSON.parse(raw) as { Config?: { Env?: unknown } };
+    const env = parsed.Config?.Env;
+    if (Array.isArray(env)) {
+      parsed.Config!.Env = env.map((entry) => {
+        if (typeof entry !== "string") return entry;
+        const i = entry.indexOf("=");
+        return i < 0 ? entry : `${entry.slice(0, i + 1)}${maskValue(entry.slice(i + 1))}`;
+      });
+    }
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return raw;
+  }
+}

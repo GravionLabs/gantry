@@ -16,6 +16,7 @@ import {
   commandLine,
   inspectContainer,
   maskValue,
+  rawJson,
   restartPolicyLabel,
   stateLabel,
 } from "../core/containers";
@@ -69,6 +70,7 @@ export class ContainerDetailsView {
   /** Only the latest request may set the result. */
   private request = 0;
 
+  protected readonly rawText = computed(() => rawJson(this.details()?.raw ?? "", this.revealAll()));
   protected readonly endpointName = this.endpoints.activeName;
   protected readonly canLinkImage = isViewAvailable("images");
   protected readonly canLinkVolumes = isViewAvailable("volumes");

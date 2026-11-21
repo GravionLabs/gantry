@@ -3,8 +3,8 @@
 //! Commands return `gantry_core::Error`, which serializes to `{ kind, message }`.
 
 use gantry_core::{
-    Connections, Container, ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EngineInfo,
-    TlsFiles, WatchTiming, Watches,
+    ActionEvent, ActionTarget, Connections, Container, ContainerAction, ContainerWatchEvent,
+    ContextList, DetectedEngine, Endpoint, EngineInfo, TlsFiles, WatchTiming, Watches,
 };
 use tauri::ipc::Channel;
 use tauri::{Manager, RunEvent};
@@ -91,6 +91,23 @@ fn containers_unwatch(watches: tauri::State<'_, Watches>, watch_id: String) {
     watches.cancel(&watch_id);
 }
 
+/// Applies `action` to the `targets` and reports each container through `on_event`. Resolves with
+/// the number of containers that failed; their messages arrive as events.
+#[tauri::command]
+async fn containers_action(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    action: ContainerAction,
+    targets: Vec<ActionTarget>,
+    on_event: Channel<ActionEvent>,
+) -> Result<usize, gantry_core::Error> {
+    let docker = connections.activate(&endpoint)?;
+    Ok(gantry_core::run_action(&docker, targets, action, |event| {
+        let _ = on_event.send(event);
+    })
+    .await)
+}
+
 /// Opens `http://localhost:<port>` in the default browser. Only the port comes from the UI, so
 /// the command cannot be used to open another address.
 #[tauri::command]
@@ -116,6 +133,7 @@ pub fn run() {
             containers_list,
             containers_watch,
             containers_unwatch,
+            containers_action,
             open_local_port
         ])
         .build(tauri::generate_context!())

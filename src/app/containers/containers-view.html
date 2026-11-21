@@ -46,6 +46,14 @@
       </caption>
       <thead>
         <tr>
+          <th scope="col">
+            <input
+              type="checkbox"
+              aria-label="Select all shown containers"
+              [checked]="allVisibleSelected()"
+              (change)="toggleAll()"
+            />
+          </th>
           @for (column of columns; track column.key) {
           <th scope="col" [attr.aria-sort]="ariaSort(column.key)">
             <button type="button" class="sort" (click)="sort(column.key)">
@@ -59,7 +67,15 @@
       </thead>
       <tbody>
         @for (container of visible(); track container.id) {
-        <tr>
+        <tr [attr.aria-busy]="busy().has(container.id)">
+          <td>
+            <input
+              type="checkbox"
+              [attr.aria-label]="'Select ' + container.name"
+              [checked]="isSelected(container)"
+              (change)="toggle(container)"
+            />
+          </td>
           <th scope="row">{{ container.name }}</th>
           <td class="mono">{{ container.image }}</td>
           <td [attr.title]="container.status">

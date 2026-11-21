@@ -7,15 +7,18 @@ use specta::Types;
 use specta_typescript::Typescript;
 
 use crate::{
-    Container, ContainerHealth, ContainerState, ContainerWatchEvent, ContextList, DetectedEngine,
-    Endpoint, EndpointKind, EngineInfo, EngineStatus, ErrorKind, ErrorPayload, PortMapping,
-    TlsFiles,
+    ActionEvent, ActionTarget, Container, ContainerAction, ContainerHealth, ContainerState,
+    ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EndpointKind, EngineInfo,
+    EngineStatus, ErrorKind, ErrorPayload, PortMapping, TlsFiles,
 };
 
 /// All types exposed to the frontend.
 pub fn ipc_types() -> Types {
     Types::default()
+        .register::<ActionEvent>()
+        .register::<ActionTarget>()
         .register::<Container>()
+        .register::<ContainerAction>()
         .register::<ContainerHealth>()
         .register::<ContainerState>()
         .register::<ContainerWatchEvent>()

@@ -17,9 +17,12 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 import type { Container, Endpoint } from "./bindings";
 import {
+  actionTargets,
+  canApply,
   filterContainers,
   isLocalEndpoint,
   portLabel,
+  runContainerAction,
   sortContainers,
   stateLabel,
   watchContainers,
@@ -191,5 +194,50 @@ describe("watchContainers", () => {
     watchContainers(endpoint("unix", "unix:///x.sock"), () => {}, onEnd);
     await vi.waitFor(() => expect(onEnd).toHaveBeenCalled());
     expect(onEnd.mock.calls[0][0]).toMatchObject({ kind: "unreachable" });
+  });
+});
+
+describe("actions", () => {
+  it("offers an action only for states it fits", () => {
+    expect(canApply("start", "exited")).toBe(true);
+    expect(canApply("start", "running")).toBe(false);
+    expect(canApply("pause", "running")).toBe(true);
+    expect(canApply("pause", "paused")).toBe(false);
+    expect(canApply("unpause", "paused")).toBe(true);
+    expect(canApply("stop", "exited")).toBe(false);
+    expect(canApply("remove", "running")).toBe(true);
+    expect(canApply("remove", "removing")).toBe(false);
+  });
+
+  it("targets only the containers the action applies to", () => {
+    const list = [
+      container("a"),
+      container("b", { state: "exited" }),
+      container("c", { state: "paused" }),
+    ];
+    expect(actionTargets("stop", list).map((t) => t.name)).toEqual(["a", "c"]);
+    expect(actionTargets("start", list)).toEqual([{ id: "id-b", name: "b" }]);
+  });
+
+  it("streams the progress of the command and resolves with the failure count", async () => {
+    tauri.channels.length = 0;
+    tauri.invoke.mockImplementationOnce(async () => {
+      tauri.channels[0].onmessage({ type: "started", id: "id-a" });
+      return 1;
+    });
+    const events: unknown[] = [];
+    const targets = [{ id: "id-a", name: "a" }];
+    const failed = await runContainerAction(
+      endpoint("unix", "unix:///x"),
+      { type: "remove", volumes: true },
+      targets,
+      (e) => events.push(e),
+    );
+    expect(failed).toBe(1);
+    expect(events).toEqual([{ type: "started", id: "id-a" }]);
+    expect(tauri.invoke).toHaveBeenLastCalledWith(
+      "containers_action",
+      expect.objectContaining({ action: { type: "remove", volumes: true }, targets }),
+    );
   });
 });

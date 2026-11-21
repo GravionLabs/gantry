@@ -7,6 +7,12 @@
   --h-primary-contrast-color: #1a1300;
 }
 
+// The helix components size themselves in rem, so the root font size sets the density of the whole content area.
+// 13px matches the desktop chrome of helix-desktop (10px to 12px) instead of the 16px default of the web view.
+html {
+  font-size: 13px;
+}
+
 html,
 body {
   margin: 0;

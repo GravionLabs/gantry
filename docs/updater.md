@@ -65,7 +65,7 @@ a new pair, replace `pubkey`, update both secrets, and announce the manual insta
   **Install and restart**. The package is verified against `plugins.updater.pubkey` before it is installed.
 - An error names the failed step ("Check for updates failed", "Update failed"). After a failed install the update
   stays known and **Retry install and restart** installs again without a new check.
-- An RC or dev build (`0.2.0-rc1`) shows no update item. A stable install ignores a pre-release answer.
+- An RC build (identifier `dev.gravionlabs.gantry.rc`, built by a `release.yml` dispatch on a branch other than `main` with `src-tauri/tauri.rc.conf.json`: product name `Gantry RC`, no updater artifacts, empty endpoints) or a pre-release version (`0.2.0-rc1`) shows no update item. A stable install ignores a pre-release answer.
 - `src-tauri/capabilities/desktop.json` grants `updater:default` and `process:allow-restart` on Linux, macOS and Windows.
   The plugins are registered for desktop targets only.
 

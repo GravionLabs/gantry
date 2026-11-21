@@ -25,3 +25,8 @@ export function failureMessage(step: UpdateStep, err: unknown): string {
 export function downloadPercent(received: number, total: number | null): number | null {
   return total && total > 0 ? Math.min(100, Math.floor((received * 100) / total)) : null;
 }
+
+/** True for the identifier of an RC build (`dev.gravionlabs.gantry.rc`), which never updates itself. */
+export function isRcIdentifier(identifier: string): boolean {
+  return identifier.endsWith(".rc");
+}

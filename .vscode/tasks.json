@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "web: serve",
+      "detail": "Angular dev server on http://localhost:1420 (browser only, no Tauri backend)",
+      "type": "shell",
+      "command": "pnpm start",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "angular",
+        "pattern": { "regexp": "^(?:✘ \\[ERROR\\]|Error:) (.*)$", "message": 1 },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Building\\.\\.\\.|Application bundle generation",
+          "endsPattern": "Local:\\s+http|Application bundle generation complete|Watch mode enabled"
+        }
+      },
+      "presentation": { "panel": "dedicated", "reveal": "always" }
+    },
+    {
+      "label": "tauri: dev",
+      "detail": "pnpm tauri dev: desktop app with the Rust backend (starts the Angular dev server itself; on Linux without the GLib/GTK variables of a Snap VS Code)",
+      "type": "shell",
+      "command": "pnpm tauri dev",
+      "linux": {
+        "command": "env -u GSETTINGS_SCHEMA_DIR -u GIO_MODULE_DIR -u GTK_PATH -u GTK_EXE_PREFIX -u GTK_IM_MODULE_FILE -u GDK_PIXBUF_MODULE_FILE -u GDK_PIXBUF_MODULEDIR -u LD_LIBRARY_PATH -u LOCPATH -u XDG_DATA_DIRS -u XDG_DATA_HOME pnpm tauri dev"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "tauri",
+        "pattern": { "regexp": "^error(?:\\[\\w+\\])?: (.*)$", "message": 1 },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Running BeforeDevCommand|Compiling ",
+          "endsPattern": "Running `.*gantry-app`"
+        }
+      },
+      "presentation": { "panel": "dedicated", "reveal": "always" }
+    }
+  ]
+}

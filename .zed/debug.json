@@ -1,0 +1,11 @@
+[
+  {
+    "label": "Web app (Chrome)",
+    "adapter": "JavaScript",
+    "type": "chrome",
+    "request": "launch",
+    "url": "http://localhost:1420",
+    "webRoot": "$ZED_WORKTREE_ROOT",
+    "build": { "label": "web: serve" }
+  }
+]

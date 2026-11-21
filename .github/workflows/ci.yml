@@ -1,10 +1,10 @@
 name: CI
 
-# Checks for pull requests into main (a finished release branch) and pushes to release branches.
+# Checks for pull requests into main and release branches (ADR 0005) and pushes to release branches.
 # Installers are built only by release.yml on main, see the CI cost rule of GravionLabs.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, "release/**"]
   push:
     branches: ["release/**"]
 

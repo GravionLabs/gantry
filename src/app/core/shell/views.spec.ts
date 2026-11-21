@@ -7,6 +7,7 @@ import {
   isViewAvailable,
   requiresEndpoint,
   resolveView,
+  engineVersionLabel,
   statusItems,
 } from "./views";
 
@@ -80,5 +81,11 @@ describe("isViewAvailable", () => {
     expect(isViewAvailable("containers")).toBe(true);
     expect(isViewAvailable("stacks")).toBe(true);
     expect(isViewAvailable("volumes")).toBe(false);
+  });
+});
+
+describe("engineVersionLabel", () => {
+  it("names the engine without a version prefix", () => {
+    expect(engineVersionLabel("29.0.1")).toBe("Docker 29.0.1");
   });
 });

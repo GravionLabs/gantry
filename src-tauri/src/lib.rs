@@ -3,11 +3,12 @@
 //! Commands return `gantry_core::Error`, which serializes to `{ kind, message }`.
 
 use gantry_core::{
-    ActionEvent, ActionTarget, ComposeAction, ComposeAvailability, ComposeEvent, ComposeProject,
-    Connections, Container, ContainerAction, ContainerDetails, ContainerWatchEvent, ContextList,
-    DetectedEngine, Endpoint, EngineInfo, ExecEvent, ExecOptions, ExecSessions, Image, LogEvent,
-    LogOptions, Network, NetworkPruneOutcome, NetworkSpec, PruneOutcome, PullEvent, RemoveOutcome,
-    Stack, StatsEvent, TlsFiles, Volume, VolumePruneOutcome, VolumeSpec, WatchTiming, Watches,
+    ActionEvent, ActionTarget, CleanupCategory, CleanupPreview, CleanupResult, ComposeAction,
+    ComposeAvailability, ComposeEvent, ComposeProject, Connections, Container, ContainerAction,
+    ContainerDetails, ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EngineInfo,
+    ExecEvent, ExecOptions, ExecSessions, Image, LogEvent, LogOptions, Network,
+    NetworkPruneOutcome, NetworkSpec, PruneOutcome, PullEvent, RemoveOutcome, Stack, StatsEvent,
+    SystemOverview, TlsFiles, Volume, VolumePruneOutcome, VolumeSpec, WatchTiming, Watches,
 };
 use tauri::ipc::Channel;
 use tauri::{Manager, RunEvent};
@@ -368,6 +369,35 @@ async fn networks_disconnect(
     .await
 }
 
+/// Reads the engine information and the disk usage of `endpoint`.
+#[tauri::command]
+async fn system_overview(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<SystemOverview, gantry_core::Error> {
+    gantry_core::system_overview(&connections.activate(&endpoint)?).await
+}
+
+/// Lists what a cleanup of `categories` would remove, without removing anything.
+#[tauri::command]
+async fn system_cleanup_preview(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    categories: Vec<CleanupCategory>,
+) -> Result<Vec<CleanupPreview>, gantry_core::Error> {
+    gantry_core::cleanup_preview(&connections.activate(&endpoint)?, &categories).await
+}
+
+/// Removes the unused data of `categories` and reports what each category freed.
+#[tauri::command]
+async fn system_cleanup(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    categories: Vec<CleanupCategory>,
+) -> Result<CleanupResult, gantry_core::Error> {
+    Ok(gantry_core::cleanup(&connections.activate(&endpoint)?, &categories).await)
+}
+
 /// Tells whether Compose actions can run for `project`: the plugin is installed and the Compose
 /// files exist on this machine.
 #[tauri::command]
@@ -457,6 +487,9 @@ pub fn run() {
             networks_prune,
             networks_connect,
             networks_disconnect,
+            system_overview,
+            system_cleanup_preview,
+            system_cleanup,
             containers_inspect,
             containers_watch,
             containers_unwatch,

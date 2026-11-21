@@ -18,6 +18,7 @@ mod networks;
 mod ssh;
 mod stacks;
 mod stats;
+mod system;
 mod volumes;
 
 pub use compose::{
@@ -55,6 +56,10 @@ pub use networks::{
 pub use ssh::SshTarget;
 pub use stacks::{Stack, StackService, list_stacks, stacks_of};
 pub use stats::{StatsEvent, StatsSample, sample_of, stream_stats};
+pub use system::{
+    CleanupCategory, CleanupFailure, CleanupOutcome, CleanupPreview, CleanupResult, DiskUsage,
+    EngineDetails, SystemOverview, cleanup, cleanup_preview, system_overview,
+};
 pub use volumes::{
     Volume, VolumePruneOutcome, VolumeSpec, create_volume, list_volumes, prune_volumes,
     remove_volume,

@@ -31,6 +31,7 @@ import { UpdateService } from "./core/updater/update.service";
 import { ImagesView } from "./images/images-view";
 import { StacksView } from "./stacks/stacks-view";
 import { NetworksView } from "./networks/networks-view";
+import { SystemView } from "./system/system-view";
 import { VolumesView } from "./volumes/volumes-view";
 import { EndpointsView } from "./endpoints/endpoints-view";
 
@@ -60,6 +61,7 @@ export class NavIconDirective {
     ImagesView,
     VolumesView,
     NetworksView,
+    SystemView,
     ContainerDetailsView,
   ],
   templateUrl: "./app.html",

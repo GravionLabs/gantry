@@ -29,7 +29,7 @@ use tokio::sync::Notify;
 
 use crate::Result;
 
-const COMPOSE_PROJECT_LABEL: &str = "com.docker.compose.project";
+pub(crate) const COMPOSE_PROJECT_LABEL: &str = "com.docker.compose.project";
 
 /// The lifecycle state of a container.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Type)]
@@ -89,7 +89,7 @@ pub struct Container {
 }
 
 impl Container {
-    fn from_summary(summary: ContainerSummary) -> Option<Self> {
+    pub(crate) fn from_summary(summary: ContainerSummary) -> Option<Self> {
         let id = summary.id?;
         let name = summary
             .names

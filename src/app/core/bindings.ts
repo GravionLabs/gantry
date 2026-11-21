@@ -237,6 +237,27 @@ export type RestartPolicy = {
 	maxRetries: number,
 };
 
+/**  A Compose project. */
+export type Stack = {
+	name: string,
+	/**  The directory `docker compose` was run in, when the labels say so. */
+	workingDir: string | null,
+	/**  The Compose files of the project, in the order they were merged. */
+	configFiles: string[],
+	/**  The number of containers that are up (running, paused or restarting). */
+	running: number,
+	/**  The number of containers of the stack, in any state. */
+	total: number,
+	/**  Sorted by name; containers without a service label are listed under their own name. */
+	services: StackService[],
+};
+
+/**  A service of a stack with the containers that run it (several when scaled). */
+export type StackService = {
+	name: string,
+	containers: Container[],
+};
+
 /**  What a stats stream sends to the frontend. */
 export type StatsEvent = 
 /**  The latest reading; the engine sends about one per second. */

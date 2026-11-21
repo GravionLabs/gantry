@@ -5,7 +5,7 @@
 use gantry_core::{
     ActionEvent, ActionTarget, Connections, Container, ContainerAction, ContainerDetails,
     ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EngineInfo, LogEvent, LogOptions,
-    StatsEvent, TlsFiles, WatchTiming, Watches,
+    Stack, StatsEvent, TlsFiles, WatchTiming, Watches,
 };
 use tauri::ipc::Channel;
 use tauri::{Manager, RunEvent};
@@ -62,6 +62,15 @@ async fn containers_list(
     endpoint: Endpoint,
 ) -> Result<Vec<Container>, gantry_core::Error> {
     gantry_core::list_containers(&connections.activate(&endpoint)?).await
+}
+
+/// Lists the Compose stacks of `endpoint`, recognized by their labels.
+#[tauri::command]
+async fn stacks_list(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<Vec<Stack>, gantry_core::Error> {
+    gantry_core::list_stacks(&connections.activate(&endpoint)?).await
 }
 
 /// Reads the full details of one container (`docker inspect`).
@@ -185,6 +194,7 @@ pub fn run() {
             endpoints_contexts,
             endpoints_detect,
             containers_list,
+            stacks_list,
             containers_inspect,
             containers_watch,
             containers_unwatch,

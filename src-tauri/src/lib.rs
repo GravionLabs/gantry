@@ -199,6 +199,22 @@ async fn compose_run(
     result
 }
 
+/// Reads a Compose file for the read-only preview before a deployment.
+#[tauri::command]
+async fn compose_preview(path: String) -> Result<String, gantry_core::Error> {
+    gantry_core::preview_compose_file(&path)
+}
+
+/// Builds the project of a new deployment from the picked files and the entered project name.
+#[tauri::command]
+fn compose_deploy_project(
+    compose_file: String,
+    env_file: Option<String>,
+    name: String,
+) -> Result<ComposeProject, gantry_core::Error> {
+    gantry_core::deploy_project(&compose_file, env_file.as_deref(), &name)
+}
+
 /// Opens `http://localhost:<port>` in the default browser. Only the port comes from the UI, so
 /// the command cannot be used to open another address.
 #[tauri::command]
@@ -219,6 +235,7 @@ pub fn run() {
     builder
         .manage(Connections::default())
         .manage(Watches::default())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
@@ -237,6 +254,8 @@ pub fn run() {
             containers_stats,
             compose_check,
             compose_run,
+            compose_preview,
+            compose_deploy_project,
             open_local_port
         ])
         .build(tauri::generate_context!())

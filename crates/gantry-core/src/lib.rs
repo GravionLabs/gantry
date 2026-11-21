@@ -14,6 +14,7 @@ mod error;
 mod exec;
 mod images;
 mod logs;
+mod networks;
 mod ssh;
 mod stacks;
 mod stats;
@@ -47,6 +48,10 @@ pub use images::{
     pull_image, remove_image, split_reference,
 };
 pub use logs::{LogBatching, LogEvent, LogLine, LogOptions, LogStream, stream_logs};
+pub use networks::{
+    Network, NetworkPruneOutcome, NetworkSpec, connect_network, create_network, disconnect_network,
+    list_networks, prune_networks, remove_network,
+};
 pub use ssh::SshTarget;
 pub use stacks::{Stack, StackService, list_stacks, stacks_of};
 pub use stats::{StatsEvent, StatsSample, sample_of, stream_stats};

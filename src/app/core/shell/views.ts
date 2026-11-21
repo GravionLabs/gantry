@@ -78,7 +78,13 @@ export const VIEWS: readonly GantryView[] = [
 ];
 
 /** The views that have a feature behind them; the detail views link only to these. */
-const AVAILABLE_VIEWS: ReadonlySet<string> = new Set(["containers", "stacks", "images", "volumes"]);
+const AVAILABLE_VIEWS: ReadonlySet<string> = new Set([
+  "containers",
+  "stacks",
+  "images",
+  "volumes",
+  "networks",
+]);
 
 /** Whether a link to the view can be offered, i.e. its feature has landed. */
 export function isViewAvailable(id: string): boolean {

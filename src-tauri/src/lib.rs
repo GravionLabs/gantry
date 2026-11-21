@@ -6,8 +6,8 @@ use gantry_core::{
     ActionEvent, ActionTarget, ComposeAction, ComposeAvailability, ComposeEvent, ComposeProject,
     Connections, Container, ContainerAction, ContainerDetails, ContainerWatchEvent, ContextList,
     DetectedEngine, Endpoint, EngineInfo, ExecEvent, ExecOptions, ExecSessions, Image, LogEvent,
-    LogOptions, PruneOutcome, PullEvent, RemoveOutcome, Stack, StatsEvent, TlsFiles, Volume,
-    VolumePruneOutcome, VolumeSpec, WatchTiming, Watches,
+    LogOptions, Network, NetworkPruneOutcome, NetworkSpec, PruneOutcome, PullEvent, RemoveOutcome,
+    Stack, StatsEvent, TlsFiles, Volume, VolumePruneOutcome, VolumeSpec, WatchTiming, Watches,
 };
 use tauri::ipc::Channel;
 use tauri::{Manager, RunEvent};
@@ -301,6 +301,73 @@ async fn volumes_prune(
     gantry_core::prune_volumes(&connections.activate(&endpoint)?).await
 }
 
+/// Lists the networks of `endpoint` with their subnets and the containers on them.
+#[tauri::command]
+async fn networks_list(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<Vec<Network>, gantry_core::Error> {
+    gantry_core::list_networks(&connections.activate(&endpoint)?).await
+}
+
+/// Creates a bridge network.
+#[tauri::command]
+async fn networks_create(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    spec: NetworkSpec,
+) -> Result<(), gantry_core::Error> {
+    gantry_core::create_network(&connections.activate(&endpoint)?, spec).await
+}
+
+/// Removes a network by name or id.
+#[tauri::command]
+async fn networks_remove(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    name: String,
+) -> Result<(), gantry_core::Error> {
+    gantry_core::remove_network(&connections.activate(&endpoint)?, &name).await
+}
+
+/// Removes every network no container uses.
+#[tauri::command]
+async fn networks_prune(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<NetworkPruneOutcome, gantry_core::Error> {
+    gantry_core::prune_networks(&connections.activate(&endpoint)?).await
+}
+
+/// Connects a container to a network.
+#[tauri::command]
+async fn networks_connect(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    network: String,
+    container: String,
+) -> Result<(), gantry_core::Error> {
+    gantry_core::connect_network(&connections.activate(&endpoint)?, &network, &container).await
+}
+
+/// Disconnects a container from a network.
+#[tauri::command]
+async fn networks_disconnect(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    network: String,
+    container: String,
+    force: bool,
+) -> Result<(), gantry_core::Error> {
+    gantry_core::disconnect_network(
+        &connections.activate(&endpoint)?,
+        &network,
+        &container,
+        force,
+    )
+    .await
+}
+
 /// Tells whether Compose actions can run for `project`: the plugin is installed and the Compose
 /// files exist on this machine.
 #[tauri::command]
@@ -384,6 +451,12 @@ pub fn run() {
             volumes_create,
             volumes_remove,
             volumes_prune,
+            networks_list,
+            networks_create,
+            networks_remove,
+            networks_prune,
+            networks_connect,
+            networks_disconnect,
             containers_inspect,
             containers_watch,
             containers_unwatch,

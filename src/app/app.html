@@ -82,6 +82,8 @@
       <app-images-view />
       } } @else if (shell.activeId() === 'volumes') { @defer (on immediate) {
       <app-volumes-view />
+      } } @else if (shell.activeId() === 'networks') { @defer (on immediate) {
+      <app-networks-view />
       } } @else {
       <section class="empty" role="region" [attr.aria-label]="shell.activeView().label">
         <img src="favicon.svg" alt="" width="64" height="64" />

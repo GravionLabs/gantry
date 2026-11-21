@@ -81,7 +81,8 @@ describe("isViewAvailable", () => {
     expect(isViewAvailable("containers")).toBe(true);
     expect(isViewAvailable("stacks")).toBe(true);
     expect(isViewAvailable("volumes")).toBe(true);
-    expect(isViewAvailable("networks")).toBe(false);
+    expect(isViewAvailable("networks")).toBe(true);
+    expect(isViewAvailable("system")).toBe(false);
   });
 });
 

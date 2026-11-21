@@ -11,9 +11,9 @@ use crate::{
     Container, ContainerAction, ContainerDetails, ContainerHealth, ContainerState,
     ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EndpointKind, EngineInfo,
     EngineStatus, EnvVar, ErrorKind, ErrorPayload, ExecEvent, ExecOptions, Image, Label, LogEvent,
-    LogLine, LogOptions, LogStream, MountInfo, NetworkAttachment, PortMapping, PruneOutcome,
-    PullEvent, RemoveOutcome, RestartPolicy, Stack, StackService, StatsEvent, StatsSample,
-    TlsFiles, Volume, VolumePruneOutcome, VolumeSpec,
+    LogLine, LogOptions, LogStream, MountInfo, Network, NetworkAttachment, NetworkPruneOutcome,
+    NetworkSpec, PortMapping, PruneOutcome, PullEvent, RemoveOutcome, RestartPolicy, Stack,
+    StackService, StatsEvent, StatsSample, TlsFiles, Volume, VolumePruneOutcome, VolumeSpec,
 };
 
 /// All types exposed to the frontend.
@@ -57,6 +57,9 @@ pub fn ipc_types() -> Types {
         .register::<RestartPolicy>()
         .register::<Stack>()
         .register::<StackService>()
+        .register::<Network>()
+        .register::<NetworkPruneOutcome>()
+        .register::<NetworkSpec>()
         .register::<StatsEvent>()
         .register::<StatsSample>()
         .register::<TlsFiles>()

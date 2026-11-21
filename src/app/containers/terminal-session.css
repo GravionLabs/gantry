@@ -1,0 +1,21 @@
+:host {
+  display: block;
+}
+.terminal {
+  height: 60vh;
+  min-height: 12rem;
+  padding: 0.25rem;
+  background: #111;
+  border: 1px solid var(--h-border-color, currentColor);
+}
+.notice {
+  margin: 0.5rem 0 0;
+  font-size: 0.85em;
+  color: var(--h-text-muted-color);
+}
+.notice.error {
+  color: #e5534b;
+}
+:host([hidden]) {
+  display: none;
+}

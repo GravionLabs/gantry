@@ -7,13 +7,29 @@ use specta::Types;
 use specta_typescript::Typescript;
 
 use crate::{
-    ContextList, DetectedEngine, Endpoint, EndpointKind, EngineInfo, EngineStatus, ErrorKind,
-    ErrorPayload, TlsFiles,
+    ActionEvent, ActionTarget, ComposeAction, ComposeAvailability, ComposeEvent, ComposeProject,
+    Container, ContainerAction, ContainerDetails, ContainerHealth, ContainerState,
+    ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EndpointKind, EngineInfo,
+    EngineStatus, EnvVar, ErrorKind, ErrorPayload, ExecEvent, ExecOptions, Label, LogEvent,
+    LogLine, LogOptions, LogStream, MountInfo, NetworkAttachment, PortMapping, RestartPolicy,
+    Stack, StackService, StatsEvent, StatsSample, TlsFiles,
 };
 
 /// All types exposed to the frontend.
 pub fn ipc_types() -> Types {
     Types::default()
+        .register::<ActionEvent>()
+        .register::<ActionTarget>()
+        .register::<ComposeAction>()
+        .register::<ComposeAvailability>()
+        .register::<ComposeEvent>()
+        .register::<ComposeProject>()
+        .register::<Container>()
+        .register::<ContainerAction>()
+        .register::<ContainerDetails>()
+        .register::<ContainerHealth>()
+        .register::<ContainerState>()
+        .register::<ContainerWatchEvent>()
         .register::<ContextList>()
         .register::<Endpoint>()
         .register::<EndpointKind>()
@@ -21,7 +37,23 @@ pub fn ipc_types() -> Types {
         .register::<EngineInfo>()
         .register::<EngineStatus>()
         .register::<ErrorKind>()
+        .register::<EnvVar>()
         .register::<ErrorPayload>()
+        .register::<ExecEvent>()
+        .register::<ExecOptions>()
+        .register::<Label>()
+        .register::<LogEvent>()
+        .register::<LogLine>()
+        .register::<LogOptions>()
+        .register::<LogStream>()
+        .register::<MountInfo>()
+        .register::<NetworkAttachment>()
+        .register::<PortMapping>()
+        .register::<RestartPolicy>()
+        .register::<Stack>()
+        .register::<StackService>()
+        .register::<StatsEvent>()
+        .register::<StatsSample>()
         .register::<TlsFiles>()
 }
 

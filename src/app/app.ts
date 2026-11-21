@@ -25,6 +25,10 @@ import { HxButton } from "@gravionlabs/helix-ui";
 import { EndpointStore } from "./core/endpoint-store";
 import { HxStatusAppVersion, ShellService } from "./core/shell/shell.service";
 import { requiresEndpoint } from "./core/shell/views";
+import { ContainerDetailsView } from "./containers/container-details";
+import { ContainersView } from "./containers/containers-view";
+import { UpdateService } from "./core/updater/update.service";
+import { StacksView } from "./stacks/stacks-view";
 import { EndpointsView } from "./endpoints/endpoints-view";
 
 /** Marks the template of an activity bar icon with the icon name of the views registry. */
@@ -48,6 +52,9 @@ export class NavIconDirective {
     NavIconDirective,
     HxButton,
     EndpointsView,
+    ContainersView,
+    StacksView,
+    ContainerDetailsView,
   ],
   templateUrl: "./app.html",
   styleUrl: "./app.css",
@@ -55,6 +62,8 @@ export class NavIconDirective {
 export class App implements OnInit {
   protected readonly shell = inject(ShellService);
   protected readonly endpoints = inject(EndpointStore);
+  protected readonly updater = inject(UpdateService);
+  protected readonly updateOpen = signal(false);
   protected readonly switcherOpen = signal(false);
   protected readonly needsEndpoint = computed(() => requiresEndpoint(this.shell.activeId()));
   private readonly icons = viewChildren(NavIconDirective);
@@ -81,6 +90,24 @@ export class App implements OnInit {
 
   ngOnInit(): void {
     void this.endpoints.init();
+    void this.updater.init();
+  }
+
+  protected updateLabel(): string {
+    switch (this.updater.phase()) {
+      case "checking":
+        return "Checking for updates…";
+      case "installing":
+        return this.updater.percent() === null
+          ? "Installing update…"
+          : `Installing update… ${this.updater.percent()}%`;
+      case "available":
+        return `Update ${this.updater.update()?.version}`;
+      case "error":
+        return this.updater.update() ? "Update failed, retry" : "Check for updates failed";
+      default:
+        return this.updater.upToDate() ? "Up to date" : "Check for Updates…";
+    }
   }
 
   protected switchTo(id: string): void {

@@ -1,0 +1,6 @@
+<div class="terminal" #host aria-label="Terminal" role="group"></div>
+@if (problem(); as message) {
+<p class="notice error" role="alert">Cannot run the command: {{ message }}</p>
+} @else if (finished(); as message) {
+<p class="notice" role="status">{{ message }}. Close the tab or open a new terminal.</p>
+}

@@ -1,0 +1,85 @@
+<section class="stacks" aria-labelledby="deploy-title">
+  <header class="head">
+    <h1 id="deploy-title">Deploy a stack</h1>
+    <button hx-button variant="outlined" type="button" (click)="close()">All stacks</button>
+  </header>
+  @if (recent().length > 0) {
+  <section aria-label="Recently deployed">
+    <h2>Recently deployed</h2>
+    <ul class="recent">
+      @for (entry of recent(); track entry.composeFile) {
+      <li>
+        <button
+          hx-button
+          variant="outlined"
+          type="button"
+          [disabled]="running()"
+          (click)="useRecent(entry)"
+        >
+          {{ entry.name }}
+        </button>
+        <span class="mono">{{ entry.composeFile }}</span>
+      </li>
+      }
+    </ul>
+  </section>
+  }
+  <form class="deploy-form" aria-label="Deployment" (submit)="$event.preventDefault(); deploy()">
+    <div class="buttons">
+      <button
+        hx-button
+        variant="outlined"
+        type="button"
+        [disabled]="running()"
+        (click)="pickCompose()"
+      >
+        Select Compose file…
+      </button>
+      <span class="mono">{{ composeFile() ?? 'No file selected' }}</span>
+    </div>
+    <div class="buttons">
+      <button hx-button variant="outlined" type="button" [disabled]="running()" (click)="pickEnv()">
+        Select env file (optional)…
+      </button>
+      <span class="mono">{{ envFile() ?? 'No env file' }}</span>
+      @if (envFile()) {
+      <button
+        hx-button
+        variant="outlined"
+        type="button"
+        [disabled]="running()"
+        (click)="clearEnv()"
+      >
+        Clear
+      </button>
+      }
+    </div>
+    <label for="deploy-name">Project name</label>
+    <input
+      hx-input
+      id="deploy-name"
+      [value]="name()"
+      [disabled]="running()"
+      (input)="setName($event)"
+    />
+    @if (problem(); as text) {
+    <hx-message severity="error" role="alert">{{ text }}</hx-message>
+    } @if (preview() !== null) {
+    <h2>Preview (read-only)</h2>
+    <pre class="output mono" aria-label="Compose file preview">{{ preview() }}</pre>
+    }
+    <div class="buttons">
+      <button hx-button type="submit" [disabled]="!canDeploy()">Deploy (up -d)</button>
+      @if (running()) {
+      <button hx-button variant="outlined" type="button" (click)="stop()">Stop</button>
+      }
+    </div>
+  </form>
+  @if (running()) {
+  <p class="state" role="status" aria-live="polite">Running…</p>
+  } @if (outcome(); as text) {
+  <hx-message [severity]="failed() ? 'error' : 'success'" role="status">{{ text }}</hx-message>
+  } @if (output().length > 0) {
+  <pre class="output mono" aria-label="Output of docker compose">{{ output().join('\n') }}</pre>
+  }
+</section>

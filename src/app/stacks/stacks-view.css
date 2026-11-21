@@ -1,0 +1,96 @@
+:host {
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+}
+.stacks {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  align-content: start;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.head h1,
+h2 {
+  margin: 0;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+.facts dd {
+  margin: 0;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.state {
+  margin: 2rem 0;
+  text-align: center;
+  color: var(--h-text-muted-color);
+}
+.mono {
+  font-family: var(--h-font-mono, monospace);
+}
+.actions {
+  display: grid;
+  gap: 0.75rem;
+}
+.buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.confirm {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--h-red-500, #e5484d);
+  border-radius: 0.5rem;
+}
+.confirm h2,
+.confirm p {
+  margin: 0;
+}
+.confirm .buttons {
+  justify-content: flex-end;
+}
+.output {
+  margin: 0;
+  padding: 0.75rem;
+  max-height: 20rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  border: 1px solid var(--h-border-color, #8884);
+  border-radius: 0.5rem;
+}
+.state {
+  margin: 0;
+}
+.deploy-form {
+  display: grid;
+  gap: 0.75rem;
+}
+.recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.recent li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}

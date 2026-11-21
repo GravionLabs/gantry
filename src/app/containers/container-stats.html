@@ -1,0 +1,25 @@
+@if (!running()) {
+<p class="state">Resource stats are only available while the container is running.</p>
+} @else if (problem(); as message) {
+<hx-message severity="error" role="alert">Cannot read the stats: {{ message }}</hx-message>
+} @else if (metrics().length === 0) {
+<p class="state" role="status">Waiting for the first reading…</p>
+} @else {
+<ul class="metrics" aria-label="Resource stats">
+  @for (m of metrics(); track m.id) {
+  <li class="metric">
+    <span class="label">{{ m.label }}</span>
+    <span class="value" [attr.data-metric]="m.id">{{ m.value }}</span>
+    <svg
+      class="spark"
+      role="img"
+      [attr.aria-label]="m.label + ' history'"
+      [attr.viewBox]="'0 0 ' + width + ' ' + height"
+      preserveAspectRatio="none"
+    >
+      <polyline [attr.points]="m.points" fill="none" stroke="currentColor" stroke-width="1.5" />
+    </svg>
+  </li>
+  }
+</ul>
+}

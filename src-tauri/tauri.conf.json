@@ -33,6 +33,12 @@
       "devCsp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "REPLACE_WITH_THE_CONTENT_OF_THE_UPDATER_PUBLIC_KEY",
+      "endpoints": ["https://github.com/GravionLabs/gantry/releases/latest/download/latest.json"]
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",

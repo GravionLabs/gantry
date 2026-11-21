@@ -30,4 +30,6 @@ jobs:
       # The application crate needs system libraries; ci.yml checks it.
       ci-exclude: gantry-app
       tauri: true
+      # createUpdaterArtifacts is set only by the release config, so tauri dev and local builds need no key.
+      installer-args: --config src-tauri/tauri.release.conf.json
     secrets: inherit

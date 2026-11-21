@@ -1,0 +1,110 @@
+<section class="logs" aria-label="Container logs">
+  <div class="options">
+    <label class="check">
+      <input type="checkbox" [checked]="follow()" (change)="follow.set(!follow())" />
+      Follow
+    </label>
+    <label>
+      Show
+      <select (change)="setTail($any($event.target).value)">
+        @for (c of tailChoices; track c.label) {
+        <option [value]="c.value ?? 'all'" [selected]="c.value === tail()">{{ c.label }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      Since
+      <select (change)="setSince($any($event.target).value)">
+        @for (c of sinceChoices; track c.label) {
+        <option [value]="c.seconds ?? ''" [selected]="c.seconds === since()">{{ c.label }}</option>
+        }
+      </select>
+    </label>
+    <label class="check">
+      <input type="checkbox" [checked]="timestamps()" (change)="timestamps.set(!timestamps())" />
+      Timestamps
+    </label>
+    <span class="spacer"></span>
+    <input
+      type="search"
+      class="search"
+      placeholder="Search logs"
+      aria-label="Search logs"
+      [value]="query()"
+      (input)="setQuery($any($event.target).value)"
+      (keydown)="onSearchKey($event)"
+    />
+    <span class="count" aria-live="polite">
+      @if (query().trim()) { @if (matches().length) { {{ currentMatch() + 1 }} / {{ matches().length
+      }} } @else { No matches } }
+    </span>
+    <button
+      hx-button
+      variant="outlined"
+      type="button"
+      aria-label="Previous match"
+      [disabled]="!matches().length"
+      (click)="step(-1)"
+    >
+      ↑
+    </button>
+    <button
+      hx-button
+      variant="outlined"
+      type="button"
+      aria-label="Next match"
+      [disabled]="!matches().length"
+      (click)="step(1)"
+    >
+      ↓
+    </button>
+    <button
+      hx-button
+      variant="outlined"
+      type="button"
+      [disabled]="!lines().length"
+      (click)="download()"
+    >
+      Download
+    </button>
+  </div>
+
+  @if (phase() === 'error') {
+  <hx-message severity="error" role="alert">Cannot read the logs: {{ problem() }}</hx-message>
+  }
+
+  <div class="frame">
+    <cdk-virtual-scroll-viewport
+      class="viewport mono"
+      [itemSize]="lineHeight"
+      tabindex="0"
+      aria-label="Log output"
+      (scrolledIndexChange)="onScroll()"
+    >
+      <div
+        *cdkVirtualFor="let line of lines(); let i = index; trackBy: trackLine"
+        class="line"
+        [class.stderr]="line.stream === 'stderr'"
+        [class.current]="matches()[currentMatch()] === i"
+        [style.height.px]="lineHeight"
+      >
+        @for (p of parts(line, i); track $index) {
+        <span [class]="p.classes + (p.match === 'none' ? '' : ' hit ' + p.match)" [style]="p.style"
+          >{{ p.text }}</span
+        >
+        }
+      </div>
+    </cdk-virtual-scroll-viewport>
+    @if (!lines().length) {
+    <p class="empty" role="status">
+      {{ phase() === 'streaming' ? 'Waiting for log lines…' : 'No log lines.' }}
+    </p>
+    } @if (!autoScroll() && follow()) {
+    <button hx-button class="resume" type="button" (click)="resume()">↓ Follow new lines</button>
+    }
+  </div>
+  <p class="status" role="status">
+    {{ lines().length }} lines · {{ phase() === 'streaming' ? (follow() ? 'following' : 'reading') :
+    phase() === 'ended' ? 'ended' : 'stopped' }}
+  </p>
+</section>

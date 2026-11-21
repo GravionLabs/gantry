@@ -201,6 +201,25 @@ export type ErrorPayload = {
 	message: string,
 };
 
+/**  What an exec session sends to the frontend. */
+export type ExecEvent = 
+/**  Terminal output, to be written to the emulator as it is. */
+{ type: "output"; text: string } | 
+/**  The process ended; `code` is its exit code when the engine reports one. */
+{ type: "exit"; code: number | null };
+
+/**  What an exec session is started with. */
+export type ExecOptions = {
+	/**  The program and its arguments, for example `["/bin/sh"]`. */
+	command: string[],
+	/**  The user to run as (`name`, `uid` or `uid:gid`); the container's user when unset. */
+	user: string | null,
+	/**  Initial size of the terminal in columns. */
+	cols: number,
+	/**  Initial size of the terminal in rows. */
+	rows: number,
+};
+
 /**  A label of the container. */
 export type Label = {
 	key: string,

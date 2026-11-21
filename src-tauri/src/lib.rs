@@ -5,8 +5,8 @@
 use gantry_core::{
     ActionEvent, ActionTarget, ComposeAction, ComposeAvailability, ComposeEvent, ComposeProject,
     Connections, Container, ContainerAction, ContainerDetails, ContainerWatchEvent, ContextList,
-    DetectedEngine, Endpoint, EngineInfo, LogEvent, LogOptions, Stack, StatsEvent, TlsFiles,
-    WatchTiming, Watches,
+    DetectedEngine, Endpoint, EngineInfo, ExecEvent, ExecOptions, ExecSessions, LogEvent,
+    LogOptions, Stack, StatsEvent, TlsFiles, WatchTiming, Watches,
 };
 use tauri::ipc::Channel;
 use tauri::{Manager, RunEvent};
@@ -151,6 +151,44 @@ async fn containers_logs(
     result
 }
 
+/// Runs a command with a terminal in container `id` and streams its output through `on_event`
+/// until it ends or `exec_close` ends session `session_id`. Input and resizes arrive through
+/// `exec_write` and `exec_resize`.
+#[tauri::command]
+async fn exec_start(
+    connections: tauri::State<'_, Connections>,
+    sessions: tauri::State<'_, ExecSessions>,
+    endpoint: Endpoint,
+    id: String,
+    options: ExecOptions,
+    session_id: String,
+    on_event: Channel<ExecEvent>,
+) -> Result<(), gantry_core::Error> {
+    let docker = connections.activate(&endpoint)?;
+    gantry_core::run_exec(&docker, &sessions, &session_id, &id, &options, |event| {
+        let _ = on_event.send(event);
+    })
+    .await
+}
+
+/// Sends keyboard input to an exec session.
+#[tauri::command]
+fn exec_write(sessions: tauri::State<'_, ExecSessions>, session_id: String, data: String) {
+    sessions.write(&session_id, &data);
+}
+
+/// Resizes the terminal of an exec session.
+#[tauri::command]
+fn exec_resize(sessions: tauri::State<'_, ExecSessions>, session_id: String, cols: u16, rows: u16) {
+    sessions.resize(&session_id, cols, rows);
+}
+
+/// Ends an exec session and its process.
+#[tauri::command]
+fn exec_close(sessions: tauri::State<'_, ExecSessions>, session_id: String) {
+    sessions.close(&session_id);
+}
+
 /// Streams the resource stats of a container through `on_event` until the container stops or
 /// `containers_unwatch` stops the stream `watch_id`.
 #[tauri::command]
@@ -229,6 +267,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(Connections::default())
         .manage(Watches::default())
+        .manage(ExecSessions::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -245,6 +284,10 @@ pub fn run() {
             containers_unwatch,
             containers_action,
             containers_logs,
+            exec_start,
+            exec_write,
+            exec_resize,
+            exec_close,
             containers_stats,
             compose_check,
             compose_run,

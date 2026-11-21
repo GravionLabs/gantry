@@ -11,6 +11,7 @@ mod detect;
 mod endpoint;
 mod engine;
 mod error;
+mod exec;
 mod logs;
 mod ssh;
 mod stacks;
@@ -38,6 +39,7 @@ pub use detect::{
 pub use endpoint::{Endpoint, EndpointKind, TlsFiles};
 pub use engine::{Connections, EngineInfo, connect, ping};
 pub use error::{Error, ErrorKind, ErrorPayload, Result};
+pub use exec::{ExecEvent, ExecOptions, ExecSessions, run_exec};
 pub use logs::{LogBatching, LogEvent, LogLine, LogOptions, LogStream, stream_logs};
 pub use ssh::SshTarget;
 pub use stacks::{Stack, StackService, list_stacks, stacks_of};

@@ -10,9 +10,9 @@ use crate::{
     ActionEvent, ActionTarget, ComposeAction, ComposeAvailability, ComposeEvent, ComposeProject,
     Container, ContainerAction, ContainerDetails, ContainerHealth, ContainerState,
     ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EndpointKind, EngineInfo,
-    EngineStatus, EnvVar, ErrorKind, ErrorPayload, Label, LogEvent, LogLine, LogOptions, LogStream,
-    MountInfo, NetworkAttachment, PortMapping, RestartPolicy, Stack, StackService, StatsEvent,
-    StatsSample, TlsFiles,
+    EngineStatus, EnvVar, ErrorKind, ErrorPayload, ExecEvent, ExecOptions, Label, LogEvent,
+    LogLine, LogOptions, LogStream, MountInfo, NetworkAttachment, PortMapping, RestartPolicy,
+    Stack, StackService, StatsEvent, StatsSample, TlsFiles,
 };
 
 /// All types exposed to the frontend.
@@ -39,6 +39,8 @@ pub fn ipc_types() -> Types {
         .register::<ErrorKind>()
         .register::<EnvVar>()
         .register::<ErrorPayload>()
+        .register::<ExecEvent>()
+        .register::<ExecOptions>()
         .register::<Label>()
         .register::<LogEvent>()
         .register::<LogLine>()

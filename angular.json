@@ -28,6 +28,7 @@
               "node_modules/@gravionlabs/helix-ui/styles.css",
               "node_modules/@gravionlabs/helix-ui/tokens.css",
               "node_modules/@gravionlabs/helix-desktop/styles.css",
+              "node_modules/@xterm/xterm/css/xterm.css",
               "src/styles.scss"
             ]
           },
@@ -36,7 +37,7 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "1MB",
+                  "maximumWarning": "1.5MB",
                   "maximumError": "3MB"
                 },
                 {

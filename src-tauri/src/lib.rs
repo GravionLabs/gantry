@@ -2,8 +2,13 @@
 //!
 //! Commands return `gantry_core::Error`, which serializes to `{ kind, message }`.
 
-use gantry_core::{Connections, ContextList, DetectedEngine, Endpoint, EngineInfo, TlsFiles};
+use gantry_core::{
+    Connections, Container, ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EngineInfo,
+    TlsFiles, WatchTiming, Watches,
+};
+use tauri::ipc::Channel;
 use tauri::{Manager, RunEvent};
+use tauri_plugin_opener::OpenerExt;
 
 /// Connects to an endpoint and reads the engine version ("Test connection" and the status bar).
 #[tauri::command]
@@ -49,17 +54,69 @@ async fn endpoints_detect() -> Vec<DetectedEngine> {
     gantry_core::detect().await
 }
 
+/// Lists the containers of `endpoint` (all states).
+#[tauri::command]
+async fn containers_list(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<Vec<Container>, gantry_core::Error> {
+    gantry_core::list_containers(&connections.activate(&endpoint)?).await
+}
+
+/// Streams the container list of `endpoint` through `on_event` until `containers_unwatch` stops
+/// watch `watch_id`: a snapshot first, then one after every change, reconnecting when the engine
+/// restarts.
+#[tauri::command]
+async fn containers_watch(
+    connections: tauri::State<'_, Connections>,
+    watches: tauri::State<'_, Watches>,
+    endpoint: Endpoint,
+    watch_id: String,
+    on_event: Channel<ContainerWatchEvent>,
+) -> Result<(), gantry_core::Error> {
+    let docker = connections.activate(&endpoint)?;
+    let cancel = watches.register(&watch_id);
+    gantry_core::watch_containers(&docker, &cancel, WatchTiming::default(), |event| {
+        // A closed channel means the view is gone; its unwatch call ends the watch.
+        let _ = on_event.send(event);
+    })
+    .await;
+    watches.finish(&watch_id);
+    Ok(())
+}
+
+/// Stops the watch started by `containers_watch` with the same `watch_id`.
+#[tauri::command]
+fn containers_unwatch(watches: tauri::State<'_, Watches>, watch_id: String) {
+    watches.cancel(&watch_id);
+}
+
+/// Opens `http://localhost:<port>` in the default browser. Only the port comes from the UI, so
+/// the command cannot be used to open another address.
+#[tauri::command]
+fn open_local_port(app: tauri::AppHandle, port: u16) -> Result<(), String> {
+    app.opener()
+        .open_url(format!("http://localhost:{port}"), None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .manage(Connections::default())
+        .manage(Watches::default())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             endpoint_test,
             endpoint_activate,
             endpoint_build,
             endpoints_contexts,
-            endpoints_detect
+            endpoints_detect,
+            containers_list,
+            containers_watch,
+            containers_unwatch,
+            open_local_port
         ])
         .build(tauri::generate_context!())
         .expect("error while building Gantry")

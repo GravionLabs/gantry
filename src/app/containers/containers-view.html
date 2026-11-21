@@ -1,0 +1,95 @@
+<section class="containers" aria-labelledby="containers-title">
+  <header class="head">
+    <h1 id="containers-title">Containers</h1>
+    <div class="filters">
+      <input
+        hx-input
+        type="search"
+        aria-label="Filter by name or image"
+        placeholder="Filter by name or image"
+        [value]="filter()"
+        (input)="setFilter($event)"
+      />
+      <select
+        aria-label="Filter by state"
+        [value]="stateFilter()"
+        (change)="setStateFilter($event)"
+      >
+        <option value="all">All</option>
+        <option value="running">Running</option>
+        <option value="exited">Exited</option>
+      </select>
+    </div>
+  </header>
+
+  @if (list.problem(); as problem) { @if (list.phase() === 'error') {
+  <hx-message severity="error" role="alert">
+    Cannot read the containers: {{ problem }}
+    <button hx-button variant="outlined" type="button" (click)="list.retry()">Retry</button>
+  </hx-message>
+  } @else {
+  <hx-message severity="warn" role="status">
+    Connection to the engine lost, reconnecting: {{ problem }}
+    <button hx-button variant="outlined" type="button" (click)="list.retry()">Retry now</button>
+  </hx-message>
+  } } @if (list.phase() === 'loading') {
+  <p class="state" role="status">Loading containers…</p>
+  } @else if (list.phase() === 'ready' && list.containers().length === 0) {
+  <p class="state">There are no containers on this endpoint.</p>
+  } @else if (list.phase() === 'ready' && visible().length === 0) {
+  <p class="state">No container matches the filter.</p>
+  } @else if (list.phase() === 'ready') {
+  <div class="hx-table-scroll">
+    <table hx-table>
+      <caption class="sr-only">
+        Containers
+      </caption>
+      <thead>
+        <tr>
+          @for (column of columns; track column.key) {
+          <th scope="col" [attr.aria-sort]="ariaSort(column.key)">
+            <button type="button" class="sort" (click)="sort(column.key)">
+              {{ column.label }} @if (sortKey() === column.key) {
+              <span aria-hidden="true">{{ sortDirection() === 'asc' ? '▲' : '▼' }}</span>
+              }
+            </button>
+          </th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (container of visible(); track container.id) {
+        <tr>
+          <th scope="row">{{ container.name }}</th>
+          <td class="mono">{{ container.image }}</td>
+          <td [attr.title]="container.status">
+            <span
+              class="dot"
+              [attr.data-state]="container.state"
+              [attr.data-health]="container.health"
+            ></span
+            >{{ state(container) }}
+          </td>
+          <td class="ports">
+            @for (p of container.ports; track p.publicPort + '/' + p.protocol + p.privatePort) { @if
+            (local() && p.protocol === 'tcp' && p.publicPort !== null) {
+            <a
+              class="mono"
+              [href]="'http://localhost:' + p.publicPort"
+              [attr.aria-label]="'Open http://localhost:' + p.publicPort"
+              (click)="open($event, p.publicPort)"
+              >{{ port(p) }}</a
+            >
+            } @else {
+            <span class="mono">{{ port(p) }}</span>
+            } }
+          </td>
+          <td><time [attr.datetime]="createdIso(container)">{{ created(container) }}</time></td>
+          <td>{{ container.composeProject ?? '–' }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+</section>

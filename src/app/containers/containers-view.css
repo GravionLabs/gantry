@@ -1,0 +1,67 @@
+:host {
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+}
+.containers {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  align-content: start;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.head h1 {
+  margin: 0;
+}
+.filters {
+  display: flex;
+  gap: 0.5rem;
+}
+.state {
+  margin: 2rem 0;
+  text-align: center;
+  color: var(--h-text-muted-color);
+}
+.sort {
+  all: unset;
+  cursor: pointer;
+  font-weight: inherit;
+}
+.sort:focus-visible {
+  outline: 2px solid currentColor;
+}
+.mono {
+  font-family: var(--h-font-mono, monospace);
+}
+.ports {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  margin-inline-end: 0.35rem;
+  background: var(--h-text-muted-color);
+}
+.dot[data-state="running"] {
+  background: var(--gantry-container);
+}
+.dot[data-state="restarting"],
+.dot[data-state="paused"],
+.dot[data-health="starting"] {
+  background: var(--h-amber-500, #e5a00d);
+}
+.dot[data-health="unhealthy"],
+.dot[data-state="dead"] {
+  background: var(--h-red-500, #e5484d);
+}

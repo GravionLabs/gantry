@@ -3,6 +3,9 @@
 //! The list is event driven: [`watch_containers`] sends a full snapshot first, then a new snapshot
 //! after every event that changes a container (events are coalesced), and reconnects with a backoff
 //! when the stream ends, for example after an engine restart.
+//!
+//! [`run_action`] applies a lifecycle action (start, stop, remove, ...) to one or many containers
+//! and reports progress and the engine's message per container.
 
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
@@ -14,10 +17,12 @@ use bollard::models::{
     ContainerSummary, ContainerSummaryHealthStatusEnum, ContainerSummaryStateEnum,
     PortSummaryTypeEnum,
 };
-use bollard::query_parameters::{EventsOptionsBuilder, ListContainersOptionsBuilder};
+use bollard::query_parameters::{
+    EventsOptionsBuilder, ListContainersOptionsBuilder, RemoveContainerOptionsBuilder,
+};
 use futures_util::StreamExt;
 use futures_util::stream::BoxStream;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use specta::Type;
 use tokio::sync::Notify;
 
@@ -176,6 +181,110 @@ pub async fn list_containers(docker: &Docker) -> Result<Vec<Container>> {
         .collect();
     containers.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(containers)
+}
+
+/// A lifecycle action on a container.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ContainerAction {
+    Start,
+    Stop,
+    Restart,
+    Pause,
+    Unpause,
+    Kill,
+    /// Removes the container; `volumes` also removes its anonymous volumes.
+    Remove {
+        volumes: bool,
+    },
+}
+
+/// The container an action is applied to; the name is only used to report.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ActionTarget {
+    pub id: String,
+    pub name: String,
+}
+
+/// Progress of [`run_action`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ActionEvent {
+    /// The action is running for this container.
+    Started { id: String },
+    /// The action ended for this container; `error` is the engine's message when it failed.
+    Finished { id: String, error: Option<String> },
+}
+
+/// Where an action is sent to: the engine operations behind [`ContainerAction`].
+pub trait ContainerActions: Send + Sync {
+    fn perform(&self, id: &str, action: ContainerAction)
+    -> impl Future<Output = Result<()>> + Send;
+}
+
+impl ContainerActions for Docker {
+    async fn perform(&self, id: &str, action: ContainerAction) -> Result<()> {
+        match action {
+            ContainerAction::Start => self.start_container(id, None).await?,
+            ContainerAction::Stop => self.stop_container(id, None).await?,
+            ContainerAction::Restart => self.restart_container(id, None).await?,
+            ContainerAction::Pause => self.pause_container(id).await?,
+            ContainerAction::Unpause => self.unpause_container(id).await?,
+            ContainerAction::Kill => self.kill_container(id, None).await?,
+            ContainerAction::Remove { volumes } => {
+                let options = RemoveContainerOptionsBuilder::default().v(volumes).build();
+                self.remove_container(id, Some(options)).await?;
+            }
+        }
+        Ok(())
+    }
+}
+
+/// How many containers of one request are handled at the same time.
+const ACTION_CONCURRENCY: usize = 4;
+
+/// The engine's own message, without the client's "Docker responded with status code ..." prefix.
+fn engine_message(error: &crate::Error) -> String {
+    match error {
+        crate::Error::Docker(bollard::errors::Error::DockerResponseServerError {
+            message, ..
+        }) if !message.is_empty() => message.clone(),
+        other => other.to_string(),
+    }
+}
+
+/// Applies `action` to every target (a few at a time). `emit` gets `Started` for all targets first,
+/// then one `Finished` per target as it ends.
+///
+/// One failing container does not stop the others. Returns the number of failures.
+pub async fn run_action<A: ContainerActions>(
+    actions: &A,
+    targets: Vec<ActionTarget>,
+    action: ContainerAction,
+    mut emit: impl FnMut(ActionEvent) + Send,
+) -> usize {
+    let mut failed = 0;
+    for target in &targets {
+        emit(ActionEvent::Started {
+            id: target.id.clone(),
+        });
+    }
+    let mut results = futures_util::stream::iter(targets)
+        .map(|target| async move {
+            let result = actions.perform(&target.id, action).await;
+            (target, result)
+        })
+        .buffer_unordered(ACTION_CONCURRENCY);
+    while let Some((target, result)) = results.next().await {
+        let error = result.err().map(|e| engine_message(&e));
+        failed += usize::from(error.is_some());
+        emit(ActionEvent::Finished {
+            id: target.id,
+            error,
+        });
+    }
+    failed
 }
 
 /// What a container watch sends to the frontend.
@@ -631,5 +740,108 @@ mod tests {
         assert_eq!(json["containers"][0]["name"], "a");
         assert_eq!(json["containers"][0]["state"], "running");
         assert!(json["containers"][0]["composeProject"].is_null());
+    }
+
+    /// An engine that fails for the ids listed in `failing` and records what it was asked.
+    struct Recorder {
+        failing: Vec<&'static str>,
+        calls: Mutex<Vec<(String, ContainerAction)>>,
+    }
+
+    impl ContainerActions for Recorder {
+        async fn perform(&self, id: &str, action: ContainerAction) -> Result<()> {
+            self.calls.lock().unwrap().push((id.to_owned(), action));
+            if self.failing.contains(&id) {
+                Err(bollard::errors::Error::DockerResponseServerError {
+                    status_code: 409,
+                    message: format!("container {id} is running"),
+                }
+                .into())
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    fn target(id: &str) -> ActionTarget {
+        ActionTarget {
+            id: id.to_owned(),
+            name: format!("name-{id}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn an_action_reports_progress_and_the_engine_message_per_container() {
+        let engine = Recorder {
+            failing: vec!["b"],
+            calls: Mutex::default(),
+        };
+        let mut events = Vec::new();
+        let failed = run_action(
+            &engine,
+            vec![target("a"), target("b"), target("c")],
+            ContainerAction::Remove { volumes: true },
+            |e| events.push(e),
+        )
+        .await;
+        assert_eq!(failed, 1);
+        assert_eq!(events.len(), 6);
+        for id in ["a", "b", "c"] {
+            assert!(events.contains(&ActionEvent::Started { id: id.to_owned() }));
+        }
+        // Started comes before any Finished.
+        assert!(
+            events[..3]
+                .iter()
+                .all(|e| matches!(e, ActionEvent::Started { .. }))
+        );
+        assert!(events.contains(&ActionEvent::Finished {
+            id: "b".to_owned(),
+            error: Some("container b is running".to_owned()),
+        }));
+        assert!(events.contains(&ActionEvent::Finished {
+            id: "a".to_owned(),
+            error: None,
+        }));
+        let calls = engine.calls.lock().unwrap();
+        assert_eq!(calls.len(), 3, "a failure does not stop the others");
+        assert!(
+            calls
+                .iter()
+                .all(|(_, a)| *a == ContainerAction::Remove { volumes: true })
+        );
+    }
+
+    #[tokio::test]
+    async fn no_targets_means_no_events() {
+        let engine = Recorder {
+            failing: vec![],
+            calls: Mutex::default(),
+        };
+        let mut count = 0;
+        let failed = run_action(&engine, vec![], ContainerAction::Stop, |_| count += 1).await;
+        assert_eq!((failed, count), (0, 0));
+    }
+
+    #[test]
+    fn actions_and_events_use_a_type_tag() {
+        let action: ContainerAction =
+            serde_json::from_str(r#"{"type":"remove","volumes":true}"#).unwrap();
+        assert_eq!(action, ContainerAction::Remove { volumes: true });
+        let action: ContainerAction = serde_json::from_str(r#"{"type":"kill"}"#).unwrap();
+        assert_eq!(action, ContainerAction::Kill);
+        let json = serde_json::to_value(ActionEvent::Finished {
+            id: "a".to_owned(),
+            error: None,
+        })
+        .unwrap();
+        assert_eq!(json["type"], "finished");
+        assert!(json["error"].is_null());
+    }
+
+    #[test]
+    fn a_non_engine_error_keeps_its_text() {
+        let error = Error::InvalidAddress("x".to_owned());
+        assert_eq!(engine_message(&error), error.to_string());
     }
 }

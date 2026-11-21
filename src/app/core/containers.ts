@@ -1,4 +1,12 @@
-import type { Container, ContainerState, ContainerWatchEvent, Endpoint } from "./bindings";
+import type {
+  ActionEvent,
+  ActionTarget,
+  Container,
+  ContainerAction,
+  ContainerState,
+  ContainerWatchEvent,
+  Endpoint,
+} from "./bindings";
 import { invoke, stream } from "./invoke";
 
 export type { Container, ContainerWatchEvent } from "./bindings";
@@ -158,4 +166,66 @@ const STATE_LABEL: Record<ContainerState, string> = {
 export function stateLabel(container: Container): string {
   const state = STATE_LABEL[container.state];
   return container.health ? `${state} (${container.health})` : state;
+}
+
+export type { ActionEvent, ContainerAction } from "./bindings";
+
+/** The kinds of action, without the options of `remove`. */
+export type ActionKind = ContainerAction["type"];
+
+export const ACTION_LABEL: Record<ActionKind, string> = {
+  start: "Start",
+  stop: "Stop",
+  restart: "Restart",
+  pause: "Pause",
+  unpause: "Unpause",
+  kill: "Kill",
+  remove: "Remove",
+};
+
+/** The order of the toolbar. */
+export const ACTION_KINDS: readonly ActionKind[] = [
+  "start",
+  "stop",
+  "restart",
+  "pause",
+  "unpause",
+  "kill",
+  "remove",
+];
+
+/** Whether an action makes sense for a container in `state`; the engine has the final say. */
+export function canApply(kind: ActionKind, state: ContainerState): boolean {
+  switch (kind) {
+    case "start":
+      return state === "created" || state === "exited";
+    case "stop":
+    case "restart":
+    case "kill":
+      return state === "running" || state === "paused" || state === "restarting";
+    case "pause":
+      return state === "running";
+    case "unpause":
+      return state === "paused";
+    default:
+      return state !== "removing";
+  }
+}
+
+/** The containers an action applies to, as the targets of the command. */
+export function actionTargets(kind: ActionKind, containers: readonly Container[]): ActionTarget[] {
+  return containers.filter((c) => canApply(kind, c.state)).map((c) => ({ id: c.id, name: c.name }));
+}
+
+/**
+ * Runs a lifecycle action for several containers through `containers_action`. `onEvent` gets the
+ * progress per container; resolves with the number of containers that failed.
+ */
+export function runContainerAction(
+  endpoint: Endpoint,
+  action: ContainerAction,
+  targets: readonly ActionTarget[],
+  onEvent: (event: ActionEvent) => void,
+): Promise<number> {
+  return stream<ActionEvent, number>("containers_action", onEvent, { endpoint, action, targets });
 }

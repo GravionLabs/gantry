@@ -12,17 +12,29 @@ import { HxButton, HxInput, HxMessage, HxTable } from "@gravionlabs/helix-ui";
 import type { Container } from "../core/bindings";
 import { ContainerList } from "../core/container-list";
 import {
+  ACTION_KINDS,
+  ACTION_LABEL,
+  ActionKind,
   SortDirection,
   SortKey,
   StateFilter,
+  canApply,
   filterContainers,
   isLocalEndpoint,
   openLocalPort,
   portLabel,
+  runContainerAction,
   sortContainers,
   stateLabel,
 } from "../core/containers";
 import { EndpointStore } from "../core/endpoint-store";
+import { toGantryError } from "../core/invoke";
+
+/** A container for which the last action failed, with the engine's message. */
+export interface ActionFailure {
+  readonly name: string;
+  readonly message: string;
+}
 
 interface Column {
   readonly key: SortKey;
@@ -74,6 +86,28 @@ export class ContainersView {
     ),
   );
 
+  protected readonly actionKinds = ACTION_KINDS;
+  protected readonly actionLabel = ACTION_LABEL;
+
+  /** Ids of the selected containers; ids that left the list are ignored. */
+  private readonly selectedIds = signal<ReadonlySet<string>>(new Set());
+  protected readonly selected = computed(() =>
+    this.list.containers().filter((c) => this.selectedIds().has(c.id)),
+  );
+  protected readonly allVisibleSelected = computed(
+    () => this.visible().length > 0 && this.visible().every((c) => this.selectedIds().has(c.id)),
+  );
+
+  /** Ids of the containers an action is running for. */
+  protected readonly busy = signal<ReadonlySet<string>>(new Set());
+  /** What is running, e.g. `Stopping 2 of 3`; null when idle. */
+  protected readonly progress = signal<string | null>(null);
+  protected readonly failures = signal<readonly ActionFailure[]>([]);
+  protected readonly summary = signal<string | null>(null);
+  /** The containers a `remove` waits for confirmation for; null when there is no request. */
+  protected readonly removal = signal<readonly Container[] | null>(null);
+  protected readonly removeVolumes = signal(false);
+
   constructor() {
     effect(() => {
       const endpoint = this.endpoint();
@@ -120,5 +154,128 @@ export class ContainersView {
   protected open(event: Event, port: number): void {
     event.preventDefault();
     void openLocalPort(port).catch(() => {});
+  }
+
+  protected isSelected(container: Container): boolean {
+    return this.selectedIds().has(container.id);
+  }
+
+  protected toggle(container: Container): void {
+    this.selectedIds.update((ids) => {
+      const next = new Set(ids);
+      if (!next.delete(container.id)) next.add(container.id);
+      return next;
+    });
+  }
+
+  protected toggleAll(): void {
+    const visible = this.visible();
+    this.selectedIds.update((ids) => {
+      const next = new Set(ids);
+      const all = visible.every((c) => next.has(c.id));
+      for (const c of visible) {
+        if (all) next.delete(c.id);
+        else next.add(c.id);
+      }
+      return next;
+    });
+  }
+
+  /** The selected containers an action applies to. */
+  protected applicable(kind: ActionKind): readonly Container[] {
+    return this.selected().filter((c) => canApply(kind, c.state));
+  }
+
+  protected disabled(kind: ActionKind): boolean {
+    return this.progress() !== null || this.applicable(kind).length === 0;
+  }
+
+  protected request(kind: ActionKind): void {
+    const containers = this.applicable(kind);
+    if (!containers.length) return;
+    if (kind === "remove") {
+      this.removeVolumes.set(false);
+      this.removal.set(containers);
+    } else {
+      void this.run({ type: kind }, kind, containers);
+    }
+  }
+
+  protected setRemoveVolumes(event: Event): void {
+    this.removeVolumes.set((event.target as HTMLInputElement).checked);
+  }
+
+  protected cancelRemoval(): void {
+    this.removal.set(null);
+  }
+
+  protected confirmRemoval(): void {
+    const containers = this.removal();
+    if (!containers) return;
+    this.removal.set(null);
+    void this.run({ type: "remove", volumes: this.removeVolumes() }, "remove", containers);
+  }
+
+  protected removalNames(): string {
+    return (this.removal() ?? []).map((c) => c.name).join(", ");
+  }
+
+  private async run(
+    action: Parameters<typeof runContainerAction>[1],
+    kind: ActionKind,
+    containers: readonly Container[],
+  ): Promise<void> {
+    const endpoint = this.endpoint();
+    if (!endpoint) return;
+    const names = new Map(containers.map((c) => [c.id, c.name]));
+    const failures: ActionFailure[] = [];
+    let done = 0;
+    this.failures.set([]);
+    this.summary.set(null);
+    this.busy.set(new Set(containers.map((c) => c.id)));
+    const report = () =>
+      this.progress.set(`${ACTION_LABEL[kind]}: ${done} of ${containers.length} done`);
+    report();
+    try {
+      await runContainerAction(
+        endpoint,
+        action,
+        containers.map((c) => ({ id: c.id, name: c.name })),
+        (event) => {
+          if (event.type !== "finished") return;
+          done++;
+          this.busy.update((ids) => {
+            const next = new Set(ids);
+            next.delete(event.id);
+            return next;
+          });
+          if (event.error !== null) {
+            failures.push({ name: names.get(event.id) ?? event.id, message: event.error });
+          }
+          report();
+        },
+      );
+      this.summary.set(
+        failures.length
+          ? null
+          : `${ACTION_LABEL[kind]} succeeded for ${containers.length} container(s).`,
+      );
+    } catch (error) {
+      // The command itself failed (e.g. the endpoint cannot be opened): it applies to all.
+      for (const c of containers) {
+        if (!failures.some((f) => f.name === c.name)) {
+          failures.push({ name: c.name, message: toGantryError(error).message });
+        }
+      }
+    } finally {
+      this.failures.set(failures);
+      this.busy.set(new Set());
+      this.progress.set(null);
+    }
+  }
+
+  protected dismissResult(): void {
+    this.failures.set([]);
+    this.summary.set(null);
   }
 }

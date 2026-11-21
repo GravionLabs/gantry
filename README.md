@@ -15,6 +15,10 @@ Gantry is a client only. It connects to an engine you already run:
 
 > Status: early development. See the [issues](https://github.com/GravionLabs/gantry/issues) for the roadmap.
 
+## Documentation
+
+[User guide](docs/user-guide.md): install Gantry, set up an engine on Linux, macOS and Windows, connect to remote hosts over SSH and fix common problems.
+
 ## Development
 
 Requirements: Node.js 24 with pnpm, Rust (see `rust-toolchain.toml`) and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) of your platform.

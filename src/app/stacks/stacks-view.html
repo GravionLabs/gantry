@@ -5,7 +5,9 @@
   @if (detail(); as stack) {
   <header class="head">
     <h1 id="stacks-title">{{ stack.name }}</h1>
-    <button hx-button variant="outlined" type="button" (click)="back()">All stacks</button>
+    <button hx-button size="small" variant="outlined" type="button" (click)="back()">
+      All stacks
+    </button>
   </header>
   <dl class="facts">
     <dt>State</dt>
@@ -106,7 +108,7 @@
   } } @else {
   <header class="head">
     <h1 id="stacks-title">Stacks</h1>
-    <button hx-button type="button" [disabled]="!endpoint()" (click)="startDeploy()">
+    <button hx-button size="small" type="button" [disabled]="!endpoint()" (click)="startDeploy()">
       Deploy a stack…
     </button>
   </header>
@@ -120,38 +122,18 @@
   } @else if (stacks().length === 0) {
   <p class="state">There are no Compose stacks on this endpoint.</p>
   } @else {
-  <div class="hx-table-scroll">
-    <table hx-table>
-      <caption class="sr-only">
-        Compose stacks
-      </caption>
-      <thead>
-        <tr>
-          <th scope="col">Stack</th>
-          <th scope="col">Services</th>
-          <th scope="col">State</th>
-          <th scope="col">Working directory</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (stack of stacks(); track stack.name) {
-        <tr>
-          <th scope="row">
-            <a
-              [href]="'/stacks/' + stack.name"
-              [attr.aria-label]="'Details of ' + stack.name"
-              (click)="open($event, stack)"
-              >{{ stack.name }}</a
-            >
-          </th>
-          <td class="num">{{ services(stack) }}</td>
-          <td class="num">{{ summary(stack) }}</td>
-          <td class="mono">{{ stack.workingDir ?? '–' }}</td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </div>
+  <ag-grid-angular
+    class="grid"
+    [modules]="modules"
+    [theme]="theme"
+    [rowData]="rows()"
+    [columnDefs]="columnDefs"
+    [defaultColDef]="defaultColDef"
+    [rowClassRules]="rowClassRules"
+    [getRowId]="getRowId"
+    [context]="context"
+    [suppressCellFocus]="true"
+  />
   } }
 </section>
 }

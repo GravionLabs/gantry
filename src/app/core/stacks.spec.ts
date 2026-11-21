@@ -8,7 +8,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   },
 }));
 
-import type { Endpoint, Stack } from "./bindings";
+import type { Container, Endpoint, Stack } from "./bindings";
 import {
   actionCommand,
   checkCompose,
@@ -17,7 +17,9 @@ import {
   listStacks,
   runCompose,
   serviceCount,
+  stackRows,
   stackSummary,
+  toggleStack,
 } from "./stacks";
 
 const endpoint: Endpoint = {
@@ -95,5 +97,60 @@ describe("stacks", () => {
     expect(ended(true, 0)).toBe("docker compose up -d finished.");
     expect(ended(false, 1)).toBe("docker compose up -d failed with exit code 1.");
     expect(ended(false, null)).toBe("docker compose up -d was stopped.");
+  });
+});
+
+function container(name: string): Container {
+  return {
+    id: `id-${name}`,
+    name,
+    image: "nginx",
+    state: "running",
+    health: null,
+    status: "Up",
+    ports: [],
+    created: 0,
+    composeProject: "shop",
+  };
+}
+
+describe("stackRows", () => {
+  const shop: Stack = {
+    ...stack,
+    services: [
+      { name: "db", containers: [container("shop-db-1")] },
+      { name: "web", containers: [container("shop-web-1"), container("shop-web-2")] },
+    ],
+  };
+  const api: Stack = { ...stack, name: "api", services: [] };
+
+  it("lists the stacks by name, all collapsed", () => {
+    const rows = stackRows([shop, api], new Set());
+    expect(rows.map((r) => [r.kind, r.id])).toEqual([
+      ["stack", "stack:api"],
+      ["stack", "stack:shop"],
+    ]);
+    expect(rows.every((r) => r.kind === "stack" && !r.expanded)).toBe(true);
+  });
+
+  it("puts the containers of an expanded stack below it, in service order", () => {
+    const rows = stackRows([shop, api], new Set(["shop", "gone"]));
+    expect(
+      rows.map((r) => (r.kind === "stack" ? r.stack.name : `${r.service}/${r.container.name}`)),
+    ).toEqual(["api", "shop", "db/shop-db-1", "web/shop-web-1", "web/shop-web-2"]);
+    expect(rows[1]).toMatchObject({ kind: "stack", expanded: true });
+    expect(rows[2]).toMatchObject({
+      kind: "container",
+      stack: "shop",
+      id: "container:id-shop-db-1",
+    });
+  });
+
+  it("opens and closes a stack without changing the input", () => {
+    const none = new Set<string>();
+    const open = toggleStack(none, "shop");
+    expect([...open]).toEqual(["shop"]);
+    expect(none.size).toBe(0);
+    expect(toggleStack(open, "shop").size).toBe(0);
   });
 });

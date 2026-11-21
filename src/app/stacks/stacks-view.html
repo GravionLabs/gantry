@@ -1,0 +1,98 @@
+<section class="stacks" aria-labelledby="stacks-title">
+  @if (selected(); as stack) {
+  <header class="head">
+    <h1 id="stacks-title">{{ stack.name }}</h1>
+    <button hx-button variant="outlined" type="button" (click)="back()">All stacks</button>
+  </header>
+  <dl class="facts">
+    <dt>State</dt>
+    <dd>{{ summary(stack) }}</dd>
+    <dt>Working directory</dt>
+    <dd class="mono">{{ stack.workingDir ?? '–' }}</dd>
+    <dt>Config files</dt>
+    <dd class="mono">
+      @for (file of stack.configFiles; track file) {
+      <div>{{ file }}</div>
+      } @empty { – }
+    </dd>
+  </dl>
+  @for (service of stack.services; track service.name) {
+  <h2>{{ service.name }}</h2>
+  <div class="hx-table-scroll">
+    <table hx-table>
+      <caption class="sr-only">
+        Containers of {{ service.name }}
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Image</th>
+          <th scope="col">State</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (container of service.containers; track container.id) {
+        <tr>
+          <th scope="row">
+            <a
+              [href]="'/containers/' + container.id"
+              [attr.aria-label]="'Details of ' + container.name"
+              (click)="details($event, container)"
+              >{{ container.name }}</a
+            >
+          </th>
+          <td class="mono">{{ container.image }}</td>
+          <td [attr.title]="container.status">{{ state(container) }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } } @else {
+  <header class="head">
+    <h1 id="stacks-title">Stacks</h1>
+  </header>
+  @if (problem(); as text) {
+  <hx-message severity="error" role="alert">
+    Cannot read the stacks: {{ text }}
+    <button hx-button variant="outlined" type="button" (click)="retry()">Retry</button>
+  </hx-message>
+  } @if (!loaded()) {
+  <p class="state" role="status">Loading stacks…</p>
+  } @else if (stacks().length === 0) {
+  <p class="state">There are no Compose stacks on this endpoint.</p>
+  } @else {
+  <div class="hx-table-scroll">
+    <table hx-table>
+      <caption class="sr-only">
+        Compose stacks
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Stack</th>
+          <th scope="col">Services</th>
+          <th scope="col">State</th>
+          <th scope="col">Working directory</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (stack of stacks(); track stack.name) {
+        <tr>
+          <th scope="row">
+            <a
+              [href]="'/stacks/' + stack.name"
+              [attr.aria-label]="'Details of ' + stack.name"
+              (click)="open($event, stack)"
+              >{{ stack.name }}</a
+            >
+          </th>
+          <td class="num">{{ services(stack) }}</td>
+          <td class="num">{{ summary(stack) }}</td>
+          <td class="mono">{{ stack.workingDir ?? '–' }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } }
+</section>

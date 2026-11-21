@@ -1,0 +1,44 @@
+:host {
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+}
+.stacks {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  align-content: start;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.head h1,
+h2 {
+  margin: 0;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+.facts dd {
+  margin: 0;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.state {
+  margin: 2rem 0;
+  text-align: center;
+  color: var(--h-text-muted-color);
+}
+.mono {
+  font-family: var(--h-font-mono, monospace);
+}

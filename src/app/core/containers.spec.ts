@@ -21,6 +21,7 @@ import {
   actionTargets,
   boundPortLabel,
   canApply,
+  compareContainers,
   commandLine,
   containerPath,
   inspectContainer,
@@ -32,10 +33,10 @@ import {
   isLocalEndpoint,
   portLabel,
   runContainerAction,
-  sortContainers,
   stateLabel,
   streamContainerLogs,
   watchContainers,
+  type SortKey,
 } from "./containers";
 
 function container(name: string, extra: Partial<Container> = {}): Container {
@@ -98,7 +99,13 @@ describe("filterContainers", () => {
   });
 });
 
-describe("sortContainers", () => {
+/** Sorts like the grid: the comparator ascending, its result reversed for a descending sort. */
+function sortContainers(list: Container[], key: SortKey, direction: "asc" | "desc"): Container[] {
+  const desc = direction === "desc";
+  return [...list].sort((a, b) => (desc ? -1 : 1) * compareContainers(a, b, key, desc));
+}
+
+describe("compareContainers", () => {
   it("sorts by name naturally and reverses", () => {
     const list = [container("web10"), container("web2"), container("api")];
     expect(sortContainers(list, "name", "asc").map((c) => c.name)).toEqual([
@@ -143,12 +150,6 @@ describe("sortContainers", () => {
       "low",
       "none",
     ]);
-  });
-
-  it("does not change its input", () => {
-    const list = [container("b"), container("a")];
-    sortContainers(list, "name", "asc");
-    expect(list.map((c) => c.name)).toEqual(["b", "a"]);
   });
 });
 

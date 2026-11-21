@@ -101,6 +101,14 @@ export const STATUS_ITEMS: readonly StatusItemDecl[] = [
   { id: "app-version", side: "end" },
 ];
 
+/**
+ * The engine version in the status bar, e.g. `Docker 29.0.1`. Not through `hx-status-version`: that
+ * puts a `v` in front of its value and is meant for the app version.
+ */
+export function engineVersionLabel(version: string): string {
+  return `Docker ${version}`;
+}
+
 /** The views that show data of the active endpoint; the others work without a reachable engine. */
 export function requiresEndpoint(id: string): boolean {
   return id !== "endpoints" && id !== "settings";

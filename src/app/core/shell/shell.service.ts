@@ -26,7 +26,10 @@ export async function provideShell(): Promise<EnvironmentProviders> {
   return makeEnvironmentProviders([providePlatform(), provideHxAppInfo({ version })]);
 }
 
-/** The activity bar and the sidebar: one active view and the sidebar shown or collapsed. */
+/**
+ * The activity bar: one active view. The shell has no sidebar while no view has content for it, so the
+ * activity bar switches the content directly.
+ */
 @Injectable({ providedIn: "root" })
 export class ShellService {
   readonly appInfo = inject(HX_APP_INFO);
@@ -40,8 +43,6 @@ export class ShellService {
   }));
 
   readonly activeId = signal(resolveView(null));
-  readonly collapsed = signal(false);
-  readonly sidebarWidth = signal(260);
   readonly activeView = computed(() => findView(this.activeId()) ?? VIEWS[0]);
 
   /**
@@ -67,14 +68,10 @@ export class ShellService {
     this.containerId.set(null);
   }
 
+  /** Shows a view; selecting the active view again returns from the details to the list. */
   select(id: string): void {
-    if (id === this.activeId() && this.containerId() !== null) this.containerId.set(null);
-    else if (id === this.activeId() && !this.collapsed()) this.collapsed.set(true);
-    else {
-      this.containerId.set(null);
-      this.activeId.set(resolveView(id));
-      this.collapsed.set(false);
-    }
+    this.containerId.set(null);
+    this.activeId.set(resolveView(id));
   }
 }
 

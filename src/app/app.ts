@@ -17,14 +17,14 @@ import {
   HxStatusBar,
   HxStatusItem,
   HxStatusPopover,
-  HxStatusVersion,
 } from "@gravionlabs/helix-desktop";
 
 import { HxButton } from "@gravionlabs/helix-ui";
 
 import { EndpointStore } from "./core/endpoint-store";
 import { HxStatusAppVersion, ShellService } from "./core/shell/shell.service";
-import { requiresEndpoint } from "./core/shell/views";
+import { RecreateOn } from "./core/shell/recreate-on";
+import { engineVersionLabel, requiresEndpoint } from "./core/shell/views";
 import { ContainerDetailsView } from "./containers/container-details";
 import { ContainersView } from "./containers/containers-view";
 import { UpdateService } from "./core/updater/update.service";
@@ -47,9 +47,9 @@ export class NavIconDirective {
     HxStatusBar,
     HxStatusItem,
     HxStatusPopover,
-    HxStatusVersion,
     HxStatusAppVersion,
     NavIconDirective,
+    RecreateOn,
     HxButton,
     EndpointsView,
     ContainersView,
@@ -65,6 +65,7 @@ export class App implements OnInit {
   protected readonly updater = inject(UpdateService);
   protected readonly updateOpen = signal(false);
   protected readonly switcherOpen = signal(false);
+  protected readonly engineLabel = engineVersionLabel;
   protected readonly needsEndpoint = computed(() => requiresEndpoint(this.shell.activeId()));
   private readonly icons = viewChildren(NavIconDirective);
 
@@ -117,7 +118,6 @@ export class App implements OnInit {
 
   protected manage(): void {
     this.shell.activeId.set("endpoints");
-    this.shell.collapsed.set(false);
     this.switcherOpen.set(false);
   }
 }

@@ -126,5 +126,45 @@
     <hx-status-version slot="end" class="engine-version" [version]="'Docker ' + version" />
     }
     <hx-status-app-version slot="end" />
+    @if (updater.enabled()) {
+    <hx-status-item
+      slot="end"
+      class="update"
+      kind="button"
+      title="Updates"
+      ariaLabel="Updates"
+      [tone]="updater.phase() === 'error' ? 'error' : 'neutral'"
+      [announce]="true"
+      [(popoverOpen)]="updateOpen"
+    >
+      {{ updateLabel() }}
+      <div hxStatusPopover class="update-panel">
+        @if (updater.error(); as message) {
+        <p role="alert">{{ message }}</p>
+        } @if (updater.update(); as update) {
+        <h3>Gantry {{ update.version }}</h3>
+        <p class="current">You have {{ updater.version() }}.</p>
+        @if (update.body) {
+        <pre class="notes">{{ update.body }}</pre>
+        }
+        <button hx-button type="button" [disabled]="updater.busy()" (click)="updater.install()">
+          {{ updater.failedStep() === 'update' ? 'Retry install and restart' : 'Install and restart'
+          }}
+        </button>
+        } @else if (updater.upToDate()) {
+        <p>Gantry {{ updater.version() }} is up to date.</p>
+        }
+        <button
+          hx-button
+          variant="outlined"
+          type="button"
+          [disabled]="updater.busy()"
+          (click)="updater.check()"
+        >
+          Check for Updates…
+        </button>
+      </div>
+    </hx-status-item>
+    }
   </hx-status-bar>
 </hx-app-shell>

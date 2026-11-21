@@ -4,6 +4,7 @@
 //! without system libraries.
 
 pub mod bindings;
+mod compose;
 mod containers;
 mod context;
 mod detect;
@@ -13,7 +14,14 @@ mod error;
 mod exec;
 mod logs;
 mod ssh;
+mod stacks;
+mod stats;
 
+pub use compose::{
+    ComposeAction, ComposeAvailability, ComposeCommand, ComposeEvent, ComposeProject, PluginProbe,
+    availability_of, build_command, check_compose, default_project_name, deploy_project,
+    is_valid_project_name, preview_compose_file, run_command, run_compose,
+};
 pub use containers::{
     ActionEvent, ActionTarget, Container, ContainerAction, ContainerActions, ContainerDetails,
     ContainerHealth, ContainerSource, ContainerState, ContainerWatchEvent, EnvVar, Label,
@@ -34,3 +42,5 @@ pub use error::{Error, ErrorKind, ErrorPayload, Result};
 pub use exec::{ExecEvent, ExecOptions, ExecSessions, run_exec};
 pub use logs::{LogBatching, LogEvent, LogLine, LogOptions, LogStream, stream_logs};
 pub use ssh::SshTarget;
+pub use stacks::{Stack, StackService, list_stacks, stacks_of};
+pub use stats::{StatsEvent, StatsSample, sample_of, stream_stats};

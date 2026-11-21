@@ -26,11 +26,13 @@ import { ShellService } from "../core/shell/shell.service";
 import { isViewAvailable } from "../core/shell/views";
 import { ContainerLogs } from "./container-logs";
 import { ContainerTerminal } from "./container-terminal";
+import { ContainerStats } from "./container-stats";
 
 export type DetailTab =
   | "overview"
   | "logs"
   | "terminal"
+  | "stats"
   | "environment"
   | "mounts"
   | "networks"
@@ -41,6 +43,7 @@ const TABS: readonly { readonly id: DetailTab; readonly label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "logs", label: "Logs" },
   { id: "terminal", label: "Terminal" },
+  { id: "stats", label: "Stats" },
   { id: "environment", label: "Environment" },
   { id: "mounts", label: "Mounts" },
   { id: "networks", label: "Networks" },
@@ -55,7 +58,7 @@ export type DetailsPhase = "loading" | "ready" | "notFound" | "error";
 @Component({
   selector: "app-container-details",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ContainerLogs, ContainerTerminal, HxButton, HxMessage],
+  imports: [ContainerLogs, ContainerStats, ContainerTerminal, HxButton, HxMessage],
   templateUrl: "./container-details.html",
   styleUrl: "./container-details.css",
 })

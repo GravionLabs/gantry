@@ -1,0 +1,157 @@
+@if (deploying() && endpoint(); as target) {
+<app-stack-deploy [endpoint]="target" (closed)="endDeploy($event)" />
+} @else {
+<section class="stacks" aria-labelledby="stacks-title">
+  @if (detail(); as stack) {
+  <header class="head">
+    <h1 id="stacks-title">{{ stack.name }}</h1>
+    <button hx-button variant="outlined" type="button" (click)="back()">All stacks</button>
+  </header>
+  <dl class="facts">
+    <dt>State</dt>
+    <dd>{{ summary(stack) }}</dd>
+    <dt>Working directory</dt>
+    <dd class="mono">{{ stack.workingDir ?? '–' }}</dd>
+    <dt>Config files</dt>
+    <dd class="mono">
+      @for (file of stack.configFiles; track file) {
+      <div>{{ file }}</div>
+      } @empty { – }
+    </dd>
+  </dl>
+  <section class="actions" aria-label="Compose actions">
+    @if (availability(); as info) { @if (info.reason) {
+    <hx-message severity="warn" role="status">{{ info.reason }}</hx-message>
+    } }
+    <div class="buttons">
+      @for (item of actions; track item.label) {
+      <button
+        hx-button
+        variant="outlined"
+        type="button"
+        [disabled]="!canAct() || running() !== null"
+        (click)="perform(item.action)"
+      >
+        {{ item.label }}
+      </button>
+      }
+      <button
+        hx-button
+        variant="outlined"
+        type="button"
+        [disabled]="!canAct() || running() !== null"
+        (click)="askDown()"
+      >
+        Down…
+      </button>
+      @if (running() !== null) {
+      <button hx-button variant="outlined" type="button" (click)="stop()">Stop</button>
+      }
+    </div>
+    @if (confirmingDown()) {
+    <div class="confirm" role="alertdialog" aria-labelledby="down-title">
+      <h2 id="down-title">Take down {{ stack.name }}?</h2>
+      <p>
+        This stops and removes the containers and networks of <strong>{{ stack.name }}</strong>.
+      </p>
+      <label>
+        <input type="checkbox" [checked]="removeVolumes()" (change)="setRemoveVolumes($event)" />
+        Also remove the volumes of the stack (the data in them is lost)
+      </label>
+      <div class="buttons">
+        <button hx-button variant="outlined" type="button" (click)="cancelDown()">Cancel</button>
+        <button hx-button type="button" (click)="confirmDown()">Take down</button>
+      </div>
+    </div>
+    } @if (running() !== null) {
+    <p class="state" role="status" aria-live="polite">Running…</p>
+    } @if (outcome(); as text) {
+    <hx-message [severity]="failed() ? 'error' : 'success'" role="status">{{ text }}</hx-message>
+    } @if (output().length > 0) {
+    <pre class="output mono" aria-label="Output of docker compose">{{ output().join('\n') }}</pre>
+    }
+  </section>
+  @for (service of stack.services; track service.name) {
+  <h2>{{ service.name }}</h2>
+  <div class="hx-table-scroll">
+    <table hx-table>
+      <caption class="sr-only">
+        Containers of {{ service.name }}
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Image</th>
+          <th scope="col">State</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (container of service.containers; track container.id) {
+        <tr>
+          <th scope="row">
+            <a
+              [href]="'/containers/' + container.id"
+              [attr.aria-label]="'Details of ' + container.name"
+              (click)="details($event, container)"
+              >{{ container.name }}</a
+            >
+          </th>
+          <td class="mono">{{ container.image }}</td>
+          <td [attr.title]="container.status">{{ state(container) }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } } @else {
+  <header class="head">
+    <h1 id="stacks-title">Stacks</h1>
+    <button hx-button type="button" [disabled]="!endpoint()" (click)="startDeploy()">
+      Deploy a stack…
+    </button>
+  </header>
+  @if (problem(); as text) {
+  <hx-message severity="error" role="alert">
+    Cannot read the stacks: {{ text }}
+    <button hx-button variant="outlined" type="button" (click)="retry()">Retry</button>
+  </hx-message>
+  } @if (!loaded()) {
+  <p class="state" role="status">Loading stacks…</p>
+  } @else if (stacks().length === 0) {
+  <p class="state">There are no Compose stacks on this endpoint.</p>
+  } @else {
+  <div class="hx-table-scroll">
+    <table hx-table>
+      <caption class="sr-only">
+        Compose stacks
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Stack</th>
+          <th scope="col">Services</th>
+          <th scope="col">State</th>
+          <th scope="col">Working directory</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (stack of stacks(); track stack.name) {
+        <tr>
+          <th scope="row">
+            <a
+              [href]="'/stacks/' + stack.name"
+              [attr.aria-label]="'Details of ' + stack.name"
+              (click)="open($event, stack)"
+              >{{ stack.name }}</a
+            >
+          </th>
+          <td class="num">{{ services(stack) }}</td>
+          <td class="num">{{ summary(stack) }}</td>
+          <td class="mono">{{ stack.workingDir ?? '–' }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } }
+</section>
+}

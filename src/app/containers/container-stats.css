@@ -1,0 +1,34 @@
+.state {
+  margin: 2rem 0;
+  text-align: center;
+  color: var(--h-text-muted-color);
+}
+.metrics {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+.metric {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--h-border-color, currentColor);
+  border-radius: 0.5rem;
+}
+.label {
+  color: var(--h-text-muted-color);
+  font-size: 0.85rem;
+}
+.value {
+  font-size: 1.15rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.spark {
+  width: 100%;
+  height: 2rem;
+  color: var(--h-primary-color, currentColor);
+}

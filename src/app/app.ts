@@ -27,6 +27,7 @@ import { HxStatusAppVersion, ShellService } from "./core/shell/shell.service";
 import { requiresEndpoint } from "./core/shell/views";
 import { ContainerDetailsView } from "./containers/container-details";
 import { ContainersView } from "./containers/containers-view";
+import { StacksView } from "./stacks/stacks-view";
 import { EndpointsView } from "./endpoints/endpoints-view";
 
 /** Marks the template of an activity bar icon with the icon name of the views registry. */
@@ -51,6 +52,7 @@ export class NavIconDirective {
     HxButton,
     EndpointsView,
     ContainersView,
+    StacksView,
     ContainerDetailsView,
   ],
   templateUrl: "./app.html",

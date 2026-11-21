@@ -3,9 +3,10 @@
 //! Commands return `gantry_core::Error`, which serializes to `{ kind, message }`.
 
 use gantry_core::{
-    ActionEvent, ActionTarget, Connections, Container, ContainerAction, ContainerDetails,
-    ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EngineInfo, ExecEvent, ExecOptions,
-    ExecSessions, LogEvent, LogOptions, TlsFiles, WatchTiming, Watches,
+    ActionEvent, ActionTarget, ComposeAction, ComposeAvailability, ComposeEvent, ComposeProject,
+    Connections, Container, ContainerAction, ContainerDetails, ContainerWatchEvent, ContextList,
+    DetectedEngine, Endpoint, EngineInfo, ExecEvent, ExecOptions, ExecSessions, LogEvent,
+    LogOptions, Stack, StatsEvent, TlsFiles, WatchTiming, Watches,
 };
 use tauri::ipc::Channel;
 use tauri::{Manager, RunEvent};
@@ -62,6 +63,15 @@ async fn containers_list(
     endpoint: Endpoint,
 ) -> Result<Vec<Container>, gantry_core::Error> {
     gantry_core::list_containers(&connections.activate(&endpoint)?).await
+}
+
+/// Lists the Compose stacks of `endpoint`, recognized by their labels.
+#[tauri::command]
+async fn stacks_list(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<Vec<Stack>, gantry_core::Error> {
+    gantry_core::list_stacks(&connections.activate(&endpoint)?).await
 }
 
 /// Reads the full details of one container (`docker inspect`).
@@ -179,6 +189,70 @@ fn exec_close(sessions: tauri::State<'_, ExecSessions>, session_id: String) {
     sessions.close(&session_id);
 }
 
+/// Streams the resource stats of a container through `on_event` until the container stops or
+/// `containers_unwatch` stops the stream `watch_id`.
+#[tauri::command]
+async fn containers_stats(
+    connections: tauri::State<'_, Connections>,
+    watches: tauri::State<'_, Watches>,
+    endpoint: Endpoint,
+    id: String,
+    watch_id: String,
+    on_event: Channel<StatsEvent>,
+) -> Result<(), gantry_core::Error> {
+    let docker = connections.activate(&endpoint)?;
+    let cancel = watches.register(&watch_id);
+    let result = gantry_core::stream_stats(&docker, &id, &cancel, |event| {
+        let _ = on_event.send(event);
+    })
+    .await;
+    watches.finish(&watch_id);
+    result
+}
+
+/// Tells whether Compose actions can run for `project`: the plugin is installed and the Compose
+/// files exist on this machine.
+#[tauri::command]
+async fn compose_check(project: ComposeProject) -> ComposeAvailability {
+    gantry_core::check_compose(&project).await
+}
+
+/// Runs a Compose `action` on `project` at `endpoint` and streams the CLI output through
+/// `on_event` until it ends or `containers_unwatch` stops the run `watch_id`.
+#[tauri::command]
+async fn compose_run(
+    watches: tauri::State<'_, Watches>,
+    endpoint: Endpoint,
+    project: ComposeProject,
+    action: ComposeAction,
+    watch_id: String,
+    on_event: Channel<ComposeEvent>,
+) -> Result<(), gantry_core::Error> {
+    let cancel = watches.register(&watch_id);
+    let result = gantry_core::run_compose(&endpoint, &project, action, &cancel, |event| {
+        let _ = on_event.send(event);
+    })
+    .await;
+    watches.finish(&watch_id);
+    result
+}
+
+/// Reads a Compose file for the read-only preview before a deployment.
+#[tauri::command]
+async fn compose_preview(path: String) -> Result<String, gantry_core::Error> {
+    gantry_core::preview_compose_file(&path)
+}
+
+/// Builds the project of a new deployment from the picked files and the entered project name.
+#[tauri::command]
+fn compose_deploy_project(
+    compose_file: String,
+    env_file: Option<String>,
+    name: String,
+) -> Result<ComposeProject, gantry_core::Error> {
+    gantry_core::deploy_project(&compose_file, env_file.as_deref(), &name)
+}
+
 /// Opens `http://localhost:<port>` in the default browser. Only the port comes from the UI, so
 /// the command cannot be used to open another address.
 #[tauri::command]
@@ -194,6 +268,7 @@ pub fn run() {
         .manage(Connections::default())
         .manage(Watches::default())
         .manage(ExecSessions::default())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
@@ -203,6 +278,7 @@ pub fn run() {
             endpoints_contexts,
             endpoints_detect,
             containers_list,
+            stacks_list,
             containers_inspect,
             containers_watch,
             containers_unwatch,
@@ -212,6 +288,11 @@ pub fn run() {
             exec_write,
             exec_resize,
             exec_close,
+            containers_stats,
+            compose_check,
+            compose_run,
+            compose_preview,
+            compose_deploy_project,
             open_local_port
         ])
         .build(tauri::generate_context!())

@@ -13,6 +13,42 @@ export type ActionTarget = {
 	name: string,
 };
 
+/**  A Compose action on a stack. */
+export type ComposeAction = 
+/**  `docker compose up -d`. */
+{ type: "up" } | 
+/**  `docker compose down`; with `volumes` also `-v`, which the UI asks for explicitly. */
+{ type: "down"; volumes: boolean } | 
+/**  `docker compose restart`. */
+{ type: "restart" } | 
+/**  `docker compose pull`. */
+{ type: "pull" };
+
+/**  Whether the actions can be used, and if not, why. */
+export type ComposeAvailability = {
+	available: boolean,
+	/**  The version of the Compose plugin, when it is installed. */
+	version: string | null,
+	/**  A message for the user when `available` is false. */
+	reason: string | null,
+};
+
+/**  What a running action sends to the frontend. */
+export type ComposeEvent = 
+/**  One line of output, without its line break. */
+{ type: "line"; stream: LogStream; text: string } | 
+/**  The command ended. `code` is missing when it was stopped or killed by a signal. */
+{ type: "finished"; success: boolean; code: number | null };
+
+/**  What the CLI needs to know about a stack: the project name and where its files are. */
+export type ComposeProject = {
+	name: string,
+	workingDir: string | null,
+	configFiles: string[],
+	/**  An env file for variable substitution (`--env-file`); only set for a new deployment. */
+	envFile?: string | null,
+};
+
 /**  One row of the container list. */
 export type Container = {
 	id: string,
@@ -254,6 +290,50 @@ export type RestartPolicy = {
 	name: string,
 	/**  Only meaningful for `on-failure`; 0 means unlimited. */
 	maxRetries: number,
+};
+
+/**  A Compose project. */
+export type Stack = {
+	name: string,
+	/**  The directory `docker compose` was run in, when the labels say so. */
+	workingDir: string | null,
+	/**  The Compose files of the project, in the order they were merged. */
+	configFiles: string[],
+	/**  The number of containers that are up (running, paused or restarting). */
+	running: number,
+	/**  The number of containers of the stack, in any state. */
+	total: number,
+	/**  Sorted by name; containers without a service label are listed under their own name. */
+	services: StackService[],
+};
+
+/**  A service of a stack with the containers that run it (several when scaled). */
+export type StackService = {
+	name: string,
+	containers: Container[],
+};
+
+/**  What a stats stream sends to the frontend. */
+export type StatsEvent = 
+/**  The latest reading; the engine sends about one per second. */
+{ type: "sample"; sample: StatsSample };
+
+/**  One reading of a container's resource use, computed like `docker stats`. */
+export type StatsSample = {
+	/**  CPU use in percent of one core, so it exceeds 100 on a container using several cores. */
+	cpuPercent: number | null,
+	/**  Memory in use in bytes, without the page cache that can be reclaimed. */
+	memoryUsage: number | null,
+	/**  Memory limit in bytes; 0 when the engine reports none. */
+	memoryLimit: number | null,
+	/**  Bytes received over all network interfaces since the container started. */
+	networkRx: number | null,
+	/**  Bytes sent over all network interfaces since the container started. */
+	networkTx: number | null,
+	/**  Bytes read from block devices since the container started. */
+	blockRead: number | null,
+	/**  Bytes written to block devices since the container started. */
+	blockWrite: number | null,
 };
 
 /**  Client certificates for a TLS-secured TCP endpoint (Docker's `ca.pem`, `cert.pem`, `key.pem`). */

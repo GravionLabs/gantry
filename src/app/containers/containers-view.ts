@@ -30,6 +30,7 @@ import {
 import { EndpointStore } from "../core/endpoint-store";
 import { toGantryError } from "../core/invoke";
 import { ShellService } from "../core/shell/shell.service";
+import { StatsFeed, formatMemory, formatPercent } from "../core/stats";
 
 /** A container for which the last action failed, with the engine's message. */
 export interface ActionFailure {
@@ -56,7 +57,7 @@ const COLUMNS: readonly Column[] = [
   selector: "app-containers-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [HxButton, HxInput, HxMessage, HxTable],
-  providers: [ContainerList],
+  providers: [ContainerList, StatsFeed],
   templateUrl: "./containers-view.html",
   styleUrl: "./containers-view.css",
 })
@@ -64,6 +65,7 @@ export class ContainersView {
   protected readonly list = inject(ContainerList);
   private readonly endpoints = inject(EndpointStore);
   private readonly shell = inject(ShellService);
+  protected readonly stats = inject(StatsFeed);
 
   protected readonly columns = COLUMNS;
   protected readonly filter = signal("");
@@ -86,6 +88,21 @@ export class ContainersView {
       this.sortKey(),
       this.sortDirection(),
     ),
+  );
+
+  /** Whether the CPU and memory columns are shown; they need one stats stream per running container. */
+  protected readonly showStats = signal(false);
+  /** Ids of the running containers in the list; empty while the columns are hidden. */
+  private readonly statsIds = computed<ReadonlySet<string>>(
+    () =>
+      new Set(
+        this.showStats()
+          ? this.visible()
+              .filter((c) => c.state === "running")
+              .map((c) => c.id)
+          : [],
+      ),
+    { equal: (a, b) => a.size === b.size && [...a].every((id) => b.has(id)) },
   );
 
   protected readonly actionKinds = ACTION_KINDS;
@@ -115,6 +132,11 @@ export class ContainersView {
       const endpoint = this.endpoint();
       if (endpoint) untracked(() => this.list.start(endpoint));
     });
+    effect(() => {
+      const endpoint = this.endpoint();
+      const ids = this.statsIds();
+      untracked(() => (endpoint ? this.stats.track(endpoint, ids) : this.stats.clear()));
+    });
   }
 
   protected sort(key: SortKey): void {
@@ -129,6 +151,20 @@ export class ContainersView {
   protected ariaSort(key: SortKey): "ascending" | "descending" | "none" {
     if (this.sortKey() !== key) return "none";
     return this.sortDirection() === "asc" ? "ascending" : "descending";
+  }
+
+  protected setShowStats(event: Event): void {
+    this.showStats.set((event.target as HTMLInputElement).checked);
+  }
+
+  protected cpu(container: Container): string {
+    const sample = this.stats.samples().get(container.id);
+    return sample ? formatPercent(sample.cpuPercent) : "–";
+  }
+
+  protected memory(container: Container): string {
+    const sample = this.stats.samples().get(container.id);
+    return sample ? formatMemory(sample) : "–";
   }
 
   protected setFilter(event: Event): void {

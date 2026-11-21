@@ -45,6 +45,8 @@ export type ComposeProject = {
 	name: string,
 	workingDir: string | null,
 	configFiles: string[],
+	/**  An env file for variable substitution (`--env-file`); only set for a new deployment. */
+	envFile?: string | null,
 };
 
 /**  One row of the container list. */

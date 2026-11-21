@@ -1,3 +1,6 @@
+@if (deploying() && endpoint(); as target) {
+<app-stack-deploy [endpoint]="target" (closed)="endDeploy($event)" />
+} @else {
 <section class="stacks" aria-labelledby="stacks-title">
   @if (detail(); as stack) {
   <header class="head">
@@ -103,6 +106,9 @@
   } } @else {
   <header class="head">
     <h1 id="stacks-title">Stacks</h1>
+    <button hx-button type="button" [disabled]="!endpoint()" (click)="startDeploy()">
+      Deploy a stack…
+    </button>
   </header>
   @if (problem(); as text) {
   <hx-message severity="error" role="alert">
@@ -148,3 +154,4 @@
   </div>
   } }
 </section>
+}

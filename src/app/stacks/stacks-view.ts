@@ -26,6 +26,7 @@ import {
   serviceCount,
   stackSummary,
 } from "../core/stacks";
+import { StackDeploy } from "./stack-deploy";
 
 /**
  * The Stacks view: the Compose projects of the active endpoint. The stacks are read again whenever
@@ -34,7 +35,7 @@ import {
 @Component({
   selector: "app-stacks-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HxButton, HxMessage, HxTable],
+  imports: [HxButton, HxMessage, HxTable, StackDeploy],
   providers: [ContainerList],
   templateUrl: "./stacks-view.html",
   styleUrl: "./stacks-view.css",
@@ -44,7 +45,7 @@ export class StacksView {
   private readonly endpoints = inject(EndpointStore);
   private readonly shell = inject(ShellService);
 
-  private readonly endpoint = computed(() => this.endpoints.active()?.endpoint ?? null, {
+  protected readonly endpoint = computed(() => this.endpoints.active()?.endpoint ?? null, {
     equal: (a, b) => a?.address === b?.address,
   });
 
@@ -71,6 +72,9 @@ export class StacksView {
   });
 
   private requests = 0;
+
+  /** True while the form for a new deployment is shown instead of the list. */
+  protected readonly deploying = signal(false);
 
   protected readonly actions = COMPOSE_ACTIONS;
   /** Whether `docker compose` can act on the selected stack; null while it is being checked. */
@@ -222,6 +226,15 @@ export class StacksView {
   protected open(event: Event, stack: Stack): void {
     event.preventDefault();
     this.selectedName.set(stack.name);
+  }
+
+  protected startDeploy(): void {
+    this.deploying.set(true);
+  }
+
+  protected endDeploy(result: { deployed: boolean }): void {
+    this.deploying.set(false);
+    if (result.deployed) void this.refresh();
   }
 
   protected back(): void {

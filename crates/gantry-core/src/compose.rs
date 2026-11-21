@@ -41,6 +41,9 @@ pub struct ComposeProject {
     pub name: String,
     pub working_dir: Option<String>,
     pub config_files: Vec<String>,
+    /// An env file for variable substitution (`--env-file`); only set for a new deployment.
+    #[serde(default)]
+    pub env_file: Option<String>,
 }
 
 /// A `docker` invocation: arguments and the environment that points it at an engine.
@@ -126,6 +129,10 @@ pub fn build_command(
     for file in &project.config_files {
         args.push("-f".to_owned());
         args.push(file.clone());
+    }
+    if let Some(env_file) = project.env_file.as_deref().filter(|f| !f.is_empty()) {
+        args.push("--env-file".to_owned());
+        args.push(env_file.to_owned());
     }
     args.push("--project-directory".to_owned());
     args.push(dir.to_owned());
@@ -324,6 +331,86 @@ pub async fn run_command(
     Ok(())
 }
 
+/// The largest Compose file the preview reads.
+const PREVIEW_LIMIT: u64 = 1024 * 1024;
+
+/// Whether `name` is a valid Compose project name: lowercase letters, digits, `-` and `_`, starting
+/// with a letter or digit.
+pub fn is_valid_project_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    chars
+        .next()
+        .is_some_and(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+        && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_')
+}
+
+/// The project name Compose would pick for `compose_file`: the name of its directory, lowercased,
+/// without characters Compose does not allow. Empty when nothing is left.
+pub fn default_project_name(compose_file: &str) -> String {
+    let dir = Path::new(compose_file)
+        .parent()
+        .and_then(Path::file_name)
+        .map(|n| n.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+    let cleaned: String = dir
+        .chars()
+        .filter(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || *c == '-' || *c == '_')
+        .collect();
+    cleaned.trim_start_matches(['-', '_']).to_owned()
+}
+
+/// Reads a Compose file for the read-only preview. Fails for anything but a regular file of at most
+/// 1 MiB, so the command cannot be used to read arbitrary large or special files.
+pub fn preview_compose_file(path: &str) -> Result<String> {
+    let meta = std::fs::metadata(path).map_err(|e| invalid(format!("Cannot read {path}: {e}")))?;
+    if !meta.is_file() {
+        return Err(invalid(format!("{path} is not a file")));
+    }
+    if meta.len() > PREVIEW_LIMIT {
+        return Err(invalid(format!("{path} is larger than 1 MiB")));
+    }
+    let bytes = std::fs::read(path).map_err(|e| invalid(format!("Cannot read {path}: {e}")))?;
+    String::from_utf8(bytes).map_err(|_| invalid(format!("{path} is not a text file")))
+}
+
+/// Builds the project of a new deployment from a Compose file, an optional env file and a project
+/// name (the default name when `name` is blank). Both files must exist.
+pub fn deploy_project(
+    compose_file: &str,
+    env_file: Option<&str>,
+    name: &str,
+) -> Result<ComposeProject> {
+    let file = Path::new(compose_file);
+    if !file.is_file() {
+        return Err(invalid(format!("{compose_file} is not a file")));
+    }
+    let env_file = env_file.map(str::trim).filter(|f| !f.is_empty());
+    if let Some(env) = env_file
+        && !Path::new(env).is_file()
+    {
+        return Err(invalid(format!("{env} is not a file")));
+    }
+    let name = match name.trim() {
+        "" => default_project_name(compose_file),
+        given => given.to_owned(),
+    };
+    if !is_valid_project_name(&name) {
+        return Err(invalid(format!(
+            "\"{name}\" is not a valid project name: use lowercase letters, digits, - and _"
+        )));
+    }
+    let dir = file
+        .parent()
+        .filter(|d| !d.as_os_str().is_empty())
+        .map_or_else(|| ".".to_owned(), |d| d.to_string_lossy().into_owned());
+    Ok(ComposeProject {
+        name,
+        working_dir: Some(dir),
+        config_files: vec![compose_file.to_owned()],
+        env_file: env_file.map(str::to_owned),
+    })
+}
+
 /// Performs `action` on `project` at `endpoint` and streams the output of the CLI.
 pub async fn run_compose(
     endpoint: &Endpoint,
@@ -351,6 +438,7 @@ mod tests {
                 "/srv/shop/compose.yml".to_owned(),
                 "/srv/shop/o.yml".to_owned(),
             ],
+            env_file: None,
         }
     }
 
@@ -480,6 +568,62 @@ mod tests {
         let mut unlabeled = project();
         unlabeled.config_files.clear();
         assert!(!availability_of(&ok, &unlabeled, |_| true).available);
+    }
+
+    #[test]
+    fn an_env_file_is_passed_before_the_subcommand() {
+        let mut p = project();
+        p.env_file = Some("/srv/shop/.env.prod".to_owned());
+        let args = build_command(&local(), &p, ComposeAction::Up).unwrap().args;
+        let at = args.iter().position(|a| a == "--env-file").unwrap();
+        assert_eq!(args[at + 1], "/srv/shop/.env.prod");
+        assert!(at < args.iter().position(|a| a == "up").unwrap());
+        assert!(!self::args(ComposeAction::Up).contains(&"--env-file".to_owned()));
+    }
+
+    #[test]
+    fn project_names_follow_the_compose_rules() {
+        assert!(is_valid_project_name("shop-2_a"));
+        for bad in ["", "Shop", "-shop", "a b", "a.b"] {
+            assert!(!is_valid_project_name(bad), "{bad}");
+        }
+        assert_eq!(
+            default_project_name("/srv/My Shop.v2/compose.yml"),
+            "myshopv2"
+        );
+        assert_eq!(default_project_name("/srv/_x/compose.yml"), "x");
+        assert_eq!(default_project_name("compose.yml"), "");
+    }
+
+    #[test]
+    fn a_deployment_is_built_from_the_files() {
+        let dir = std::env::temp_dir().join(format!("gantry-deploy-{}", std::process::id()));
+        let shop = dir.join("My-Shop");
+        std::fs::create_dir_all(&shop).unwrap();
+        let file = shop.join("compose.yml");
+        let env = shop.join(".env");
+        std::fs::write(&file, "services:\n  web:\n    image: nginx\n").unwrap();
+        std::fs::write(&env, "A=1\n").unwrap();
+        let (file, env) = (file.to_str().unwrap(), env.to_str().unwrap());
+
+        let p = deploy_project(file, Some(env), "  ").unwrap();
+        assert_eq!(p.name, "my-shop");
+        assert_eq!(p.config_files, [file]);
+        assert_eq!(p.env_file.as_deref(), Some(env));
+        assert_eq!(p.working_dir.as_deref(), shop.to_str());
+        assert_eq!(
+            deploy_project(file, Some(" "), "blog").unwrap().env_file,
+            None
+        );
+
+        assert!(deploy_project(file, None, "Bad Name").is_err());
+        assert!(deploy_project(file, Some("/no/such/.env"), "x").is_err());
+        assert!(deploy_project("/no/such/compose.yml", None, "x").is_err());
+
+        assert!(preview_compose_file(file).unwrap().contains("nginx"));
+        assert!(preview_compose_file(shop.to_str().unwrap()).is_err());
+        assert!(preview_compose_file("/no/such/file").is_err());
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

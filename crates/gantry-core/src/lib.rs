@@ -18,7 +18,8 @@ mod stats;
 
 pub use compose::{
     ComposeAction, ComposeAvailability, ComposeCommand, ComposeEvent, ComposeProject, PluginProbe,
-    availability_of, build_command, check_compose, run_command, run_compose,
+    availability_of, build_command, check_compose, default_project_name, deploy_project,
+    is_valid_project_name, preview_compose_file, run_command, run_compose,
 };
 pub use containers::{
     ActionEvent, ActionTarget, Container, ContainerAction, ContainerActions, ContainerDetails,

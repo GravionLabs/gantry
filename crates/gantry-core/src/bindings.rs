@@ -9,8 +9,8 @@ use specta_typescript::Typescript;
 use crate::{
     ActionEvent, ActionTarget, Container, ContainerAction, ContainerDetails, ContainerHealth,
     ContainerState, ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EndpointKind,
-    EngineInfo, EngineStatus, EnvVar, ErrorKind, ErrorPayload, Label, MountInfo, NetworkAttachment,
-    PortMapping, RestartPolicy, TlsFiles,
+    EngineInfo, EngineStatus, EnvVar, ErrorKind, ErrorPayload, Label, LogEvent, LogLine,
+    LogOptions, LogStream, MountInfo, NetworkAttachment, PortMapping, RestartPolicy, TlsFiles,
 };
 
 /// All types exposed to the frontend.
@@ -34,6 +34,10 @@ pub fn ipc_types() -> Types {
         .register::<EnvVar>()
         .register::<ErrorPayload>()
         .register::<Label>()
+        .register::<LogEvent>()
+        .register::<LogLine>()
+        .register::<LogOptions>()
+        .register::<LogStream>()
         .register::<MountInfo>()
         .register::<NetworkAttachment>()
         .register::<PortMapping>()

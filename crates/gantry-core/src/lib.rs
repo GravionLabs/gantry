@@ -10,6 +10,7 @@ mod detect;
 mod endpoint;
 mod engine;
 mod error;
+mod logs;
 mod ssh;
 
 pub use containers::{
@@ -29,4 +30,5 @@ pub use detect::{
 pub use endpoint::{Endpoint, EndpointKind, TlsFiles};
 pub use engine::{Connections, EngineInfo, connect, ping};
 pub use error::{Error, ErrorKind, ErrorPayload, Result};
+pub use logs::{LogBatching, LogEvent, LogLine, LogOptions, LogStream, stream_logs};
 pub use ssh::SshTarget;

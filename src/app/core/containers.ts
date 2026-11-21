@@ -7,6 +7,9 @@ import type {
   ContainerState,
   ContainerWatchEvent,
   Endpoint,
+  LogEvent,
+  LogLine,
+  LogOptions,
 } from "./bindings";
 import { invoke, stream } from "./invoke";
 
@@ -42,6 +45,41 @@ export function watchContainers(
       if (!stopped) onEvent(event);
     },
     { endpoint, watchId },
+  ).then(
+    () => {
+      if (!stopped) onEnd(null);
+    },
+    (error: unknown) => {
+      if (!stopped) onEnd(error);
+    },
+  );
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    void invoke("containers_unwatch", { watchId }).catch(() => {});
+  };
+}
+
+/**
+ * Streams the logs of a container: lines arrive in batches. `onEnd` runs when the stream ends on
+ * its own (not following, or an error such as a missing container). A followed log runs until the
+ * returned function stops it.
+ */
+export function streamContainerLogs(
+  endpoint: Endpoint,
+  id: string,
+  options: LogOptions,
+  onLines: (lines: LogLine[]) => void,
+  onEnd: (error: unknown) => void,
+): () => void {
+  const watchId = crypto.randomUUID();
+  let stopped = false;
+  stream<LogEvent>(
+    "containers_logs",
+    (event) => {
+      if (!stopped && event.type === "lines") onLines(event.lines);
+    },
+    { endpoint, id, options, watchId },
   ).then(
     () => {
       if (!stopped) onEnd(null);

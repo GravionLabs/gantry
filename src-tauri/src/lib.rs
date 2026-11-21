@@ -4,8 +4,8 @@
 
 use gantry_core::{
     ActionEvent, ActionTarget, Connections, Container, ContainerAction, ContainerDetails,
-    ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EngineInfo, TlsFiles, WatchTiming,
-    Watches,
+    ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EngineInfo, LogEvent, LogOptions,
+    TlsFiles, WatchTiming, Watches,
 };
 use tauri::ipc::Channel;
 use tauri::{Manager, RunEvent};
@@ -119,6 +119,28 @@ async fn containers_action(
     .await)
 }
 
+/// Streams the logs of a container through `on_event` until they end or `containers_unwatch`
+/// stops the stream `watch_id` (a followed log ends only that way).
+#[tauri::command]
+async fn containers_logs(
+    connections: tauri::State<'_, Connections>,
+    watches: tauri::State<'_, Watches>,
+    endpoint: Endpoint,
+    id: String,
+    options: LogOptions,
+    watch_id: String,
+    on_event: Channel<LogEvent>,
+) -> Result<(), gantry_core::Error> {
+    let docker = connections.activate(&endpoint)?;
+    let cancel = watches.register(&watch_id);
+    let result = gantry_core::stream_logs(&docker, &id, &options, &cancel, |event| {
+        let _ = on_event.send(event);
+    })
+    .await;
+    watches.finish(&watch_id);
+    result
+}
+
 /// Opens `http://localhost:<port>` in the default browser. Only the port comes from the UI, so
 /// the command cannot be used to open another address.
 #[tauri::command]
@@ -146,6 +168,7 @@ pub fn run() {
             containers_watch,
             containers_unwatch,
             containers_action,
+            containers_logs,
             open_local_port
         ])
         .build(tauri::generate_context!())

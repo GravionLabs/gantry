@@ -171,6 +171,32 @@ export type Label = {
 	value: string,
 };
 
+/**  What a log stream sends to the frontend. */
+export type LogEvent = 
+/**  Lines in the order they were written. Lines are batched to keep the IPC cheap. */
+{ type: "lines"; lines: LogLine[] };
+
+/**  One line of output, without its line break. */
+export type LogLine = {
+	stream: LogStream,
+	text: string,
+};
+
+/**  Which options `docker logs` is started with. */
+export type LogOptions = {
+	/**  Keep the stream open and send new lines as they are written. */
+	follow: boolean,
+	/**  Only the last lines; all lines when unset. */
+	tail: number | null,
+	/**  Only lines since this time, in seconds since the Unix epoch. */
+	since: number | null,
+	/**  Prefix every line with its RFC 3339 timestamp. */
+	timestamps: boolean,
+};
+
+/**  The output stream a line was written to. */
+export type LogStream = "stdout" | "stderr";
+
 /**  A mount of a container. */
 export type MountInfo = {
 	/**  `bind`, `volume`, `tmpfs`, ... */

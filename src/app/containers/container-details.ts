@@ -24,11 +24,20 @@ import { EndpointStore } from "../core/endpoint-store";
 import { toGantryError } from "../core/invoke";
 import { ShellService } from "../core/shell/shell.service";
 import { isViewAvailable } from "../core/shell/views";
+import { ContainerLogs } from "./container-logs";
 
-export type DetailTab = "overview" | "environment" | "mounts" | "networks" | "labels" | "raw";
+export type DetailTab =
+  | "overview"
+  | "logs"
+  | "environment"
+  | "mounts"
+  | "networks"
+  | "labels"
+  | "raw";
 
 const TABS: readonly { readonly id: DetailTab; readonly label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "logs", label: "Logs" },
   { id: "environment", label: "Environment" },
   { id: "mounts", label: "Mounts" },
   { id: "networks", label: "Networks" },
@@ -43,7 +52,7 @@ export type DetailsPhase = "loading" | "ready" | "notFound" | "error";
 @Component({
   selector: "app-container-details",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HxButton, HxMessage],
+  imports: [ContainerLogs, HxButton, HxMessage],
   templateUrl: "./container-details.html",
   styleUrl: "./container-details.css",
 })
@@ -63,7 +72,7 @@ export class ContainerDetailsView {
   protected readonly revealed = signal<ReadonlySet<string>>(new Set());
   protected readonly revealAll = signal(false);
 
-  private readonly endpoint = computed<Endpoint | null>(
+  protected readonly endpoint = computed<Endpoint | null>(
     () => this.endpoints.active()?.endpoint ?? null,
     { equal: (a, b) => a?.address === b?.address },
   );

@@ -22,7 +22,18 @@
 }
 .filters {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
+}
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .state {
   margin: 2rem 0;

@@ -10,7 +10,8 @@ use crate::{
     ActionEvent, ActionTarget, Container, ContainerAction, ContainerDetails, ContainerHealth,
     ContainerState, ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EndpointKind,
     EngineInfo, EngineStatus, EnvVar, ErrorKind, ErrorPayload, Label, LogEvent, LogLine,
-    LogOptions, LogStream, MountInfo, NetworkAttachment, PortMapping, RestartPolicy, TlsFiles,
+    LogOptions, LogStream, MountInfo, NetworkAttachment, PortMapping, RestartPolicy, StatsEvent,
+    StatsSample, TlsFiles,
 };
 
 /// All types exposed to the frontend.
@@ -42,6 +43,8 @@ pub fn ipc_types() -> Types {
         .register::<NetworkAttachment>()
         .register::<PortMapping>()
         .register::<RestartPolicy>()
+        .register::<StatsEvent>()
+        .register::<StatsSample>()
         .register::<TlsFiles>()
 }
 

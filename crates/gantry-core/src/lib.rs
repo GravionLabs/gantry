@@ -12,6 +12,7 @@ mod engine;
 mod error;
 mod logs;
 mod ssh;
+mod stats;
 
 pub use containers::{
     ActionEvent, ActionTarget, Container, ContainerAction, ContainerActions, ContainerDetails,
@@ -32,3 +33,4 @@ pub use engine::{Connections, EngineInfo, connect, ping};
 pub use error::{Error, ErrorKind, ErrorPayload, Result};
 pub use logs::{LogBatching, LogEvent, LogLine, LogOptions, LogStream, stream_logs};
 pub use ssh::SshTarget;
+pub use stats::{StatsEvent, StatsSample, sample_of, stream_stats};

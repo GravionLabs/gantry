@@ -237,6 +237,29 @@ export type RestartPolicy = {
 	maxRetries: number,
 };
 
+/**  What a stats stream sends to the frontend. */
+export type StatsEvent = 
+/**  The latest reading; the engine sends about one per second. */
+{ type: "sample"; sample: StatsSample };
+
+/**  One reading of a container's resource use, computed like `docker stats`. */
+export type StatsSample = {
+	/**  CPU use in percent of one core, so it exceeds 100 on a container using several cores. */
+	cpuPercent: number | null,
+	/**  Memory in use in bytes, without the page cache that can be reclaimed. */
+	memoryUsage: number | null,
+	/**  Memory limit in bytes; 0 when the engine reports none. */
+	memoryLimit: number | null,
+	/**  Bytes received over all network interfaces since the container started. */
+	networkRx: number | null,
+	/**  Bytes sent over all network interfaces since the container started. */
+	networkTx: number | null,
+	/**  Bytes read from block devices since the container started. */
+	blockRead: number | null,
+	/**  Bytes written to block devices since the container started. */
+	blockWrite: number | null,
+};
+
 /**  Client certificates for a TLS-secured TCP endpoint (Docker's `ca.pem`, `cert.pem`, `key.pem`). */
 export type TlsFiles = {
 	ca: string,

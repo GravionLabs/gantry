@@ -220,6 +220,24 @@ export type ExecOptions = {
 	rows: number,
 };
 
+/**  One row of the image list: an image under one of its tags, or an untagged (dangling) image. */
+export type Image = {
+	/**  The full image ID, e.g. `sha256:…`. */
+	id: string,
+	/**  `repository:tag`; absent for a dangling image. */
+	reference: string | null,
+	repository: string | null,
+	tag: string | null,
+	/**  Size in bytes, including layers shared with other images. */
+	size: number | null,
+	/**  Creation time in seconds since the Unix epoch. */
+	created: number,
+	/**  The number of containers (in any state) created from the image. */
+	containers: number,
+	/**  True for an image that has no tag; `docker image prune` removes it. */
+	dangling: boolean,
+};
+
 /**  A label of the container. */
 export type Label = {
 	key: string,
@@ -282,6 +300,29 @@ export type PortMapping = {
 	publicPort: number | null,
 	/**  `tcp`, `udp` or `sctp`. */
 	protocol: string,
+};
+
+/**  What a prune removed. */
+export type PruneOutcome = {
+	/**  The number of images (tags or layers) the engine deleted or untagged. */
+	removed: number,
+	/**  The disk space that was freed, in bytes. */
+	reclaimed: number | null,
+};
+
+/**  Progress of a pull. */
+export type PullEvent = 
+/**  A status line of the pull (`Pulling from library/nginx`, `Digest: …`, `Status: …`). */
+{ type: "status"; message: string } | 
+/**  The state of one layer; `current` and `total` are bytes and only known while it transfers. */
+{ type: "layer"; id: string; status: string; current: number | null; total: number | null };
+
+/**  What removing an image did. */
+export type RemoveOutcome = {
+	/**  The tags that were removed from the image. */
+	untagged: string[],
+	/**  The IDs of the layers that were deleted. */
+	deleted: string[],
 };
 
 /**  A restart policy, e.g. `on-failure` with at most 3 retries. */

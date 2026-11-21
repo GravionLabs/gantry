@@ -28,6 +28,7 @@ import { engineVersionLabel, requiresEndpoint } from "./core/shell/views";
 import { ContainerDetailsView } from "./containers/container-details";
 import { ContainersView } from "./containers/containers-view";
 import { UpdateService } from "./core/updater/update.service";
+import { ImagesView } from "./images/images-view";
 import { StacksView } from "./stacks/stacks-view";
 import { EndpointsView } from "./endpoints/endpoints-view";
 
@@ -54,6 +55,7 @@ export class NavIconDirective {
     EndpointsView,
     ContainersView,
     StacksView,
+    ImagesView,
     ContainerDetailsView,
   ],
   templateUrl: "./app.html",

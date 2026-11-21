@@ -78,6 +78,8 @@
       <app-containers-view />
       } } } @else if (shell.activeId() === 'stacks') { @defer (on immediate) {
       <app-stacks-view />
+      } } @else if (shell.activeId() === 'images') { @defer (on immediate) {
+      <app-images-view />
       } } @else {
       <section class="empty" role="region" [attr.aria-label]="shell.activeView().label">
         <img src="favicon.svg" alt="" width="64" height="64" />

@@ -34,6 +34,7 @@ import {
   runContainerAction,
   sortContainers,
   stateLabel,
+  streamContainerLogs,
   watchContainers,
 } from "./containers";
 
@@ -312,5 +313,59 @@ describe("container details", () => {
     expect(JSON.parse(masked).Config.Env[2]).toBe("NOEQ");
     expect(rawJson(raw, true)).toBe(raw);
     expect(rawJson("not json", false)).toBe("not json");
+  });
+});
+
+describe("streamContainerLogs", () => {
+  beforeEach(() => {
+    tauri.invoke.mockReset();
+    tauri.channels.length = 0;
+  });
+
+  const options = { follow: true, tail: 100, since: null, timestamps: false };
+
+  it("forwards line batches and stops with the same watch id", async () => {
+    tauri.invoke.mockImplementation((command: string) =>
+      command === "containers_logs" ? new Promise<void>(() => {}) : Promise.resolve(),
+    );
+    const batches: unknown[] = [];
+    const onEnd = vi.fn();
+    const stop = streamContainerLogs(
+      endpoint("unix", "unix:///x.sock"),
+      "abc",
+      options,
+      (lines) => batches.push(lines),
+      onEnd,
+    );
+    const [command, args] = tauri.invoke.mock.calls[0];
+    expect(command).toBe("containers_logs");
+    expect(args).toMatchObject({ id: "abc", options, watchId: expect.any(String) });
+
+    const lines = [{ stream: "stdout", text: "hi" }];
+    tauri.channels[0].onmessage({ type: "lines", lines });
+    expect(batches).toEqual([lines]);
+
+    stop();
+    stop();
+    const unwatch = tauri.invoke.mock.calls.filter(([c]) => c === "containers_unwatch");
+    expect(unwatch).toEqual([["containers_unwatch", { watchId: args.watchId }]]);
+    tauri.channels[0].onmessage({ type: "lines", lines });
+    expect(batches).toHaveLength(1);
+    expect(onEnd).not.toHaveBeenCalled();
+  });
+
+  it("reports the end and a failure", async () => {
+    tauri.invoke.mockResolvedValueOnce(undefined);
+    const onEnd = vi.fn();
+    streamContainerLogs(endpoint("unix", "u"), "a", options, () => {}, onEnd);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(onEnd).toHaveBeenCalledWith(null);
+
+    tauri.invoke.mockRejectedValueOnce({ kind: "notFound", message: "gone" });
+    const onEnd2 = vi.fn();
+    streamContainerLogs(endpoint("unix", "u"), "a", options, () => {}, onEnd2);
+    await new Promise((r) => setTimeout(r));
+    expect(onEnd2).toHaveBeenCalledWith(expect.objectContaining({ kind: "notFound" }));
   });
 });

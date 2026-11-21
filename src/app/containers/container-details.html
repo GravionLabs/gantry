@@ -81,7 +81,9 @@
         } @else { {{ project }} } } @else { – }
       </dd>
     </dl>
-    } @case ('environment') {
+    } @case ('logs') { @if (endpoint(); as ep) {
+    <app-container-logs [endpoint]="ep" [containerId]="d.id" [containerName]="d.name" />
+    } } @case ('environment') {
     <div class="toolbar">
       <button hx-button variant="outlined" type="button" (click)="toggleRevealAll()">
         {{ revealAll() ? 'Hide all values' : 'Reveal all values' }}

@@ -2,22 +2,13 @@
   display: block;
   height: 100vh;
 }
-.sidebar {
-  padding: 0.75rem;
-}
-.sidebar h2 {
-  margin: 0;
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--h-text-muted-color);
-}
 .content {
   display: grid;
-  place-content: center;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   height: 100%;
 }
 .empty {
+  place-self: center;
   display: grid;
   justify-items: center;
   gap: 0.5rem;

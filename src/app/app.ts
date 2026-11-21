@@ -117,7 +117,6 @@ export class App implements OnInit {
 
   protected manage(): void {
     this.shell.activeId.set("endpoints");
-    this.shell.collapsed.set(false);
     this.switcherOpen.set(false);
   }
 }

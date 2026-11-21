@@ -32,12 +32,19 @@ describe("ShellService container route", () => {
     expect(s.path()).toBe("/containers");
   });
 
-  it("selecting the containers view on a detail page returns to the list and keeps the sidebar", () => {
+  it("selecting the containers view on a detail page returns to the list", () => {
     const s = shell();
     s.openContainer("abc");
     s.select("containers");
     expect(s.containerId()).toBeNull();
-    expect(s.collapsed()).toBe(false);
+    expect(s.activeId()).toBe("containers");
+  });
+
+  it("selecting the active view again keeps it active", () => {
+    const s = shell();
+    s.select("stacks");
+    s.select("stacks");
+    expect(s.activeId()).toBe("stacks");
   });
 
   it("leaves the details when another view is selected", () => {

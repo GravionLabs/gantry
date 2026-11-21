@@ -45,23 +45,15 @@
     /></svg
 ></ng-template>
 
-<hx-app-shell
-  [(sidebarWidth)]="shell.sidebarWidth"
-  [(collapsed)]="shell.collapsed"
-  [(activeId)]="shell.activeId"
->
+<hx-app-shell [collapsed]="true" [activeId]="shell.activeId()">
   <hx-activity-bar
     slot="activity"
     label="Views"
     [items]="barItems()"
     [activeId]="shell.activeId()"
-    [expanded]="!shell.collapsed()"
+    [expanded]="true"
     (selected)="shell.select($event)"
   />
-
-  <nav slot="sidebar" class="sidebar" [attr.aria-label]="shell.activeView().label">
-    <h2>{{ shell.activeView().label }}</h2>
-  </nav>
 
   <main class="content">
     @for (generation of [endpoints.generation()]; track generation) { @if (shell.activeId() ===
@@ -81,10 +73,12 @@
     } @else if (shell.activeId() === 'containers') { @if (shell.containerId(); as id) {
     <app-container-details [id]="id" />
     } @else {
+    <!-- The lists load AG Grid in a chunk of their own, out of the initial bundle. -->
+    @defer (on immediate) {
     <app-containers-view />
-    } } @else if (shell.activeId() === 'stacks') {
+    } } } @else if (shell.activeId() === 'stacks') { @defer (on immediate) {
     <app-stacks-view />
-    } @else {
+    } } @else {
     <section class="empty" role="region" [attr.aria-label]="shell.activeView().label">
       <img src="favicon.svg" alt="" width="64" height="64" />
       <h1>{{ shell.activeView().label }}</h1>

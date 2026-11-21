@@ -16,3 +16,6 @@
 .notice.error {
   color: #e5534b;
 }
+:host([hidden]) {
+  display: none;
+}

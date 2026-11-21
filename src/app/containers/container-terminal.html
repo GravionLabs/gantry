@@ -1,0 +1,81 @@
+<section class="terminals" aria-label="Terminals">
+  @if (!running()) {
+  <hx-message severity="warn" role="status">
+    The container is not running. Start it to open a terminal.
+  </hx-message>
+  }
+  <div class="options">
+    <label>
+      Shell
+      <select [value]="shell()" (change)="setShell($any($event.target).value)">
+        @for (s of shells; track s.id) {
+        <option [value]="s.id" [selected]="s.id === shell()">{{ s.label }}</option>
+        }
+      </select>
+    </label>
+    @if (shell() === 'custom') {
+    <label>
+      Command
+      <input
+        type="text"
+        class="command mono"
+        placeholder="/bin/zsh -l"
+        [value]="custom()"
+        (input)="custom.set($any($event.target).value)"
+        (keydown)="onCustomKey($event)"
+      />
+    </label>
+    }
+    <label>
+      User
+      <input
+        type="text"
+        class="user"
+        placeholder="container default"
+        [value]="user()"
+        (input)="user.set($any($event.target).value)"
+        (keydown)="onCustomKey($event)"
+      />
+    </label>
+    <button hx-button type="button" [disabled]="!running()" (click)="open()">Open terminal</button>
+  </div>
+  @if (problem(); as message) {
+  <hx-message severity="error" role="alert">{{ message }}</hx-message>
+  } @if (tabs().length) {
+  <div class="tabs" role="tablist" aria-label="Terminals">
+    @for (t of tabs(); track t.id) {
+    <span class="tab" [class.selected]="t.id === activeId()">
+      <button
+        type="button"
+        role="tab"
+        class="select"
+        [attr.aria-selected]="t.id === activeId()"
+        (click)="select(t.id)"
+      >
+        {{ t.title }}
+      </button>
+      <button
+        type="button"
+        class="close"
+        [attr.aria-label]="'Close ' + t.title + ' and end its process'"
+        (click)="close(t.id)"
+      >
+        ×
+      </button>
+    </span>
+    }
+  </div>
+  @for (t of tabs(); track t.id) {
+  <app-terminal-session
+    role="tabpanel"
+    [hidden]="t.id !== activeId()"
+    [active]="t.id === activeId()"
+    [endpoint]="endpoint()"
+    [containerId]="containerId()"
+    [command]="t.command"
+    [user]="t.user"
+  />
+  } } @else {
+  <p class="empty" role="status">No terminal open. Choose a shell and open one.</p>
+  }
+</section>

@@ -215,7 +215,14 @@
       </button>
     </div>
     <pre class="raw mono" tabindex="0" aria-label="Raw inspect JSON">{{ rawText() }}</pre>
-    } }
+    } } @if (terminalOpened() && endpoint(); as ep) {
+    <app-container-terminal
+      [hidden]="tab() !== 'terminal'"
+      [endpoint]="ep"
+      [containerId]="d.id"
+      [running]="d.state === 'running'"
+    />
+    }
   </div>
   } } }
 </section>

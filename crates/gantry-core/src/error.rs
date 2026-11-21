@@ -39,6 +39,8 @@ pub struct ErrorPayload {
 pub enum Error {
     #[error("invalid endpoint address: {0}")]
     InvalidAddress(String),
+    #[error("invalid request: {0}")]
+    InvalidInput(String),
     #[error("SSH error: {message}")]
     Ssh { kind: ErrorKind, message: String },
     #[error("Docker engine error: {0}")]
@@ -80,7 +82,7 @@ impl Error {
     /// Classifies the error for the UI.
     pub fn kind(&self) -> ErrorKind {
         match self {
-            Self::InvalidAddress(_) => ErrorKind::InvalidInput,
+            Self::InvalidAddress(_) | Self::InvalidInput(_) => ErrorKind::InvalidInput,
             Self::Ssh { kind, .. } => *kind,
             Self::Docker(error) => classify(error),
         }

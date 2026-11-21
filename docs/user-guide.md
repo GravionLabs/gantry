@@ -93,7 +93,9 @@ automatic detection for this setup. Reach the engine in one of two ways:
    `localhost` ports to Windows). Your user must be in the `docker` group inside the distribution. See
    [Remote hosts over SSH](#remote-hosts-over-ssh).
 2. **TCP on localhost.** Let `dockerd` also listen on `127.0.0.1:2375` (a `hosts` entry in
-   `/etc/docker/daemon.json`; with systemd also override `-H fd://` in the service unit) and add the endpoint
+   `/etc/docker/daemon.json`: `{"hosts": ["fd://", "tcp://127.0.0.1:2375"]}`; with systemd also drop `-H fd://` from
+   the `ExecStart` line through `sudo systemctl edit docker`, otherwise `dockerd` refuses to start because the
+   hosts are set twice) and add the endpoint
    `tcp://127.0.0.1:2375`. This port has **no authentication**: any program on the machine can control Docker.
    Never bind it to a non-loopback address without TLS.
 
@@ -140,7 +142,10 @@ The engine's socket exists but your user may not use it.
   `ssh user@host` in a terminal. Check the key and `IdentityFile` in `~/.ssh/config`.
 - **SSH endpoint, host key:** connect once with `ssh` in a terminal to verify and trust the host key. If the key
   changed legitimately, remove the old entry with `ssh-keygen -R host`.
-- **SSH endpoint, `permission denied` from Docker:** the remote user is not in the `docker` group.
+- **SSH endpoint, remote `docker` group:** a user who is not in the `docker` group on the host also shows up as
+  `authentication failed`, followed by Docker's text `permission denied while trying to connect to the Docker
+  daemon socket`. Read the text after the colon, or run `ssh user@host docker ps`; if that fails, add the user
+  to the `docker` group on the host.
 
 ### Engine not running
 
@@ -169,5 +174,8 @@ docker compose version
   `"cliPluginsExtraDirs": ["/opt/homebrew/lib/docker/cli-plugins"]` to `~/.docker/config.json`.
 - **Windows:** Docker Desktop includes it. For Docker CE in WSL2 install the Docker CLI with the plugin on
   Windows too (Docker Desktop's CLI or the `docker` and `docker-compose` binaries on `PATH`).
+- **Windows with Docker CE in WSL2:** Compose actions run the Windows `docker compose` on the stack's files, so
+  they work only for stacks whose Compose files are on Windows. Stacks whose files live inside WSL are shown
+  but must be managed from inside WSL.
 - A stack started without the Compose files on this machine (labels only, files elsewhere) cannot be managed
   from Gantry; use it from the host where the files live.

@@ -57,6 +57,19 @@ export class StacksView {
     () => this.stacks().find((s) => s.name === this.selectedName()) ?? null,
   );
 
+  private readonly lastStack = signal<Stack | null>(null);
+  /**
+   * The stack the detail shows. `down` removes the stack, so the last known state stays visible
+   * while a run is active or its outcome is unread.
+   */
+  protected readonly detail = computed(() => {
+    const current = this.selected();
+    if (current) return current;
+    const last = this.lastStack();
+    const busy = this.running() !== null || this.outcome() !== null;
+    return last && last.name === this.selectedName() && busy ? last : null;
+  });
+
   private requests = 0;
 
   protected readonly actions = COMPOSE_ACTIONS;
@@ -83,6 +96,10 @@ export class StacksView {
     effect(() => {
       this.list.containers();
       if (this.list.phase() === "ready") untracked(() => void this.refresh());
+    });
+    effect(() => {
+      const current = this.selected();
+      if (current) this.lastStack.set(current);
     });
     // Check the plugin and the files whenever another stack is opened.
     effect(() => {

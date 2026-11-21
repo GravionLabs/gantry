@@ -1,5 +1,5 @@
 <section class="stacks" aria-labelledby="stacks-title">
-  @if (selected(); as stack) {
+  @if (detail(); as stack) {
   <header class="head">
     <h1 id="stacks-title">{{ stack.name }}</h1>
     <button hx-button variant="outlined" type="button" (click)="back()">All stacks</button>

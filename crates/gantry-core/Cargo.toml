@@ -11,6 +11,7 @@ license.workspace = true
 
 [dependencies]
 bollard = { version = "0.21.1", features = ["ssl"] }
+futures-util = "0.3"
 hyper = { version = "1", features = ["client", "http1"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
 tower-service = "0.3"

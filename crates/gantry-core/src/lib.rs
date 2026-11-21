@@ -4,6 +4,7 @@
 //! without system libraries.
 
 pub mod bindings;
+mod containers;
 mod context;
 mod detect;
 mod endpoint;
@@ -11,6 +12,10 @@ mod engine;
 mod error;
 mod ssh;
 
+pub use containers::{
+    Container, ContainerHealth, ContainerSource, ContainerState, ContainerWatchEvent, PortMapping,
+    WatchTiming, Watches, list_containers, watch_containers,
+};
 pub use context::{
     ContextList, DEFAULT_CONTEXT, current_context, docker_config_dir, import_contexts,
     read_contexts,

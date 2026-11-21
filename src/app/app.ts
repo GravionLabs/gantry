@@ -25,6 +25,7 @@ import { HxButton } from "@gravionlabs/helix-ui";
 import { EndpointStore } from "./core/endpoint-store";
 import { HxStatusAppVersion, ShellService } from "./core/shell/shell.service";
 import { requiresEndpoint } from "./core/shell/views";
+import { ContainersView } from "./containers/containers-view";
 import { EndpointsView } from "./endpoints/endpoints-view";
 
 /** Marks the template of an activity bar icon with the icon name of the views registry. */
@@ -48,6 +49,7 @@ export class NavIconDirective {
     NavIconDirective,
     HxButton,
     EndpointsView,
+    ContainersView,
   ],
   templateUrl: "./app.html",
   styleUrl: "./app.css",

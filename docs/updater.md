@@ -2,7 +2,7 @@
 
 Gantry updates itself like Nixe with [`tauri-plugin-updater`](https://v2.tauri.app/plugin/updater/) from the latest
 GitHub release. This page covers the release side: signed update packages and `latest.json`. The in-app update
-flow is a separate change.
+flow is in the status bar (below).
 
 ## What a release contains
 
@@ -56,3 +56,20 @@ a new pair, replace `pubkey`, update both secrets, and announce the manual insta
    `releases/download/<tag>/`.
 4. Check the signature with the public key, then update the installed build through the updater once the in-app
    flow exists.
+
+## Use
+
+- The update item at the right of the status bar shows `Check for Updates…`; its popover has **Check for Updates…**
+  and the running version. A check runs **only** when you ask for it: not at startup and not on a timer.
+- If a newer version exists, the item shows `Update <version>`; the popover has the release notes and
+  **Install and restart**. The package is verified against `plugins.updater.pubkey` before it is installed.
+- An error names the failed step ("Check for updates failed", "Update failed"). After a failed install the update
+  stays known and **Retry install and restart** installs again without a new check.
+- An RC or dev build (`0.2.0-rc1`) shows no update item. A stable install ignores a pre-release answer.
+- `src-tauri/capabilities/desktop.json` grants `updater:default` and `process:allow-restart` on Linux, macOS and Windows.
+  The plugins are registered for desktop targets only.
+
+## Manual test of the first update
+
+Install an older build (with the real `pubkey`) on Linux, macOS and Windows, publish a release, then check, install and
+confirm the restart shows the new version. Not done in this change: it needs a signed release.

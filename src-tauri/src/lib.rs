@@ -221,7 +221,7 @@ async fn images_list(
 }
 
 /// Pulls `reference` and streams the progress per layer through `on_event` until it ends or
-/// `containers_unwatch` stops the pull `watch_id`.
+/// `containers_unwatch` stops the pull `watch_id`. Resolves with `false` when it was stopped.
 #[tauri::command]
 async fn images_pull(
     connections: tauri::State<'_, Connections>,
@@ -230,7 +230,7 @@ async fn images_pull(
     reference: String,
     watch_id: String,
     on_event: Channel<PullEvent>,
-) -> Result<(), gantry_core::Error> {
+) -> Result<bool, gantry_core::Error> {
     let docker = connections.activate(&endpoint)?;
     let cancel = watches.register(&watch_id);
     let result = gantry_core::pull_image(&docker, &reference, &cancel, |event| {

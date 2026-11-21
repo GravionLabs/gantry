@@ -24,16 +24,16 @@ export function pruneImages(endpoint: Endpoint, all: boolean): Promise<PruneOutc
 }
 
 /**
- * Pulls an image and streams the progress per layer. Resolves when the pull ends; the returned
- * `stop` ends it early.
+ * Pulls an image and streams the progress per layer. Resolves with `true` when the pull finished
+ * and `false` when `stop` ended it early.
  */
 export function pullImage(
   endpoint: Endpoint,
   reference: string,
   onEvent: (event: PullEvent) => void,
-): { done: Promise<void>; stop: () => void } {
+): { done: Promise<boolean>; stop: () => void } {
   const watchId = crypto.randomUUID();
-  const done = stream<PullEvent>("images_pull", onEvent, { endpoint, reference, watchId });
+  const done = stream<PullEvent, boolean>("images_pull", onEvent, { endpoint, reference, watchId });
   return { done, stop: () => void invoke("containers_unwatch", { watchId }).catch(() => {}) };
 }
 

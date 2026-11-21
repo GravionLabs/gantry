@@ -247,7 +247,9 @@ export class ImagesView {
     );
     this.stopPull = run.stop;
     run.done
-      .then(() => {
+      .then((finished) => {
+        if (!finished)
+          return this.result.set({ text: `Pull of ${reference} cancelled.`, failed: false });
         this.result.set({ text: `Pulled ${reference}.`, failed: false });
         this.reference.set("");
       })

@@ -164,19 +164,20 @@ pub enum PullEvent {
     },
 }
 
-/// Maps the engine's progress messages to events. A message with an error ends the pull.
+/// Maps the engine's progress messages to events. A message with an error ends the pull. Resolves
+/// with `false` when `cancel` ended it before the engine finished.
 async fn forward_pull(
     mut progress: impl Stream<Item = std::result::Result<CreateImageInfo, bollard::errors::Error>>
     + Unpin,
     cancel: &Notify,
     mut emit: impl FnMut(PullEvent),
-) -> Result<()> {
+) -> Result<bool> {
     loop {
         let next = tokio::select! {
-            () = cancel.notified() => return Ok(()),
+            () = cancel.notified() => return Ok(false),
             next = progress.next() => next,
         };
-        let Some(info) = next else { return Ok(()) };
+        let Some(info) = next else { return Ok(true) };
         let info = info?;
         if let Some(detail) = info.error_detail {
             return Err(pull_error(detail.message.unwrap_or_default()));
@@ -205,13 +206,13 @@ fn pull_error(message: String) -> Error {
 }
 
 /// Pulls `reference` and reports the progress per layer to `emit` until the pull ends or `cancel`
-/// is notified.
+/// is notified. Resolves with `true` when the pull finished and `false` when it was cancelled.
 pub async fn pull_image(
     docker: &Docker,
     reference: &str,
     cancel: &Notify,
     emit: impl FnMut(PullEvent),
-) -> Result<()> {
+) -> Result<bool> {
     let (name, tag) = split_reference(reference)?;
     let options = CreateImageOptionsBuilder::default()
         .from_image(&name)
@@ -391,7 +392,7 @@ mod tests {
 
     async fn pull(
         items: Vec<std::result::Result<CreateImageInfo, bollard::errors::Error>>,
-    ) -> (Vec<PullEvent>, Result<()>) {
+    ) -> (Vec<PullEvent>, Result<bool>) {
         let mut events = Vec::new();
         let cancel = Notify::new();
         let result = forward_pull(stream::iter(items), &cancel, |e| events.push(e)).await;
@@ -409,7 +410,7 @@ mod tests {
             Ok(info(None, "Status: Downloaded newer image", None)),
         ])
         .await;
-        result.unwrap();
+        assert!(result.unwrap());
         assert_eq!(events.len(), 5);
         assert_eq!(
             events[0],
@@ -461,6 +462,6 @@ mod tests {
         let cancel = Notify::new();
         cancel.notify_one();
         let result = forward_pull(stream::pending(), &cancel, |_| {}).await;
-        assert!(result.is_ok());
+        assert!(!result.unwrap(), "a cancelled pull is not a finished one");
     }
 }

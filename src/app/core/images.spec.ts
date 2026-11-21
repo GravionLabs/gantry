@@ -66,9 +66,9 @@ describe("image commands", () => {
   });
 
   it("pulls through images_pull with a channel and stops it by watch id", async () => {
-    tauri.invoke.mockResolvedValue(undefined);
+    tauri.invoke.mockResolvedValue(true);
     const run = pullImage(endpoint, "nginx", () => {});
-    await run.done;
+    await expect(run.done).resolves.toBe(true);
     const [command, args] = tauri.invoke.mock.calls[0];
     expect(command).toBe("images_pull");
     expect(args).toMatchObject({ endpoint, reference: "nginx" });

@@ -83,6 +83,8 @@
     </dl>
     } @case ('logs') { @if (endpoint(); as ep) {
     <app-container-logs [endpoint]="ep" [containerId]="d.id" [containerName]="d.name" />
+    } } @case ('stats') { @if (endpoint(); as ep) {
+    <app-container-stats [endpoint]="ep" [containerId]="d.id" [running]="d.state === 'running'" />
     } } @case ('environment') {
     <div class="toolbar">
       <button hx-button variant="outlined" type="button" (click)="toggleRevealAll()">

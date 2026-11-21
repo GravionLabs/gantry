@@ -19,6 +19,10 @@
         <option value="running">Running</option>
         <option value="exited">Exited</option>
       </select>
+      <label class="toggle">
+        <input type="checkbox" [checked]="showStats()" (change)="setShowStats($event)" />
+        CPU and memory
+      </label>
     </div>
   </header>
 
@@ -106,6 +110,9 @@
               }
             </button>
           </th>
+          } @if (showStats()) {
+          <th scope="col">CPU</th>
+          <th scope="col">Memory</th>
           }
         </tr>
       </thead>
@@ -153,6 +160,10 @@
           </td>
           <td><time [attr.datetime]="createdIso(container)">{{ created(container) }}</time></td>
           <td>{{ container.composeProject ?? '–' }}</td>
+          @if (showStats()) {
+          <td class="num">{{ cpu(container) }}</td>
+          <td class="num">{{ memory(container) }}</td>
+          }
         </tr>
         }
       </tbody>

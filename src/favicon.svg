@@ -1,33 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#22436b"/>
       <stop offset="1" stop-color="#0e1b2e"/>
     </linearGradient>
-    <linearGradient id="box" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#3cc7d4"/>
-      <stop offset="1" stop-color="#1d8fa0"/>
-    </linearGradient>
   </defs>
-  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
-  <!-- gantry frame -->
-  <polygon points="214,300 280,300 248,832 170,832" fill="#f2a900"/>
-  <polygon points="744,300 810,300 854,832 776,832" fill="#f2a900"/>
-  <rect x="150" y="226" width="724" height="84" rx="14" fill="#f7b928"/>
-  <rect x="150" y="294" width="724" height="16" fill="#c98a00"/>
-  <!-- trolley and cables -->
-  <rect x="440" y="310" width="144" height="46" rx="8" fill="#c98a00"/>
-  <rect x="468" y="356" width="14" height="128" fill="#d6dde6"/>
-  <rect x="542" y="356" width="14" height="128" fill="#d6dde6"/>
-  <rect x="380" y="476" width="264" height="26" rx="6" fill="#d6dde6"/>
-  <!-- container -->
-  <rect x="360" y="502" width="304" height="200" rx="14" fill="url(#box)"/>
-  <g stroke="#14707e" stroke-width="12" stroke-linecap="round">
-    <line x1="420" y1="538" x2="420" y2="666"/>
-    <line x1="481" y1="538" x2="481" y2="666"/>
-    <line x1="543" y1="538" x2="543" y2="666"/>
-    <line x1="604" y1="538" x2="604" y2="666"/>
-  </g>
-  <!-- ground -->
-  <rect x="130" y="832" width="764" height="22" rx="11" fill="#3a5578"/>
+
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- crane beam with its shaded lower edge and the trolley -->
+  <rect x="48" y="92" width="416" height="52" rx="12" fill="#f7b928"/>
+  <rect x="48" y="134" width="416" height="10" fill="#c98a00"/>
+  <rect x="310" y="144" width="84" height="24" rx="6" fill="#c98a00"/>
+
+  <!-- three running containers -->
+  <rect x="72" y="188" width="176" height="112" rx="17" fill="#3cc7d4"/>
+  <circle cx="107" cy="223" r="15" fill="#eafff4"/>
+  <rect x="264" y="188" width="176" height="112" rx="17" fill="#3cc7d4"/>
+  <circle cx="299" cy="223" r="15" fill="#eafff4"/>
+  <rect x="72" y="316" width="176" height="112" rx="17" fill="#3cc7d4"/>
+  <circle cx="107" cy="351" r="15" fill="#eafff4"/>
+
+  <!-- one stopped container -->
+  <rect x="264" y="316" width="176" height="112" rx="17" fill="#3a5578"/>
+  <circle cx="299" cy="351" r="15" fill="#6f86a6"/>
 </svg>

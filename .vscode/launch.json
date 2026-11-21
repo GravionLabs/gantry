@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Web app (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:1420",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "web: serve"
+    },
+    {
+      "name": "Tauri dev",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm tauri dev",
+      "linux": {
+        "command": "env -u GSETTINGS_SCHEMA_DIR -u GIO_MODULE_DIR -u GTK_PATH -u GTK_EXE_PREFIX -u GTK_IM_MODULE_FILE -u GDK_PIXBUF_MODULE_FILE -u GDK_PIXBUF_MODULEDIR -u LD_LIBRARY_PATH -u LOCPATH -u XDG_DATA_DIRS -u XDG_DATA_HOME pnpm tauri dev"
+      },
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

@@ -7,6 +7,12 @@
   --h-primary-contrast-color: #1a1300;
 }
 
+// The helix components size themselves in rem, so the root font size sets the density of the whole content area.
+// 13px matches the desktop chrome of helix-desktop (10px to 12px) instead of the 16px default of the web view.
+html {
+  font-size: 13px;
+}
+
 html,
 body {
   margin: 0;
@@ -14,4 +20,14 @@ body {
   background: var(--h-content-background);
   color: var(--h-text-color);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+// The view icons are outline drawings without presentation attributes; draw them as strokes in the text colour
+// (otherwise they fill black and vanish on the dark theme).
+hx-app-shell svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }

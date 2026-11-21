@@ -7,7 +7,17 @@ import {
   signal,
   untracked,
 } from "@angular/core";
-import { HxButton, HxInput, HxMessage, HxTable } from "@gravionlabs/helix-ui";
+import { HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton } from "@gravionlabs/helix-ui";
+import { AgGridAngular } from "ag-grid-angular";
+import type {
+  ColDef,
+  GetRowIdParams,
+  GridApi,
+  GridReadyEvent,
+  RowClassRules,
+  RowSelectionOptions,
+  SelectionChangedEvent,
+} from "ag-grid-community";
 
 import type { Container } from "../core/bindings";
 import { ContainerList } from "../core/container-list";
@@ -15,22 +25,26 @@ import {
   ACTION_KINDS,
   ACTION_LABEL,
   ActionKind,
-  SortDirection,
   SortKey,
   StateFilter,
   canApply,
+  compareContainers,
   filterContainers,
   isLocalEndpoint,
   openLocalPort,
-  portLabel,
   runContainerAction,
-  sortContainers,
-  stateLabel,
 } from "../core/containers";
 import { EndpointStore } from "../core/endpoint-store";
 import { toGantryError } from "../core/invoke";
 import { ShellService } from "../core/shell/shell.service";
 import { StatsFeed, formatMemory, formatPercent } from "../core/stats";
+import {
+  ContainerGridContext,
+  ContainerNameCell,
+  ContainerPortsCell,
+  ContainerStateCell,
+} from "../grid/cells";
+import { GRID_MODULES, GRID_THEME } from "../grid/grid";
 
 /** A container for which the last action failed, with the engine's message. */
 export interface ActionFailure {
@@ -38,25 +52,81 @@ export interface ActionFailure {
   readonly message: string;
 }
 
-interface Column {
-  readonly key: SortKey;
-  readonly label: string;
+/** A sortable column that compares whole containers, so that a missing port or project stays last. */
+function sortedBy(key: SortKey): Pick<ColDef<Container>, "comparator"> {
+  return {
+    comparator: (_a, _b, nodeA, nodeB, descending) =>
+      nodeA.data && nodeB.data ? compareContainers(nodeA.data, nodeB.data, key, descending) : 0,
+  };
 }
 
-const COLUMNS: readonly Column[] = [
-  { key: "name", label: "Name" },
-  { key: "image", label: "Image" },
-  { key: "state", label: "State" },
-  { key: "ports", label: "Ports" },
-  { key: "created", label: "Created" },
-  { key: "project", label: "Compose project" },
+const COLUMNS: ColDef<Container>[] = [
+  {
+    colId: "name",
+    headerName: "Name",
+    field: "name",
+    cellRenderer: ContainerNameCell,
+    sort: "asc",
+    minWidth: 160,
+    flex: 2,
+    ...sortedBy("name"),
+  },
+  {
+    colId: "image",
+    headerName: "Image",
+    field: "image",
+    tooltip: true,
+    minWidth: 160,
+    flex: 3,
+    ...sortedBy("image"),
+  },
+  {
+    colId: "state",
+    headerName: "State",
+    field: "state",
+    cellRenderer: ContainerStateCell,
+    width: 150,
+    ...sortedBy("state"),
+  },
+  {
+    colId: "ports",
+    headerName: "Ports",
+    field: "ports",
+    cellRenderer: ContainerPortsCell,
+    cellDataType: false,
+    minWidth: 140,
+    flex: 2,
+    ...sortedBy("ports"),
+  },
+  {
+    colId: "created",
+    headerName: "Created",
+    field: "created",
+    valueFormatter: (p) => (p.value ? new Date(p.value * 1000).toLocaleString() : ""),
+    width: 170,
+    ...sortedBy("created"),
+  },
+  {
+    colId: "project",
+    headerName: "Stack",
+    field: "composeProject",
+    valueFormatter: (p) => p.value ?? "–",
+    width: 130,
+    ...sortedBy("project"),
+  },
+];
+
+const STATE_OPTIONS: readonly { label: string; value: StateFilter }[] = [
+  { label: "All", value: "all" },
+  { label: "Running", value: "running" },
+  { label: "Exited", value: "exited" },
 ];
 
 /** The Containers view: all containers of the active endpoint, kept current from the engine events. */
 @Component({
   selector: "app-containers-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HxButton, HxInput, HxMessage, HxTable],
+  imports: [AgGridAngular, HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton],
   providers: [ContainerList, StatsFeed],
   templateUrl: "./containers-view.html",
   styleUrl: "./containers-view.css",
@@ -67,11 +137,11 @@ export class ContainersView {
   private readonly shell = inject(ShellService);
   protected readonly stats = inject(StatsFeed);
 
-  protected readonly columns = COLUMNS;
+  protected readonly modules = GRID_MODULES;
+  protected readonly theme = GRID_THEME;
+  protected readonly stateOptions = STATE_OPTIONS;
   protected readonly filter = signal("");
   protected readonly stateFilter = signal<StateFilter>("all");
-  protected readonly sortKey = signal<SortKey>("name");
-  protected readonly sortDirection = signal<SortDirection>("asc");
 
   /** The endpoint to show; a change of the active endpoint recreates the view, a retry restarts the watch. */
   private readonly endpoint = computed(() => this.endpoints.active()?.endpoint ?? null, {
@@ -82,13 +152,53 @@ export class ContainersView {
     return endpoint !== null && isLocalEndpoint(endpoint);
   });
 
+  /** The containers that match the filter; the grid sorts them. */
   protected readonly visible = computed(() =>
-    sortContainers(
-      filterContainers(this.list.containers(), this.filter(), this.stateFilter()),
-      this.sortKey(),
-      this.sortDirection(),
-    ),
+    filterContainers(this.list.containers(), this.filter(), this.stateFilter()),
   );
+
+  /** The columns, with CPU and memory while the stats are shown. */
+  protected readonly columnDefs = computed<ColDef<Container>[]>(() =>
+    this.showStats()
+      ? [
+          ...COLUMNS,
+          {
+            colId: "cpu",
+            headerName: "CPU",
+            valueGetter: (p) => (p.data ? this.cpu(p.data) : ""),
+            type: "rightAligned",
+            width: 90,
+            sortable: false,
+          },
+          {
+            colId: "memory",
+            headerName: "Memory",
+            valueGetter: (p) => (p.data ? this.memory(p.data) : ""),
+            type: "rightAligned",
+            width: 150,
+            sortable: false,
+          },
+        ]
+      : COLUMNS,
+  );
+  protected readonly defaultColDef: ColDef<Container> = { resizable: true, sortable: true };
+  protected readonly rowSelection: RowSelectionOptions<Container> = {
+    mode: "multiRow",
+    checkboxes: true,
+    headerCheckbox: true,
+    selectAll: "filtered",
+    enableClickSelection: false,
+  };
+  protected readonly rowClassRules: RowClassRules<Container> = {
+    busy: (p) => (p.data ? this.busy().has(p.data.id) : false),
+  };
+  protected readonly getRowId = (p: GetRowIdParams<Container>) => p.data.id;
+  protected readonly context: ContainerGridContext = {
+    details: (c) => this.shell.openContainer(c.id),
+    openPort: (port) => void openLocalPort(port).catch(() => {}),
+    local: () => this.local(),
+  };
+  private readonly grid = signal<GridApi<Container> | null>(null);
 
   /** Whether the CPU and memory columns are shown; they need one stats stream per running container. */
   protected readonly showStats = signal(false);
@@ -113,9 +223,6 @@ export class ContainersView {
   protected readonly selected = computed(() =>
     this.list.containers().filter((c) => this.selectedIds().has(c.id)),
   );
-  protected readonly allVisibleSelected = computed(
-    () => this.visible().length > 0 && this.visible().every((c) => this.selectedIds().has(c.id)),
-  );
 
   /** Ids of the containers an action is running for. */
   protected readonly busy = signal<ReadonlySet<string>>(new Set());
@@ -137,32 +244,41 @@ export class ContainersView {
       const ids = this.statsIds();
       untracked(() => (endpoint ? this.stats.track(endpoint, ids) : this.stats.clear()));
     });
+    // The grid reads the samples and the busy ids through callbacks; redraw what depends on them.
+    effect(() => {
+      this.stats.samples();
+      this.grid()?.refreshCells({ columns: ["cpu", "memory"] });
+    });
+    effect(() => {
+      this.busy();
+      this.grid()?.redrawRows();
+    });
   }
 
-  protected sort(key: SortKey): void {
-    if (this.sortKey() === key) {
-      this.sortDirection.update((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      this.sortKey.set(key);
-      this.sortDirection.set("asc");
-    }
+  protected gridReady(event: GridReadyEvent<Container>): void {
+    this.grid.set(event.api);
   }
 
-  protected ariaSort(key: SortKey): "ascending" | "descending" | "none" {
-    if (this.sortKey() !== key) return "none";
-    return this.sortDirection() === "asc" ? "ascending" : "descending";
+  /** The grid goes when no container matches the filter; a selection nobody sees must not stay active. */
+  protected gridDestroyed(): void {
+    this.grid.set(null);
+    this.selectedIds.set(new Set());
+  }
+
+  protected selectionChanged(event: SelectionChangedEvent<Container>): void {
+    this.selectedIds.set(new Set(event.api.getSelectedRows().map((c) => c.id)));
   }
 
   protected setShowStats(event: Event): void {
     this.showStats.set((event.target as HTMLInputElement).checked);
   }
 
-  protected cpu(container: Container): string {
+  private cpu(container: Container): string {
     const sample = this.stats.samples().get(container.id);
     return sample ? formatPercent(sample.cpuPercent) : "–";
   }
 
-  protected memory(container: Container): string {
+  private memory(container: Container): string {
     const sample = this.stats.samples().get(container.id);
     return sample ? formatMemory(sample) : "–";
   }
@@ -171,57 +287,8 @@ export class ContainersView {
     this.filter.set((event.target as HTMLInputElement).value);
   }
 
-  protected setStateFilter(event: Event): void {
-    this.stateFilter.set((event.target as HTMLSelectElement).value as StateFilter);
-  }
-
-  protected state(container: Container): string {
-    return stateLabel(container);
-  }
-
-  protected port = portLabel;
-
-  protected details(event: Event, container: Container): void {
-    event.preventDefault();
-    this.shell.openContainer(container.id);
-  }
-
-  protected created(container: Container): string {
-    return new Date(container.created * 1000).toLocaleString();
-  }
-
-  protected createdIso(container: Container): string {
-    return new Date(container.created * 1000).toISOString();
-  }
-
-  protected open(event: Event, port: number): void {
-    event.preventDefault();
-    void openLocalPort(port).catch(() => {});
-  }
-
-  protected isSelected(container: Container): boolean {
-    return this.selectedIds().has(container.id);
-  }
-
-  protected toggle(container: Container): void {
-    this.selectedIds.update((ids) => {
-      const next = new Set(ids);
-      if (!next.delete(container.id)) next.add(container.id);
-      return next;
-    });
-  }
-
-  protected toggleAll(): void {
-    const visible = this.visible();
-    this.selectedIds.update((ids) => {
-      const next = new Set(ids);
-      const all = visible.every((c) => next.has(c.id));
-      for (const c of visible) {
-        if (all) next.delete(c.id);
-        else next.add(c.id);
-      }
-      return next;
-    });
+  protected setStateFilter(value: unknown): void {
+    this.stateFilter.set(value as StateFilter);
   }
 
   /** The selected containers an action applies to. */

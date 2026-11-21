@@ -134,7 +134,6 @@ export function filterContainers(
 }
 
 export type SortKey = "name" | "image" | "state" | "ports" | "created" | "project";
-export type SortDirection = "asc" | "desc";
 
 const text = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
@@ -165,22 +164,23 @@ function compare(a: Container, b: Container, key: SortKey): number {
   }
 }
 
-/** A sorted copy; ties fall back to the name so that the order is stable between updates. */
-export function sortContainers(
-  containers: readonly Container[],
+/**
+ * The comparator of a grid column. The grid reverses the result for a descending sort, so a missing
+ * value (no port, no project) is reversed here first and stays last in both directions. Ties fall
+ * back to the name so that the order is stable between updates.
+ */
+export function compareContainers(
+  a: Container,
+  b: Container,
   key: SortKey,
-  direction: SortDirection,
-): Container[] {
-  const sign = direction === "asc" ? 1 : -1;
-  return [...containers].sort((a, b) => {
-    const result = compare(a, b, key);
-    // A missing value stays last in both directions.
-    const missing = key === "ports" ? lowestPort(a) === null || lowestPort(b) === null : false;
-    const missingProject =
-      key === "project" && (a.composeProject === null || b.composeProject === null);
-    const ordered = missing || missingProject ? result : sign * result;
-    return ordered || text.compare(a.name, b.name);
-  });
+  descending = false,
+): number {
+  const missing =
+    (key === "ports" && (lowestPort(a) === null || lowestPort(b) === null)) ||
+    (key === "project" && (a.composeProject === null || b.composeProject === null));
+  const result = compare(a, b, key);
+  const ordered = missing && descending ? -result : result;
+  return ordered || text.compare(a.name, b.name);
 }
 
 /** `8080→80/tcp`, or just `80/tcp` for an exposed port. */

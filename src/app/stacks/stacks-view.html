@@ -16,6 +16,58 @@
       } @empty { – }
     </dd>
   </dl>
+  <section class="actions" aria-label="Compose actions">
+    @if (availability(); as info) { @if (info.reason) {
+    <hx-message severity="warn" role="status">{{ info.reason }}</hx-message>
+    } }
+    <div class="buttons">
+      @for (item of actions; track item.label) {
+      <button
+        hx-button
+        variant="outlined"
+        type="button"
+        [disabled]="!canAct() || running() !== null"
+        (click)="perform(item.action)"
+      >
+        {{ item.label }}
+      </button>
+      }
+      <button
+        hx-button
+        variant="outlined"
+        type="button"
+        [disabled]="!canAct() || running() !== null"
+        (click)="askDown()"
+      >
+        Down…
+      </button>
+      @if (running() !== null) {
+      <button hx-button variant="outlined" type="button" (click)="stop()">Stop</button>
+      }
+    </div>
+    @if (confirmingDown()) {
+    <div class="confirm" role="alertdialog" aria-labelledby="down-title">
+      <h2 id="down-title">Take down {{ stack.name }}?</h2>
+      <p>
+        This stops and removes the containers and networks of <strong>{{ stack.name }}</strong>.
+      </p>
+      <label>
+        <input type="checkbox" [checked]="removeVolumes()" (change)="setRemoveVolumes($event)" />
+        Also remove the volumes of the stack (the data in them is lost)
+      </label>
+      <div class="buttons">
+        <button hx-button variant="outlined" type="button" (click)="cancelDown()">Cancel</button>
+        <button hx-button type="button" (click)="confirmDown()">Take down</button>
+      </div>
+    </div>
+    } @if (running() !== null) {
+    <p class="state" role="status" aria-live="polite">Running…</p>
+    } @if (outcome(); as text) {
+    <hx-message [severity]="failed() ? 'error' : 'success'" role="status">{{ text }}</hx-message>
+    } @if (output().length > 0) {
+    <pre class="output mono" aria-label="Output of docker compose">{{ output().join('\n') }}</pre>
+    }
+  </section>
   @for (service of stack.services; track service.name) {
   <h2>{{ service.name }}</h2>
   <div class="hx-table-scroll">

@@ -13,6 +13,40 @@ export type ActionTarget = {
 	name: string,
 };
 
+/**  A Compose action on a stack. */
+export type ComposeAction = 
+/**  `docker compose up -d`. */
+{ type: "up" } | 
+/**  `docker compose down`; with `volumes` also `-v`, which the UI asks for explicitly. */
+{ type: "down"; volumes: boolean } | 
+/**  `docker compose restart`. */
+{ type: "restart" } | 
+/**  `docker compose pull`. */
+{ type: "pull" };
+
+/**  Whether the actions can be used, and if not, why. */
+export type ComposeAvailability = {
+	available: boolean,
+	/**  The version of the Compose plugin, when it is installed. */
+	version: string | null,
+	/**  A message for the user when `available` is false. */
+	reason: string | null,
+};
+
+/**  What a running action sends to the frontend. */
+export type ComposeEvent = 
+/**  One line of output, without its line break. */
+{ type: "line"; stream: LogStream; text: string } | 
+/**  The command ended. `code` is missing when it was stopped or killed by a signal. */
+{ type: "finished"; success: boolean; code: number | null };
+
+/**  What the CLI needs to know about a stack: the project name and where its files are. */
+export type ComposeProject = {
+	name: string,
+	workingDir: string | null,
+	configFiles: string[],
+};
+
 /**  One row of the container list. */
 export type Container = {
 	id: string,

@@ -3,9 +3,10 @@
 //! Commands return `gantry_core::Error`, which serializes to `{ kind, message }`.
 
 use gantry_core::{
-    ActionEvent, ActionTarget, Connections, Container, ContainerAction, ContainerDetails,
-    ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EngineInfo, LogEvent, LogOptions,
-    Stack, StatsEvent, TlsFiles, WatchTiming, Watches,
+    ActionEvent, ActionTarget, ComposeAction, ComposeAvailability, ComposeEvent, ComposeProject,
+    Connections, Container, ContainerAction, ContainerDetails, ContainerWatchEvent, ContextList,
+    DetectedEngine, Endpoint, EngineInfo, LogEvent, LogOptions, Stack, StatsEvent, TlsFiles,
+    WatchTiming, Watches,
 };
 use tauri::ipc::Channel;
 use tauri::{Manager, RunEvent};
@@ -171,6 +172,33 @@ async fn containers_stats(
     result
 }
 
+/// Tells whether Compose actions can run for `project`: the plugin is installed and the Compose
+/// files exist on this machine.
+#[tauri::command]
+async fn compose_check(project: ComposeProject) -> ComposeAvailability {
+    gantry_core::check_compose(&project).await
+}
+
+/// Runs a Compose `action` on `project` at `endpoint` and streams the CLI output through
+/// `on_event` until it ends or `containers_unwatch` stops the run `watch_id`.
+#[tauri::command]
+async fn compose_run(
+    watches: tauri::State<'_, Watches>,
+    endpoint: Endpoint,
+    project: ComposeProject,
+    action: ComposeAction,
+    watch_id: String,
+    on_event: Channel<ComposeEvent>,
+) -> Result<(), gantry_core::Error> {
+    let cancel = watches.register(&watch_id);
+    let result = gantry_core::run_compose(&endpoint, &project, action, &cancel, |event| {
+        let _ = on_event.send(event);
+    })
+    .await;
+    watches.finish(&watch_id);
+    result
+}
+
 /// Opens `http://localhost:<port>` in the default browser. Only the port comes from the UI, so
 /// the command cannot be used to open another address.
 #[tauri::command]
@@ -201,6 +229,8 @@ pub fn run() {
             containers_action,
             containers_logs,
             containers_stats,
+            compose_check,
+            compose_run,
             open_local_port
         ])
         .build(tauri::generate_context!())

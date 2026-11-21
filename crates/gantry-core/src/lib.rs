@@ -17,6 +17,7 @@ mod logs;
 mod ssh;
 mod stacks;
 mod stats;
+mod volumes;
 
 pub use compose::{
     ComposeAction, ComposeAvailability, ComposeCommand, ComposeEvent, ComposeProject, PluginProbe,
@@ -49,3 +50,7 @@ pub use logs::{LogBatching, LogEvent, LogLine, LogOptions, LogStream, stream_log
 pub use ssh::SshTarget;
 pub use stacks::{Stack, StackService, list_stacks, stacks_of};
 pub use stats::{StatsEvent, StatsSample, sample_of, stream_stats};
+pub use volumes::{
+    Volume, VolumePruneOutcome, VolumeSpec, create_volume, list_volumes, prune_volumes,
+    remove_volume,
+};

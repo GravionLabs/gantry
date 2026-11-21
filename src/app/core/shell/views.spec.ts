@@ -80,7 +80,8 @@ describe("isViewAvailable", () => {
   it("offers links to the views that exist, not to the ones that are placeholders", () => {
     expect(isViewAvailable("containers")).toBe(true);
     expect(isViewAvailable("stacks")).toBe(true);
-    expect(isViewAvailable("volumes")).toBe(false);
+    expect(isViewAvailable("volumes")).toBe(true);
+    expect(isViewAvailable("networks")).toBe(false);
   });
 });
 

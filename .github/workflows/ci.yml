@@ -55,3 +55,20 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
+
+  # Aggregate check: the rulesets require only "ci", so build jobs can be renamed or split
+  # without editing them. A skipped or cancelled needed job counts as a failure.
+  ci:
+    name: ci
+    if: ${{ always() }}
+    needs: [frontend, rust]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require all build jobs to succeed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "needed job results: $RESULTS"
+          for r in $RESULTS; do
+            [ "$r" = "success" ] || { echo "::error::a needed job finished with '$r'"; exit 1; }
+          done

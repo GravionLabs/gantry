@@ -1,0 +1,166 @@
+<section class="system" aria-labelledby="system-title">
+  <header class="head">
+    <h1 id="system-title">System</h1>
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="System actions">
+    <button
+      hx-button
+      size="small"
+      type="button"
+      [disabled]="!endpoint() || busy() || !loaded()"
+      (click)="openCleanup()"
+    >
+      Clean up…
+    </button>
+    <button
+      hx-button
+      size="small"
+      variant="outlined"
+      severity="secondary"
+      type="button"
+      [disabled]="!endpoint()"
+      (click)="refresh()"
+    >
+      Refresh
+    </button>
+  </div>
+
+  @if (problem(); as text) {
+  <hx-message severity="error" role="alert">
+    Cannot read the system information: {{ text }}
+    <button hx-button variant="outlined" type="button" (click)="refresh()">Retry</button>
+  </hx-message>
+  } @if (cleaning(); as state) {
+  <div class="confirm" role="alertdialog" aria-labelledby="cleanup-title">
+    <h2 id="cleanup-title">Clean up unused data</h2>
+    <p>Choose what to remove. Nothing is removed before you confirm the preview.</p>
+    <ul class="choices">
+      @for (category of categories; track category) {
+      <li>
+        <label>
+          <input
+            type="checkbox"
+            hx-checkbox
+            size="small"
+            [checked]="isSelected(category)"
+            [disabled]="busy()"
+            (change)="toggle(category, $event)"
+          />
+          <span
+            ><strong>{{ categoryLabel(category) }}</strong> – {{ categoryScope(category) }}</span
+          >
+        </label>
+      </li>
+      }
+    </ul>
+    @if (previewProblem(); as text) {
+    <hx-message severity="error" role="alert">{{ text }}</hx-message>
+    } @if (state.previews; as previews) {
+    <div class="preview" role="status" aria-label="Cleanup preview">
+      @if (previewCount() === 0) {
+      <p>There is nothing to remove in the selected categories.</p>
+      } @else {
+      <p>
+        This removes {{ previewCount() }} {{ previewCount() === 1 ? 'item' : 'items' }} permanently
+        @if (previewSize() !== null) { and frees up to
+        <strong>{{ sizeOrDash(previewSize()) }}</strong>
+        }:
+      </p>
+      } @for (entry of previews; track entry.category) { @if (entry.count > 0) {
+      <p class="entry">
+        <strong>{{ categoryLabel(entry.category) }}</strong> ({{ entry.count }}): @if
+        (entry.names.length > 0) { {{ entry.names.join(', ') }} } @else { all records } @if
+        (entry.reclaimable !== null) { – {{ sizeOrDash(entry.reclaimable) }} }
+      </p>
+      } }
+    </div>
+    }
+    <div class="buttons">
+      <button hx-button variant="outlined" type="button" (click)="closeCleanup()">Cancel</button>
+      @if (state.confirming) {
+      <button
+        hx-button
+        type="button"
+        [disabled]="busy() || previewCount() === 0"
+        (click)="confirm()"
+      >
+        Remove
+      </button>
+      } @else {
+      <button
+        hx-button
+        type="button"
+        [disabled]="busy() || state.selected.length === 0"
+        (click)="preview()"
+      >
+        Preview
+      </button>
+      }
+    </div>
+  </div>
+  } @if (result(); as outcome) {
+  <hx-message
+    [severity]="outcome.failed ? 'error' : 'success'"
+    [attr.role]="outcome.failed ? 'alert' : 'status'"
+  >
+    {{ outcome.text }}
+    <button hx-button variant="outlined" type="button" (click)="dismissResult()">Dismiss</button>
+  </hx-message>
+  } @if (!loaded()) {
+  <p class="state" role="status">Reading the engine…</p>
+  } @else if (engine()) {
+  <div class="panels">
+    <section aria-labelledby="engine-title">
+      <h2 id="engine-title">Engine</h2>
+      <dl class="info">
+        @for (row of engineRows(); track row.label) {
+        <dt>{{ row.label }}</dt>
+        <dd>{{ row.value }}</dd>
+        }
+      </dl>
+    </section>
+    <section aria-labelledby="usage-title">
+      <h2 id="usage-title">Disk usage</h2>
+      <table class="usage">
+        <thead>
+          <tr>
+            <th scope="col">Category</th>
+            <th scope="col">Items</th>
+            <th scope="col" class="num">Size</th>
+            <th scope="col" class="num">Reclaimable</th>
+            <th scope="col"><span class="visually-hidden">Share</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of usage(); track row.category) {
+          <tr>
+            <th scope="row">{{ categoryLabel(row.category) }}</th>
+            <td>{{ countLabel(row) }}</td>
+            <td class="num">{{ sizeOrDash(row.size) }}</td>
+            <td class="num">{{ sizeOrDash(row.reclaimable) }}</td>
+            <td>
+              <meter
+                min="0"
+                max="100"
+                [value]="percent(row)"
+                [attr.aria-label]="'Reclaimable share of ' + categoryLabel(row.category)"
+              ></meter>
+            </td>
+          </tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row">Total</th>
+            <td></td>
+            <td class="num">{{ sizeOrDash(totalSize()) }}</td>
+            <td class="num">{{ sizeOrDash(totalReclaimable()) }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </section>
+  </div>
+  }
+</section>

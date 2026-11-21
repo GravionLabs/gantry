@@ -84,6 +84,7 @@ const AVAILABLE_VIEWS: ReadonlySet<string> = new Set([
   "images",
   "volumes",
   "networks",
+  "system",
 ]);
 
 /** Whether a link to the view can be offered, i.e. its feature has landed. */

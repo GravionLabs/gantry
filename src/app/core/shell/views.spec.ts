@@ -82,7 +82,8 @@ describe("isViewAvailable", () => {
     expect(isViewAvailable("stacks")).toBe(true);
     expect(isViewAvailable("volumes")).toBe(true);
     expect(isViewAvailable("networks")).toBe(true);
-    expect(isViewAvailable("system")).toBe(false);
+    expect(isViewAvailable("system")).toBe(true);
+    expect(isViewAvailable("settings")).toBe(false);
   });
 });
 

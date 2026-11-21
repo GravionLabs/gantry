@@ -13,6 +13,55 @@ export type ActionTarget = {
 	name: string,
 };
 
+/**  The kinds of data a cleanup can remove. */
+export type CleanupCategory = 
+/**  Stopped containers. */
+"containers" | 
+/**  Dangling images (no tag, no container). */
+"images" | 
+/**  Volumes no container uses, named ones included. */
+"volumes" | 
+/**  Build cache records no build uses. */
+"buildCache";
+
+/**  A category that could not be cleaned. */
+export type CleanupFailure = {
+	category: CleanupCategory,
+	message: string,
+};
+
+/**  What a cleanup of one category removed. */
+export type CleanupOutcome = {
+	category: CleanupCategory,
+	/**  The number of items the engine deleted. */
+	removed: number,
+	/**  The disk space that was freed, in bytes. */
+	reclaimed: number | null,
+};
+
+/**  What a cleanup of one category would remove. */
+export type CleanupPreview = {
+	category: CleanupCategory,
+	/**  How many items go. For the build cache this can exceed `names`, which it does not list. */
+	count: number,
+	/**  The names (containers, volumes) or ids (images) that go. */
+	names: string[],
+	/**
+	 *  The disk space freed, in bytes; absent when the engine does not tell. Layers shared with
+	 *  an image that stays are counted too, so it is an upper bound for images.
+	 */
+	reclaimable: number | null,
+};
+
+/**
+ *  The result of a cleanup: one entry per category that was removed and one per failure. A failing
+ *  category does not stop the ones after it, and the freed space of the others is not lost.
+ */
+export type CleanupResult = {
+	outcomes: CleanupOutcome[],
+	failures: CleanupFailure[],
+};
+
 /**  A Compose action on a stack. */
 export type ComposeAction = 
 /**  `docker compose up -d`. */
@@ -128,6 +177,20 @@ export type DetectedEngine = {
 	status: EngineStatus,
 };
 
+/**
+ *  The disk usage of one category as `system df` reports it. A value the engine does not report
+ *  (an engine older than API 1.52 reports a different shape) is `None`.
+ */
+export type DiskUsage = {
+	category: CleanupCategory,
+	totalCount: number | null,
+	activeCount: number | null,
+	/**  Disk space in use, in bytes. */
+	size: number | null,
+	/**  Disk space a cleanup of the category frees, in bytes. */
+	reclaimable: number | null,
+};
+
 /**  A Docker engine the user can connect to. */
 export type Endpoint = {
 	name: string,
@@ -152,6 +215,19 @@ export type EndpointKind =
 "tcp" | 
 /**  An SSH remote, e.g. `ssh://user@host`. */
 "ssh";
+
+/**  What the engine reports about itself. */
+export type EngineDetails = {
+	version: string | null,
+	apiVersion: string | null,
+	/**  The operating system of the host, e.g. `Ubuntu 24.04 LTS`; falls back to `linux`. */
+	os: string | null,
+	arch: string | null,
+	cpus: number | null,
+	/**  Total memory of the host in bytes. */
+	memory: number | null,
+	storageDriver: string | null,
+};
 
 /**  Version information of a connected engine. */
 export type EngineInfo = {
@@ -402,6 +478,12 @@ export type StatsSample = {
 	blockRead: number | null,
 	/**  Bytes written to block devices since the container started. */
 	blockWrite: number | null,
+};
+
+/**  Engine information and disk usage at a glance. */
+export type SystemOverview = {
+	engine: EngineDetails,
+	usage: DiskUsage[],
 };
 
 /**  Client certificates for a TLS-secured TCP endpoint (Docker's `ca.pem`, `cert.pem`, `key.pem`). */

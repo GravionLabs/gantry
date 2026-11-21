@@ -31,5 +31,7 @@ jobs:
       ci-exclude: gantry-app
       tauri: true
       # createUpdaterArtifacts is set only by the release config, so tauri dev and local builds need no key.
-      installer-args: --config src-tauri/tauri.release.conf.json
+      # A dispatch on another branch builds "Gantry RC" (dev.gravionlabs.gantry.rc, no updater): it installs next
+      # to the stable app and never updates itself.
+      installer-args: ${{ github.ref_name == 'main' && '--config src-tauri/tauri.release.conf.json' || '--config src-tauri/tauri.rc.conf.json' }}
     secrets: inherit

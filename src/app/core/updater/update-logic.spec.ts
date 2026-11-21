@@ -29,3 +29,11 @@ describe("update logic", () => {
     expect(downloadPercent(5, 0)).toBeNull();
   });
 });
+
+describe("isRcIdentifier", () => {
+  it("is true only for the RC identifier", async () => {
+    const { isRcIdentifier } = await import("./update-logic");
+    expect(isRcIdentifier("dev.gravionlabs.gantry.rc")).toBe(true);
+    expect(isRcIdentifier("dev.gravionlabs.gantry")).toBe(false);
+  });
+});

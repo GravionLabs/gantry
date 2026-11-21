@@ -1,9 +1,9 @@
-import { getVersion } from "@tauri-apps/api/app";
+import { getIdentifier, getVersion } from "@tauri-apps/api/app";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn() }));
+vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn(), getIdentifier: vi.fn() }));
 vi.mock("@tauri-apps/plugin-process", () => ({ relaunch: vi.fn() }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check: vi.fn(), Update: class {} }));
 
@@ -19,6 +19,7 @@ describe("UpdateService", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(getVersion).mockResolvedValue("1.0.0");
+    vi.mocked(getIdentifier).mockResolvedValue("dev.gravionlabs.gantry");
     updater = new UpdateService();
   });
 
@@ -49,6 +50,13 @@ describe("UpdateService", () => {
     await updater.check();
     expect(updater.update()).toBeNull();
     expect(updater.upToDate()).toBe(true);
+  });
+
+  it("offers no update to the RC identifier even with a stable version number", async () => {
+    vi.mocked(getIdentifier).mockResolvedValue("dev.gravionlabs.gantry.rc");
+    await updater.check();
+    expect(check).not.toHaveBeenCalled();
+    expect(updater.enabled()).toBe(false);
   });
 
   it("offers no update to an RC build and does not ask the endpoint", async () => {

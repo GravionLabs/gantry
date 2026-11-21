@@ -36,7 +36,20 @@ import { GRID_MODULES, GRID_THEME } from "../grid/grid";
 import { StackDeploy } from "./stack-deploy";
 
 const COLUMNS: ColDef<StackRow>[] = [
-  { colId: "name", headerName: "Stack", cellRenderer: StackNameCell, minWidth: 200, flex: 2 },
+  {
+    colId: "name",
+    headerName: "Stack",
+    // The cell refreshes only when its value changes: the value holds all it shows.
+    valueGetter: (p) =>
+      p.data?.kind === "stack"
+        ? `${p.data.stack.name} ${p.data.expanded}`
+        : p.data
+          ? `${p.data.container.name} ${p.data.container.state} ${p.data.container.health}`
+          : "",
+    cellRenderer: StackNameCell,
+    minWidth: 200,
+    flex: 2,
+  },
   {
     colId: "services",
     headerName: "Services",

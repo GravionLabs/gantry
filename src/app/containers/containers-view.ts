@@ -33,6 +33,7 @@ import {
   isLocalEndpoint,
   openLocalPort,
   runContainerAction,
+  stateLabel,
 } from "../core/containers";
 import { EndpointStore } from "../core/endpoint-store";
 import { toGantryError } from "../core/invoke";
@@ -83,7 +84,8 @@ const COLUMNS: ColDef<Container>[] = [
   {
     colId: "state",
     headerName: "State",
-    field: "state",
+    // The cell refreshes only when its value changes: the value holds all it shows.
+    valueGetter: (p) => (p.data ? `${stateLabel(p.data)} ${p.data.status}` : ""),
     cellRenderer: ContainerStateCell,
     width: 150,
     ...sortedBy("state"),

@@ -43,6 +43,8 @@ pub enum Error {
     Ssh { kind: ErrorKind, message: String },
     #[error("Docker engine error: {0}")]
     Docker(BollardError),
+    #[error("Docker Compose: {message}")]
+    Compose { kind: ErrorKind, message: String },
 }
 
 /// A failed `ssh` run, carried through bollard's I/O error so the transport can report it.
@@ -81,7 +83,7 @@ impl Error {
     pub fn kind(&self) -> ErrorKind {
         match self {
             Self::InvalidAddress(_) => ErrorKind::InvalidInput,
-            Self::Ssh { kind, .. } => *kind,
+            Self::Ssh { kind, .. } | Self::Compose { kind, .. } => *kind,
             Self::Docker(error) => classify(error),
         }
     }

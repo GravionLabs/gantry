@@ -4,6 +4,7 @@
 //! without system libraries.
 
 pub mod bindings;
+mod compose;
 mod containers;
 mod context;
 mod detect;
@@ -15,6 +16,10 @@ mod ssh;
 mod stacks;
 mod stats;
 
+pub use compose::{
+    ComposeAction, ComposeAvailability, ComposeCommand, ComposeEvent, ComposeProject, PluginProbe,
+    availability_of, build_command, check_compose, run_command, run_compose,
+};
 pub use containers::{
     ActionEvent, ActionTarget, Container, ContainerAction, ContainerActions, ContainerDetails,
     ContainerHealth, ContainerSource, ContainerState, ContainerWatchEvent, EnvVar, Label,

@@ -9,13 +9,23 @@ import {
 } from "@angular/core";
 import { HxButton, HxMessage, HxTable } from "@gravionlabs/helix-ui";
 
-import type { Container, Stack } from "../core/bindings";
+import type { ComposeAction, ComposeAvailability, Container, Stack } from "../core/bindings";
 import { ContainerList } from "../core/container-list";
 import { stateLabel } from "../core/containers";
 import { EndpointStore } from "../core/endpoint-store";
 import { toGantryError } from "../core/invoke";
 import { ShellService } from "../core/shell/shell.service";
-import { listStacks, serviceCount, stackSummary } from "../core/stacks";
+import {
+  COMPOSE_ACTIONS,
+  actionCommand,
+  checkCompose,
+  composeProject,
+  finishedMessage,
+  listStacks,
+  runCompose,
+  serviceCount,
+  stackSummary,
+} from "../core/stacks";
 
 /**
  * The Stacks view: the Compose projects of the active endpoint. The stacks are read again whenever
@@ -47,7 +57,35 @@ export class StacksView {
     () => this.stacks().find((s) => s.name === this.selectedName()) ?? null,
   );
 
+  private readonly lastStack = signal<Stack | null>(null);
+  /**
+   * The stack the detail shows. `down` removes the stack, so the last known state stays visible
+   * while a run is active or its outcome is unread.
+   */
+  protected readonly detail = computed(() => {
+    const current = this.selected();
+    if (current) return current;
+    const last = this.lastStack();
+    const busy = this.running() !== null || this.outcome() !== null;
+    return last && last.name === this.selectedName() && busy ? last : null;
+  });
+
   private requests = 0;
+
+  protected readonly actions = COMPOSE_ACTIONS;
+  /** Whether `docker compose` can act on the selected stack; null while it is being checked. */
+  protected readonly availability = signal<ComposeAvailability | null>(null);
+  /** The action that is running; null when idle. */
+  protected readonly running = signal<ComposeAction | null>(null);
+  /** The output of the last action. */
+  protected readonly output = signal<readonly string[]>([]);
+  protected readonly outcome = signal<string | null>(null);
+  protected readonly failed = signal(false);
+  /** True while `down` waits for confirmation. */
+  protected readonly confirmingDown = signal(false);
+  protected readonly removeVolumes = signal(false);
+  protected readonly canAct = computed(() => this.availability()?.available === true);
+  private stopRun: (() => void) | null = null;
 
   constructor() {
     effect(() => {
@@ -60,8 +98,97 @@ export class StacksView {
       if (this.list.phase() === "ready") untracked(() => void this.refresh());
     });
     effect(() => {
+      const current = this.selected();
+      if (current) this.lastStack.set(current);
+    });
+    // Check the plugin and the files whenever another stack is opened.
+    effect(() => {
+      const name = this.selectedName();
+      const stack = untracked(() => this.selected());
+      untracked(() => {
+        this.availability.set(null);
+        this.resetRun();
+        if (name && stack) void this.check(stack);
+      });
+    });
+    effect(() => {
       if (this.list.phase() === "error") this.problem.set(this.list.problem());
     });
+  }
+
+  private resetRun(): void {
+    this.stopRun?.();
+    this.stopRun = null;
+    this.running.set(null);
+    this.output.set([]);
+    this.outcome.set(null);
+    this.failed.set(false);
+    this.confirmingDown.set(false);
+    this.removeVolumes.set(false);
+  }
+
+  private async check(stack: Stack): Promise<void> {
+    const name = stack.name;
+    const result = await checkCompose(composeProject(stack)).catch(
+      (error: unknown): ComposeAvailability => ({
+        available: false,
+        version: null,
+        reason: toGantryError(error).message,
+      }),
+    );
+    if (this.selectedName() === name) this.availability.set(result);
+  }
+
+  protected perform(action: ComposeAction): void {
+    const endpoint = this.endpoint();
+    const stack = this.selected();
+    if (!endpoint || !stack || this.running() || !this.canAct()) return;
+    this.confirmingDown.set(false);
+    this.output.set([]);
+    this.outcome.set(null);
+    this.failed.set(false);
+    this.running.set(action);
+    const run = runCompose(endpoint, composeProject(stack), action, (event) => {
+      if (event.type === "line") {
+        this.output.update((lines) => [...lines, event.text]);
+      } else {
+        this.outcome.set(finishedMessage(action, event));
+        this.failed.set(!event.success);
+      }
+    });
+    this.stopRun = run.stop;
+    run.done
+      .catch((error: unknown) => {
+        this.outcome.set(`${actionCommand(action)}: ${toGantryError(error).message}`);
+        this.failed.set(true);
+      })
+      .finally(() => {
+        if (this.stopRun === run.stop) {
+          this.stopRun = null;
+          this.running.set(null);
+        }
+      });
+  }
+
+  protected stop(): void {
+    this.stopRun?.();
+  }
+
+  protected askDown(): void {
+    this.removeVolumes.set(false);
+    this.confirmingDown.set(true);
+  }
+
+  protected cancelDown(): void {
+    this.confirmingDown.set(false);
+  }
+
+  protected setRemoveVolumes(event: Event): void {
+    this.removeVolumes.set((event.target as HTMLInputElement).checked);
+  }
+
+  protected confirmDown(): void {
+    this.perform({ type: "down", volumes: this.removeVolumes() });
   }
 
   protected retry(): void {
@@ -98,6 +225,7 @@ export class StacksView {
   }
 
   protected back(): void {
+    this.stopRun?.();
     this.selectedName.set(null);
   }
 

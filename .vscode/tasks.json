@@ -1,0 +1,39 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "web: serve",
+      "detail": "Angular dev server on http://localhost:1420 (browser only, no Tauri backend)",
+      "type": "shell",
+      "command": "pnpm start",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "angular",
+        "pattern": { "regexp": "^(?:✘ \\[ERROR\\]|Error:) (.*)$", "message": 1 },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Building\\.\\.\\.|Application bundle generation",
+          "endsPattern": "Local:\\s+http|Application bundle generation complete|Watch mode enabled"
+        }
+      },
+      "presentation": { "panel": "dedicated", "reveal": "always" }
+    },
+    {
+      "label": "tauri: dev",
+      "detail": "pnpm tauri dev: desktop app with the Rust backend (starts the Angular dev server itself)",
+      "type": "shell",
+      "command": "pnpm tauri dev",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "tauri",
+        "pattern": { "regexp": "^error(?:\\[\\w+\\])?: (.*)$", "message": 1 },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Running BeforeDevCommand|Compiling ",
+          "endsPattern": "Running `.*gantry-app`"
+        }
+      },
+      "presentation": { "panel": "dedicated", "reveal": "always" }
+    }
+  ]
+}

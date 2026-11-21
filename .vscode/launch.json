@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Web app (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:1420",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "web: serve"
+    },
+    {
+      "name": "Tauri dev",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm tauri dev",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

@@ -1,0 +1,214 @@
+<section class="details" aria-labelledby="details-title">
+  <header class="head">
+    <button hx-button variant="outlined" type="button" (click)="back()">← Containers</button>
+    <h1 id="details-title">{{ details()?.name ?? id() }}</h1>
+  </header>
+
+  @switch (phase()) { @case ('loading') {
+  <p class="state" role="status">Loading container…</p>
+  } @case ('notFound') {
+  <div class="state" role="alert">
+    <h2>Container not found</h2>
+    <p>
+      <span class="mono">{{ id() }}</span> does not exist on {{ endpointName() }}. It may have been
+      removed, or it belongs to another endpoint.
+    </p>
+    <button hx-button type="button" (click)="back()">Back to containers</button>
+  </div>
+  } @case ('error') {
+  <hx-message severity="error" role="alert">
+    Cannot read the container: {{ problem() }}
+    <button hx-button variant="outlined" type="button" (click)="load()">Retry</button>
+  </hx-message>
+  } @case ('ready') { @if (details(); as d) {
+  <div class="tabs" role="tablist" aria-label="Container details" (keydown)="onTabKey($event)">
+    @for (t of tabs; track t.id) {
+    <button
+      type="button"
+      role="tab"
+      class="tab"
+      [id]="'tab-' + t.id"
+      [attr.aria-selected]="tab() === t.id"
+      [attr.aria-controls]="'panel-' + t.id"
+      [attr.tabindex]="tab() === t.id ? 0 : -1"
+      (click)="select(t.id)"
+    >
+      {{ t.label }}
+    </button>
+    }
+  </div>
+
+  <div
+    class="panel"
+    role="tabpanel"
+    tabindex="0"
+    [id]="'panel-' + tab()"
+    [attr.aria-labelledby]="'tab-' + tab()"
+  >
+    @switch (tab()) { @case ('overview') {
+    <dl class="facts">
+      <dt>ID</dt>
+      <dd class="mono">{{ d.id }}</dd>
+      <dt>State</dt>
+      <dd>{{ state(d) }}</dd>
+      <dt>Created</dt>
+      <dd>{{ created(d) }}</dd>
+      <dt>Image</dt>
+      <dd class="mono">
+        @if (canLinkImage) {
+        <a href="#" (click)="goTo($event, 'images')">{{ d.image }}</a>
+        } @else { {{ d.image }} }
+        <span class="muted">{{ d.imageId }}</span>
+      </dd>
+      <dt>Command</dt>
+      <dd class="mono">{{ command(d.command) }}</dd>
+      <dt>Entrypoint</dt>
+      <dd class="mono">{{ command(d.entrypoint) }}</dd>
+      <dt>Restart policy</dt>
+      <dd>{{ restart(d.restartPolicy) }}</dd>
+      <dt>Health</dt>
+      <dd>{{ d.health ?? 'No health check' }}</dd>
+      <dt>Ports</dt>
+      <dd class="mono">
+        @for (p of d.ports; track p.ip + '/' + p.publicPort + '/' + p.privatePort + p.protocol) {
+        <span class="chip">{{ port(p) }}</span>
+        } @empty { – }
+      </dd>
+      <dt>Compose stack</dt>
+      <dd>
+        @if (d.composeProject; as project) { @if (canLinkStacks) {
+        <a href="#" (click)="goTo($event, 'stacks')">{{ project }}</a>
+        } @else { {{ project }} } } @else { – }
+      </dd>
+    </dl>
+    } @case ('environment') {
+    <div class="toolbar">
+      <button hx-button variant="outlined" type="button" (click)="toggleRevealAll()">
+        {{ revealAll() ? 'Hide all values' : 'Reveal all values' }}
+      </button>
+    </div>
+    @if (d.env.length === 0) {
+    <p class="state">No environment variables.</p>
+    } @else {
+    <table class="grid">
+      <caption class="sr-only">
+        Environment variables
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Value</th>
+          <th scope="col"><span class="sr-only">Reveal</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (e of d.env; track e.name) {
+        <tr>
+          <th scope="row" class="mono">{{ e.name }}</th>
+          <td class="mono value">{{ shown(e.name, e.value) }}</td>
+          <td>
+            <button
+              hx-button
+              variant="outlined"
+              type="button"
+              [attr.aria-pressed]="isRevealed(e.name)"
+              [attr.aria-label]="(isRevealed(e.name) ? 'Hide ' : 'Reveal ') + e.name"
+              (click)="toggleReveal(e.name)"
+            >
+              {{ isRevealed(e.name) ? 'Hide' : 'Reveal' }}
+            </button>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+    } } @case ('mounts') { @if (d.mounts.length === 0) {
+    <p class="state">No mounts.</p>
+    } @else {
+    <table class="grid">
+      <caption class="sr-only">
+        Mounts
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Type</th>
+          <th scope="col">Source</th>
+          <th scope="col">Destination</th>
+          <th scope="col">Mode</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (m of d.mounts; track m.destination) {
+        <tr>
+          <td>{{ m.kind }}</td>
+          <td class="mono">
+            @if (m.name; as name) { @if (canLinkVolumes) {
+            <a href="#" (click)="goTo($event, 'volumes')">{{ name }}</a>
+            } @else { {{ name }} } } @else { {{ m.source }} }
+          </td>
+          <td class="mono">{{ m.destination }}</td>
+          <td>{{ m.readWrite ? 'read-write' : 'read-only' }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+    } } @case ('networks') { @if (d.networks.length === 0) {
+    <p class="state">Not connected to a network.</p>
+    } @else {
+    <table class="grid">
+      <caption class="sr-only">
+        Networks
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Network</th>
+          <th scope="col">IP address</th>
+          <th scope="col">Gateway</th>
+          <th scope="col">MAC address</th>
+          <th scope="col">Aliases</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (n of d.networks; track n.name) {
+        <tr>
+          <th scope="row">
+            @if (canLinkNetworks) {
+            <a href="#" (click)="goTo($event, 'networks')">{{ n.name }}</a>
+            } @else { {{ n.name }} }
+          </th>
+          <td class="mono">{{ n.ipAddress || '–' }}</td>
+          <td class="mono">{{ n.gateway || '–' }}</td>
+          <td class="mono">{{ n.macAddress || '–' }}</td>
+          <td class="mono">{{ n.aliases.join(', ') || '–' }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+    } } @case ('labels') { @if (d.labels.length === 0) {
+    <p class="state">No labels.</p>
+    } @else {
+    <table class="grid">
+      <caption class="sr-only">
+        Labels
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Key</th>
+          <th scope="col">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (l of d.labels; track l.key) {
+        <tr>
+          <th scope="row" class="mono">{{ l.key }}</th>
+          <td class="mono">{{ l.value }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+    } } @case ('raw') {
+    <pre class="raw mono" tabindex="0" aria-label="Raw inspect JSON">{{ d.raw }}</pre>
+    } }
+  </div>
+  } } }
+</section>

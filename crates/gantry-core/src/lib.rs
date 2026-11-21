@@ -13,9 +13,10 @@ mod error;
 mod ssh;
 
 pub use containers::{
-    ActionEvent, ActionTarget, Container, ContainerAction, ContainerActions, ContainerHealth,
-    ContainerSource, ContainerState, ContainerWatchEvent, PortMapping, WatchTiming, Watches,
-    list_containers, run_action, watch_containers,
+    ActionEvent, ActionTarget, Container, ContainerAction, ContainerActions, ContainerDetails,
+    ContainerHealth, ContainerSource, ContainerState, ContainerWatchEvent, EnvVar, Label,
+    MountInfo, NetworkAttachment, PortMapping, RestartPolicy, WatchTiming, Watches,
+    inspect_container, list_containers, run_action, watch_containers,
 };
 pub use context::{
     ContextList, DEFAULT_CONTEXT, current_context, docker_config_dir, import_contexts,

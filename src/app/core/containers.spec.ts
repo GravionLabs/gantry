@@ -16,9 +16,17 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 import type { Container, Endpoint } from "./bindings";
+import { GantryError } from "./invoke";
 import {
   actionTargets,
+  boundPortLabel,
   canApply,
+  commandLine,
+  containerPath,
+  inspectContainer,
+  maskValue,
+  parseContainerPath,
+  restartPolicyLabel,
   filterContainers,
   isLocalEndpoint,
   portLabel,
@@ -239,5 +247,59 @@ describe("actions", () => {
       "containers_action",
       expect.objectContaining({ action: { type: "remove", volumes: true }, targets }),
     );
+  });
+});
+
+describe("container details", () => {
+  beforeEach(() => {
+    tauri.invoke.mockReset();
+  });
+
+  it("inspects through containers_inspect", async () => {
+    tauri.invoke.mockResolvedValue({ id: "abc" });
+    const e = { name: "local" } as Endpoint;
+    await expect(inspectContainer(e, "abc")).resolves.toEqual({ id: "abc" });
+    expect(tauri.invoke).toHaveBeenCalledWith("containers_inspect", { endpoint: e, id: "abc" });
+  });
+
+  it("maps a missing container to a notFound error", async () => {
+    tauri.invoke.mockRejectedValue({ kind: "notFound", message: "No such container" });
+    const error = await inspectContainer({} as Endpoint, "gone").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(GantryError);
+    expect((error as GantryError).kind).toBe("notFound");
+  });
+
+  it("formats a command line", () => {
+    expect(commandLine([])).toBe("–");
+    expect(commandLine(["nginx", "-g", "daemon off;", ""])).toBe('nginx -g "daemon off;" ""');
+  });
+
+  it("formats a restart policy", () => {
+    expect(restartPolicyLabel({ name: "always", maxRetries: 0 })).toBe("always");
+    expect(restartPolicyLabel({ name: "on-failure", maxRetries: 0 })).toBe("on-failure");
+    expect(restartPolicyLabel({ name: "on-failure", maxRetries: 3 })).toBe(
+      "on-failure (max 3 retries)",
+    );
+  });
+
+  it("masks a value but not its absence", () => {
+    expect(maskValue("secret")).toBe("••••••••");
+    expect(maskValue("")).toBe("");
+    expect(maskValue("secret")).not.toContain("secret");
+  });
+
+  it("shows a specific host address in a port label", () => {
+    const port = { ip: "127.0.0.1", privatePort: 80, publicPort: 8080, protocol: "tcp" };
+    expect(boundPortLabel(port)).toBe("127.0.0.1:8080→80/tcp");
+    expect(boundPortLabel({ ...port, ip: "0.0.0.0" })).toBe("8080→80/tcp");
+    expect(boundPortLabel({ ...port, ip: "::" })).toBe("8080→80/tcp");
+  });
+
+  it("builds and parses the detail route", () => {
+    expect(containerPath("abc")).toBe("/containers/abc");
+    expect(parseContainerPath("/containers/abc")).toBe("abc");
+    expect(parseContainerPath(containerPath("a/b"))).toBe("a/b");
+    expect(parseContainerPath("/containers")).toBeNull();
+    expect(parseContainerPath("/images/abc")).toBeNull();
   });
 });

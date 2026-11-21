@@ -4,6 +4,7 @@ import {
   STATUS_ITEMS,
   VIEWS,
   findView,
+  isViewAvailable,
   requiresEndpoint,
   resolveView,
   statusItems,
@@ -71,5 +72,12 @@ describe("requiresEndpoint", () => {
       "endpoints",
       "settings",
     ]);
+  });
+});
+
+describe("isViewAvailable", () => {
+  it("offers links to the views that exist, not to the ones that are placeholders", () => {
+    expect(isViewAvailable("containers")).toBe(true);
+    expect(isViewAvailable("volumes")).toBe(false);
   });
 });

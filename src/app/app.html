@@ -78,9 +78,11 @@
         </button>
       </div>
     </section>
-    } @else if (shell.activeId() === 'containers') {
-    <app-containers-view />
+    } @else if (shell.activeId() === 'containers') { @if (shell.containerId(); as id) {
+    <app-container-details [id]="id" />
     } @else {
+    <app-containers-view />
+    } } @else {
     <section class="empty" role="region" [attr.aria-label]="shell.activeView().label">
       <img src="favicon.svg" alt="" width="64" height="64" />
       <h1>{{ shell.activeView().label }}</h1>

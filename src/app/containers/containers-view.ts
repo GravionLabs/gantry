@@ -29,6 +29,7 @@ import {
 } from "../core/containers";
 import { EndpointStore } from "../core/endpoint-store";
 import { toGantryError } from "../core/invoke";
+import { ShellService } from "../core/shell/shell.service";
 
 /** A container for which the last action failed, with the engine's message. */
 export interface ActionFailure {
@@ -62,6 +63,7 @@ const COLUMNS: readonly Column[] = [
 export class ContainersView {
   protected readonly list = inject(ContainerList);
   private readonly endpoints = inject(EndpointStore);
+  private readonly shell = inject(ShellService);
 
   protected readonly columns = COLUMNS;
   protected readonly filter = signal("");
@@ -142,6 +144,11 @@ export class ContainersView {
   }
 
   protected port = portLabel;
+
+  protected details(event: Event, container: Container): void {
+    event.preventDefault();
+    this.shell.openContainer(container.id);
+  }
 
   protected created(container: Container): string {
     return new Date(container.created * 1000).toLocaleString();

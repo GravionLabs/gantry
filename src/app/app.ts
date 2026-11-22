@@ -40,6 +40,7 @@ import { VolumesView } from "./volumes/volumes-view";
 import { EndpointsView } from "./endpoints/endpoints-view";
 import { SettingsView } from "./settings/settings-view";
 import { SettingsService } from "./core/settings/settings.service";
+import { ThemeService } from "./core/settings/theme";
 
 /** Marks the template of an activity bar icon with the icon name of the views registry. */
 @Directive({ selector: "ng-template[appNavIcon]" })
@@ -80,6 +81,8 @@ export class App implements OnInit {
   protected readonly endpoints = inject(EndpointStore);
   private readonly updater = inject(HxUpdateService);
   private readonly settings = inject(SettingsService);
+  // Created here so the saved theme applies from the start.
+  private readonly theme = inject(ThemeService);
   protected readonly switcherOpen = signal(false);
   protected readonly engineLabel = engineVersionLabel;
   protected readonly needsEndpoint = computed(() => requiresEndpoint(this.shell.activeId()));

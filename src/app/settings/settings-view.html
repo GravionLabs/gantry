@@ -19,7 +19,23 @@
   <div class="page" role="region" [attr.aria-label]="selected().label">
     <h2>{{ selected().label }}</h2>
     <p class="hint">{{ selected().description }}</p>
-    @if (settings.error(); as message) {
+    @if (selected().id === 'appearance') {
+    <fieldset class="theme">
+      <legend>Theme</legend>
+      @for (choice of themeChoices; track choice.id) {
+      <label>
+        <input
+          type="radio"
+          name="theme"
+          [value]="choice.id"
+          [checked]="settings.appearance().theme === choice.id"
+          (change)="chooseTheme(choice.id)"
+        />
+        {{ choice.label }}
+      </label>
+      }
+    </fieldset>
+    } @if (settings.error(); as message) {
     <p class="problem" role="alert">{{ message }}</p>
     }
   </div>

@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
 
+import { THEMES, type Theme } from "../core/settings/settings-core";
 import { SettingsService } from "../core/settings/settings.service";
+import { ThemeService } from "../core/settings/theme";
 import {
   SETTINGS_CATEGORIES,
   readSelectedCategory,
@@ -17,6 +19,11 @@ import {
 })
 export class SettingsView {
   protected readonly settings = inject(SettingsService);
+  private readonly themes = inject(ThemeService);
+  protected readonly themeChoices = THEMES.map((id) => ({
+    id,
+    label: id[0].toUpperCase() + id.slice(1),
+  }));
   protected readonly categories = SETTINGS_CATEGORIES;
   protected readonly selectedId = signal(readSelectedCategory(localStorage));
   protected readonly selected = computed(
@@ -27,5 +34,9 @@ export class SettingsView {
     const resolved = resolveCategory(id);
     this.selectedId.set(resolved);
     writeSelectedCategory(localStorage, resolved);
+  }
+
+  protected chooseTheme(theme: Theme): void {
+    void this.themes.setTheme(theme);
   }
 }

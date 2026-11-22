@@ -22,12 +22,7 @@ import {
 import { HxButton } from "@gravionlabs/helix-ui";
 
 import { EndpointStore } from "./core/endpoint-store";
-import {
-  HxStatusAppVersion,
-  HxStatusUpdate,
-  HxUpdateService,
-  ShellService,
-} from "./core/shell/shell.service";
+import { HxStatusAppVersion, HxStatusUpdate, ShellService } from "./core/shell/shell.service";
 import { RecreateOn } from "./core/shell/recreate-on";
 import { engineVersionLabel, requiresEndpoint } from "./core/shell/views";
 import { ContainerDetailsView } from "./containers/container-details";
@@ -40,6 +35,7 @@ import { VolumesView } from "./volumes/volumes-view";
 import { EndpointsView } from "./endpoints/endpoints-view";
 import { SettingsView } from "./settings/settings-view";
 import { SettingsService } from "./core/settings/settings.service";
+import { UpdateSettings } from "./core/settings/updates";
 import { ThemeService } from "./core/settings/theme";
 
 /** Marks the template of an activity bar icon with the icon name of the views registry. */
@@ -79,7 +75,7 @@ export class NavIconDirective {
 export class App implements OnInit {
   protected readonly shell = inject(ShellService);
   protected readonly endpoints = inject(EndpointStore);
-  private readonly updater = inject(HxUpdateService);
+  private readonly updates = inject(UpdateSettings);
   private readonly settings = inject(SettingsService);
   // Created here so the saved theme applies from the start.
   private readonly theme = inject(ThemeService);
@@ -111,8 +107,8 @@ export class App implements OnInit {
   ngOnInit(): void {
     void this.settings.load();
     void this.endpoints.init();
-    // The automatic check at startup; an RC build never checks by itself.
-    void this.updater.start();
+    // The automatic check at startup when the setting allows it; an RC build never checks by itself.
+    void this.updates.startup();
   }
 
   protected switchTo(id: string): void {

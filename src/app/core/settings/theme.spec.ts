@@ -4,7 +4,7 @@ import { BrowserTestingModule, platformBrowserTesting } from "@angular/platform-
 import { HxTheme } from "@gravionlabs/helix-ui";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { THEMES, type Theme } from "./settings-core";
+import { DEFAULT_SETTINGS, THEMES, type Theme } from "./settings-core";
 import { SETTINGS_BACKEND } from "./settings.service";
 import { SettingsService } from "./settings.service";
 import { SYSTEM_SCHEME, ThemeService, resolveDark } from "./theme";
@@ -82,7 +82,7 @@ describe("ThemeService", () => {
     await service.setTheme(theme);
     TestBed.tick();
     expect(setDark).toHaveBeenLastCalledWith(dark);
-    expect(save).toHaveBeenCalledWith({ appearance: { theme } });
+    expect(save).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, appearance: { theme } });
   });
 
   it.each([

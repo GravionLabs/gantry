@@ -62,7 +62,7 @@ a new pair, replace `pubkey`, update both secrets, and announce the manual insta
 The in-app side is the update service of `@gravionlabs/helix-desktop/tauri` (`HxUpdateService`, as in Nixe and Poimen), on
 top of `tauri-plugin-updater` and `tauri-plugin-process`.
 
-- At startup the app checks once (`HxUpdateService.start()`); there is no timer.
+- At startup the app checks once (`HxUpdateService.start()`) when Settings > Updates > "Check for updates automatically" is on (the default); there is no timer. **Check now** in the same page checks on request.
 - `<hx-status-update>` at the right of the status bar shows nothing while idle or current. While checking, when a version
   is available, while installing and after an error it shows the state; its popover has the version, the release notes and
   **Install and restart**. The package is verified against `plugins.updater.pubkey` before it is installed.

@@ -35,6 +35,41 @@
       </label>
       }
     </fieldset>
+    } @if (selected().id === 'updates') {
+    <div class="updates">
+      @if (updates.isRc) {
+      <p class="note">
+        This is a release candidate build. It does not check for updates automatically.
+      </p>
+      } @else {
+      <label>
+        <input
+          type="checkbox"
+          [checked]="settings.updates().autoCheck"
+          (change)="setAutoCheck($event)"
+        />
+        Check for updates automatically
+      </label>
+      }
+      <div class="check-now">
+        <button
+          type="button"
+          (click)="updates.checkNow()"
+          [disabled]="updates.result().kind === 'checking'"
+        >
+          Check now
+        </button>
+        @switch (updates.result().kind) { @case ('checking') {
+        <span role="status">Checking…</span>
+        } @case ('current') {
+        <span role="status">Gantry is up to date.</span>
+        } @case ('available') {
+        <span role="status">An update is available.</span>
+        } @case ('error') {
+        <span role="alert" class="problem">The check failed.</span>
+        } }
+      </div>
+    </div>
     } @if (settings.error(); as message) {
     <p class="problem" role="alert">{{ message }}</p>
     }

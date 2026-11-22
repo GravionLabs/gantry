@@ -21,7 +21,7 @@ import {
   ACTION_KINDS,
   actionTargets,
   boundPortLabel,
-  actionSeverity,
+  actionLook,
   canApply,
   compareContainers,
   commandLine,
@@ -373,15 +373,17 @@ describe("streamContainerLogs", () => {
   });
 });
 
-describe("actionSeverity", () => {
-  it("greys out a disabled action", () => {
-    for (const kind of ACTION_KINDS) expect(actionSeverity(kind, false)).toBe("secondary");
+describe("actionLook", () => {
+  it("keeps a disabled action outlined and grey", () => {
+    for (const kind of ACTION_KINDS) {
+      expect(actionLook(kind, false)).toEqual({ variant: "outlined", severity: "secondary" });
+    }
   });
 
-  it("uses primary for an enabled action and danger for kill and remove", () => {
-    expect(actionSeverity("start", true)).toBe("primary");
-    expect(actionSeverity("restart", true)).toBe("primary");
-    expect(actionSeverity("kill", true)).toBe("danger");
-    expect(actionSeverity("remove", true)).toBe("danger");
+  it("fills an enabled action: primary, and danger for kill and remove", () => {
+    expect(actionLook("start", true)).toEqual({ variant: "filled", severity: "primary" });
+    expect(actionLook("unpause", true)).toEqual({ variant: "filled", severity: "primary" });
+    expect(actionLook("kill", true)).toEqual({ variant: "filled", severity: "danger" });
+    expect(actionLook("remove", true)).toEqual({ variant: "filled", severity: "danger" });
   });
 });

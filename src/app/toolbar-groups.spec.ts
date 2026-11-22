@@ -86,3 +86,21 @@ describe.each(["networks", "volumes", "system"])("%s styles", (view) => {
     expect(group).toContain("flex-wrap: wrap");
   });
 });
+
+describe("containers toolbar", () => {
+  it("binds the severity of every action to the selection state", () => {
+    const html = readFileSync(
+      resolve(process.cwd(), "src/app/containers/containers-view.html"),
+      "utf8",
+    );
+    // The toolbar sits in an @if block, which the element walker does not enter: parse it alone.
+    const start = html.indexOf('<div class="actions"');
+    const markup = html.slice(start, html.indexOf("</div>", start) + 6);
+    const { nodes } = parseTemplate(markup, "actions.html");
+    const bar = find(nodes, (el) => attr(el, "role") === "toolbar") as TmplAstElement;
+    const loop = bar.children.find((n) => "item" in n) as unknown as { children: unknown[] };
+    const button = find(loop.children, (el) => el.name === "button") as TmplAstElement;
+    expect(button.inputs.map((i) => i.name)).toContain("severity");
+    expect(attr(button, "severity")).toBeUndefined();
+  });
+});

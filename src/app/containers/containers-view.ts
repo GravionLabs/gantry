@@ -24,6 +24,7 @@ import { ContainerList } from "../core/container-list";
 import {
   ACTION_KINDS,
   ACTION_LABEL,
+  actionSeverity,
   ActionKind,
   SortKey,
   StateFilter,
@@ -300,6 +301,10 @@ export class ContainersView {
 
   protected disabled(kind: ActionKind): boolean {
     return this.progress() !== null || this.applicable(kind).length === 0;
+  }
+
+  protected severity(kind: ActionKind) {
+    return actionSeverity(kind, !this.disabled(kind));
   }
 
   protected request(kind: ActionKind): void {

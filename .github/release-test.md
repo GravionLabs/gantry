@@ -1,15 +1,21 @@
 ## Overview
 
-Manual test of the release candidate of {milestone} on {platforms}, the last item of the milestone. The release pull
-request `release/next` → `main` is finished only after this issue is closed.
+Manual test of {milestone} on {platforms} with `pnpm tauri dev` on `release/next`, the last item of the milestone. The
+release pull request `release/next` → `main` is finished only after this issue is closed.
 
 ## Setup
 
-- [ ] Build the RC: `gh workflow run release.yml --ref release/next` (or the run `deliver` started) and download the
-      installer of each platform from the run's artifacts.
-- [ ] Install **Gantry RC** next to the stable app: it has its own identifier `dev.gravionlabs.gantry.rc`, its own
-      settings and no auto-update, and shows the RC badge.
+- [ ] Check out `release/next` at its current head (`git fetch origin && git checkout --detach origin/release/next`),
+      then `pnpm install --frozen-lockfile` and `pnpm tauri dev`.
 - [ ] A local Docker engine is running with containers, stacks, images, volumes and networks to show.
+
+`tauri dev` does not cover everything an installer does:
+
+- Tauri does not rewrite the assets the dev server serves, so `dangerousDisableAssetCspModification` has no effect;
+  `devCsp` mirrors `csp`, and `src/app/core/tauri-csp.spec.ts` guards both.
+- The dev build uses the stable identifier `dev.gravionlabs.gantry`: it reads and writes the same `settings.json` as
+  an installed stable app. Note the settings before the test and restore them afterwards.
+- Updates are not checked in dev.
 
 ## Acceptance Criteria
 
@@ -28,5 +34,5 @@ request `release/next` → `main` is finished only after this issue is closed.
 ## Technical Notes
 
 - Destructive actions (remove, prune, down) only on containers and resources created for the test.
-- A webview console of a release build: start the app with `WEBKIT_INSPECTOR_HTTP_SERVER=127.0.0.1:9339` (Linux) and
-  open `http://127.0.0.1:9339`.
+- The webview console in dev: right-click → Inspect Element, or start with
+  `WEBKIT_INSPECTOR_HTTP_SERVER=127.0.0.1:9339 pnpm tauri dev` (Linux) and open `http://127.0.0.1:9339`.

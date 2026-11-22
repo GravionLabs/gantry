@@ -15,8 +15,8 @@ change `devCsp` the same way. Tauri does not rewrite assets the dev server serve
 1. Work is integrated on `release/next` through one pull request per PBI.
 2. Every milestone ends with its release test: `/github-milestone create M<nnn>` adds the PBI
    `[PBI] test: release candidate test of M<nnn> on <platforms>` (label `release-test`, body from
-   `.github/release-test.md`, configured in `.agents/config.json` under `release`). The owner installs the RC built from
-   `release/next` and works through it.
+   `.github/release-test.md`, configured in `.agents/config.json` under `release`). The owner runs `pnpm tauri dev` on a checkout of
+   `release/next` and works through it (no RC build).
 3. When the milestone is done, the release pull request `release/next` → `main` is opened and reviewed by the owner.
    With `release.test.gate: true`, `github-release finish` refuses while the release-test issue is open.
 4. A push to `main` runs `.github/workflows/release.yml`. It calls the shared workflow

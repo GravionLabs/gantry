@@ -1,6 +1,5 @@
 {
   "release": {
-    "prerelease": "gh workflow run release.yml --ref release/next",
     "test": {
       "gate": true,
       "platforms": ["Linux"],

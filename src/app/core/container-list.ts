@@ -53,6 +53,18 @@ export class ContainerList {
     );
   }
 
+  /** Reads the list again by restarting the watch; the current containers stay until the new snapshot. */
+  reload(): void {
+    const endpoint = this.endpoint;
+    if (!endpoint) return;
+    this.close();
+    this.stop = this.watch(
+      endpoint,
+      (event) => this.onEvent(event),
+      (error) => this.onEnd(error),
+    );
+  }
+
   /** Starts over after an error. */
   retry(): void {
     if (this.endpoint) this.start(this.endpoint);

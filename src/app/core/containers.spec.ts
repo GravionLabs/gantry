@@ -18,8 +18,10 @@ vi.mock("@tauri-apps/api/core", () => ({
 import type { Container, Endpoint } from "./bindings";
 import { GantryError } from "./invoke";
 import {
+  ACTION_KINDS,
   actionTargets,
   boundPortLabel,
+  actionSeverity,
   canApply,
   compareContainers,
   commandLine,
@@ -368,5 +370,18 @@ describe("streamContainerLogs", () => {
     streamContainerLogs(endpoint("unix", "u"), "a", options, () => {}, onEnd2);
     await new Promise((r) => setTimeout(r));
     expect(onEnd2).toHaveBeenCalledWith(expect.objectContaining({ kind: "notFound" }));
+  });
+});
+
+describe("actionSeverity", () => {
+  it("greys out a disabled action", () => {
+    for (const kind of ACTION_KINDS) expect(actionSeverity(kind, false)).toBe("secondary");
+  });
+
+  it("uses primary for an enabled action and danger for kill and remove", () => {
+    expect(actionSeverity("start", true)).toBe("primary");
+    expect(actionSeverity("restart", true)).toBe("primary");
+    expect(actionSeverity("kill", true)).toBe("danger");
+    expect(actionSeverity("remove", true)).toBe("danger");
   });
 });

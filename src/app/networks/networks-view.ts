@@ -16,6 +16,7 @@ import type {
   SelectionChangedEvent,
 } from "ag-grid-community";
 
+import { pollRefresh } from "../core/settings/refresh-poll";
 import type { Network } from "../core/bindings";
 import { ContainerList } from "../core/container-list";
 import { EndpointStore } from "../core/endpoint-store";
@@ -52,7 +53,7 @@ const COLUMNS: ColDef<Network>[] = [
     colId: "containers",
     headerName: "Containers",
     valueGetter: (p) => (p.data ? connectedLabel(p.data.containers) : ""),
-    tooltipValueGetter: (p) => (p.data ? connectedLabel(p.data.containers) : ""),
+    tooltip: (p) => (p.data ? connectedLabel(p.data.containers) : ""),
     minWidth: 180,
     flex: 3,
     comparator: (_a, _b, nodeA, nodeB) =>
@@ -124,6 +125,8 @@ export class NetworksView {
   protected readonly busy = signal(false);
 
   constructor() {
+    // Poll at the interval of the settings; off leaves the engine events and the Refresh button.
+    pollRefresh(() => void this.refresh());
     effect(() => {
       const endpoint = this.endpoint();
       if (!endpoint) return;

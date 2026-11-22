@@ -44,6 +44,19 @@ function setup() {
 }
 
 describe("ContainerList", () => {
+  it("reloads by restarting the watch and keeps the containers until the new snapshot", () => {
+    const { list, watches } = setup();
+    list.start(endpoint);
+    watches[0].onEvent({ type: "snapshot", containers: [web] });
+    list.reload();
+    expect(watches[0].stop).toHaveBeenCalled();
+    expect(watches).toHaveLength(2);
+    expect(list.containers()).toEqual([web]);
+    expect(list.phase()).toBe("ready");
+    watches[1].onEvent({ type: "snapshot", containers: [] });
+    expect(list.containers()).toEqual([]);
+  });
+
   it("is loading until the first snapshot, then replaces the list with each snapshot", () => {
     const { list, watches } = setup();
     list.start(endpoint);

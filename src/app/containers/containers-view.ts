@@ -19,11 +19,13 @@ import type {
   SelectionChangedEvent,
 } from "ag-grid-community";
 
+import { pollRefresh } from "../core/settings/refresh-poll";
 import type { Container } from "../core/bindings";
 import { ContainerList } from "../core/container-list";
 import {
   ACTION_KINDS,
   ACTION_LABEL,
+  actionSeverity,
   ActionKind,
   SortKey,
   StateFilter,
@@ -37,6 +39,7 @@ import {
 } from "../core/containers";
 import { EndpointStore } from "../core/endpoint-store";
 import { toGantryError } from "../core/invoke";
+import { SettingsService } from "../core/settings/settings.service";
 import { ShellService } from "../core/shell/shell.service";
 import { StatsFeed, formatMemory, formatPercent } from "../core/stats";
 import {
@@ -44,8 +47,12 @@ import {
   ContainerNameCell,
   ContainerPortsCell,
   ContainerStateCell,
+  StackGroupCell,
+  StackGroupContext,
 } from "../grid/cells";
 import { GRID_MODULES, GRID_THEME } from "../grid/grid";
+import { type Row, isGroup, isSelectable, stackGroupOptions, toRows } from "../grid/stack-groups";
+import { containerPortsTooltip } from "../grid/tooltips";
 
 /** A container for which the last action failed, with the engine's message. */
 export interface ActionFailure {
@@ -54,14 +61,16 @@ export interface ActionFailure {
 }
 
 /** A sortable column that compares whole containers, so that a missing port or project stays last. */
-function sortedBy(key: SortKey): Pick<ColDef<Container>, "comparator"> {
+function sortedBy(key: SortKey): Pick<ColDef<Row>, "comparator"> {
   return {
     comparator: (_a, _b, nodeA, nodeB, descending) =>
-      nodeA.data && nodeB.data ? compareContainers(nodeA.data, nodeB.data, key, descending) : 0,
+      nodeA.data && nodeB.data && !isGroup(nodeA.data) && !isGroup(nodeB.data)
+        ? compareContainers(nodeA.data, nodeB.data, key, descending)
+        : 0,
   };
 }
 
-const COLUMNS: ColDef<Container>[] = [
+const COLUMNS: ColDef<Row>[] = [
   {
     colId: "name",
     headerName: "Name",
@@ -85,7 +94,8 @@ const COLUMNS: ColDef<Container>[] = [
     colId: "state",
     headerName: "State",
     // The cell refreshes only when its value changes: the value holds all it shows.
-    valueGetter: (p) => (p.data ? `${stateLabel(p.data)} ${p.data.status}` : ""),
+    valueGetter: (p) =>
+      p.data && !isGroup(p.data) ? `${stateLabel(p.data)} ${p.data.status}` : "",
     cellRenderer: ContainerStateCell,
     width: 150,
     ...sortedBy("state"),
@@ -95,6 +105,8 @@ const COLUMNS: ColDef<Container>[] = [
     headerName: "Ports",
     field: "ports",
     cellRenderer: ContainerPortsCell,
+    tooltip: (p) =>
+      p.data && !isGroup(p.data) ? containerPortsTooltip({ data: p.data }) : undefined,
     cellDataType: false,
     minWidth: 140,
     flex: 2,
@@ -138,12 +150,17 @@ export class ContainersView {
   private readonly endpoints = inject(EndpointStore);
   private readonly shell = inject(ShellService);
   protected readonly stats = inject(StatsFeed);
+  private readonly settings = inject(SettingsService);
 
   protected readonly modules = GRID_MODULES;
   protected readonly theme = GRID_THEME;
   protected readonly stateOptions = STATE_OPTIONS;
   protected readonly filter = signal("");
   protected readonly stateFilter = signal<StateFilter>("all");
+  /** Whether the list is grouped by stack; the view keeps it, so the refresh of the list does not reset it. */
+  protected readonly grouped = signal(this.settings.containers().groupByStack);
+  /** The stacks whose containers are hidden (null: the containers without a stack). */
+  private readonly collapsed = signal<ReadonlySet<string | null>>(new Set());
 
   /** The endpoint to show; a change of the active endpoint recreates the view, a retry restarts the watch. */
   private readonly endpoint = computed(() => this.endpoints.active()?.endpoint ?? null, {
@@ -159,15 +176,21 @@ export class ContainersView {
     filterContainers(this.list.containers(), this.filter(), this.stateFilter()),
   );
 
-  /** The columns, with CPU and memory while the stats are shown. */
-  protected readonly columnDefs = computed<ColDef<Container>[]>(() =>
-    this.showStats()
+  /** The rows of the grid: the filtered containers, with a group row per stack while grouped. */
+  protected readonly rows = computed(() => toRows(this.visible(), this.grouped()));
+
+  /** The columns, with CPU and memory while the stats are shown; the group row names the stack. */
+  protected readonly columnDefs = computed<ColDef<Row>[]>(() => {
+    const base = this.grouped()
+      ? COLUMNS.map((c) => (c.colId === "project" ? { ...c, hide: true } : c))
+      : COLUMNS;
+    return this.showStats()
       ? [
-          ...COLUMNS,
+          ...base,
           {
             colId: "cpu",
             headerName: "CPU",
-            valueGetter: (p) => (p.data ? this.cpu(p.data) : ""),
+            valueGetter: (p) => (p.data && !isGroup(p.data) ? this.cpu(p.data) : ""),
             type: "rightAligned",
             width: 90,
             sortable: false,
@@ -175,35 +198,52 @@ export class ContainersView {
           {
             colId: "memory",
             headerName: "Memory",
-            valueGetter: (p) => (p.data ? this.memory(p.data) : ""),
+            valueGetter: (p) => (p.data && !isGroup(p.data) ? this.memory(p.data) : ""),
             type: "rightAligned",
             width: 150,
             sortable: false,
           },
         ]
-      : COLUMNS,
-  );
-  protected readonly defaultColDef: ColDef<Container> = { resizable: true, sortable: true };
-  protected readonly rowSelection: RowSelectionOptions<Container> = {
+      : base;
+  });
+  protected readonly defaultColDef: ColDef<Row> = { resizable: true, sortable: true };
+  protected readonly rowSelection: RowSelectionOptions<Row> = {
     mode: "multiRow",
+    isRowSelectable: isSelectable,
     checkboxes: true,
     headerCheckbox: true,
     selectAll: "filtered",
     enableClickSelection: false,
   };
-  protected readonly rowClassRules: RowClassRules<Container> = {
-    busy: (p) => (p.data ? this.busy().has(p.data.id) : false),
+  protected readonly rowClassRules: RowClassRules<Row> = {
+    busy: (p) => (p.data && !isGroup(p.data) ? this.busy().has(p.data.id) : false),
   };
-  protected readonly getRowId = (p: GetRowIdParams<Container>) => p.data.id;
-  protected readonly context: ContainerGridContext = {
+  protected readonly getRowId = (p: GetRowIdParams<Row>) => p.data.id;
+  protected readonly groupOptions = stackGroupOptions({
+    grouped: () => this.grouped(),
+    collapsed: () => this.collapsed(),
+  });
+  protected readonly groupRenderer = StackGroupCell;
+  protected readonly context: ContainerGridContext & StackGroupContext = {
+    isCollapsed: (stack) => this.collapsed().has(stack),
+    toggle: (stack) => {
+      this.collapsed.update((set) => {
+        const next = new Set(set);
+        if (!next.delete(stack)) next.add(stack);
+        return next;
+      });
+      this.grid()?.onFilterChanged();
+    },
     details: (c) => this.shell.openContainer(c.id),
     openPort: (port) => void openLocalPort(port).catch(() => {}),
     local: () => this.local(),
   };
-  private readonly grid = signal<GridApi<Container> | null>(null);
+  private readonly grid = signal<GridApi<Row> | null>(null);
+  /** True once the user changed a toggle of this view. */
+  private toggled = false;
 
   /** Whether the CPU and memory columns are shown; they need one stats stream per running container. */
-  protected readonly showStats = signal(false);
+  protected readonly showStats = signal(this.settings.containers().showStats);
   /** Ids of the running containers in the list; empty while the columns are hidden. */
   private readonly statsIds = computed<ReadonlySet<string>>(
     () =>
@@ -237,6 +277,17 @@ export class ContainersView {
   protected readonly removeVolumes = signal(false);
 
   constructor() {
+    // Poll at the interval of the settings; off leaves the engine events and the Refresh button.
+    pollRefresh(() => this.list.reload());
+    // The defaults apply when the view opens; a late read of the file applies them unless the user already toggled.
+    if (!this.settings.loaded()) {
+      void this.settings.load().then(() => {
+        if (!this.toggled) {
+          this.grouped.set(this.settings.containers().groupByStack);
+          this.showStats.set(this.settings.containers().showStats);
+        }
+      });
+    }
     effect(() => {
       const endpoint = this.endpoint();
       if (endpoint) untracked(() => this.list.start(endpoint));
@@ -257,7 +308,7 @@ export class ContainersView {
     });
   }
 
-  protected gridReady(event: GridReadyEvent<Container>): void {
+  protected gridReady(event: GridReadyEvent<Row>): void {
     this.grid.set(event.api);
   }
 
@@ -267,11 +318,24 @@ export class ContainersView {
     this.selectedIds.set(new Set());
   }
 
-  protected selectionChanged(event: SelectionChangedEvent<Container>): void {
-    this.selectedIds.set(new Set(event.api.getSelectedRows().map((c) => c.id)));
+  protected selectionChanged(event: SelectionChangedEvent<Row>): void {
+    this.selectedIds.set(
+      new Set(
+        event.api
+          .getSelectedRows()
+          .filter((r) => !isGroup(r))
+          .map((c) => c.id),
+      ),
+    );
+  }
+
+  protected setGrouped(event: Event): void {
+    this.toggled = true;
+    this.grouped.set((event.target as HTMLInputElement).checked);
   }
 
   protected setShowStats(event: Event): void {
+    this.toggled = true;
     this.showStats.set((event.target as HTMLInputElement).checked);
   }
 
@@ -300,6 +364,10 @@ export class ContainersView {
 
   protected disabled(kind: ActionKind): boolean {
     return this.progress() !== null || this.applicable(kind).length === 0;
+  }
+
+  protected severity(kind: ActionKind) {
+    return actionSeverity(kind, !this.disabled(kind));
   }
 
   protected request(kind: ActionKind): void {

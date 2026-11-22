@@ -233,6 +233,15 @@ export const ACTION_KINDS: readonly ActionKind[] = [
   "remove",
 ];
 
+/** Severity of a toolbar action: grey when disabled, danger for destructive ones, else primary. */
+export function actionSeverity(
+  kind: ActionKind,
+  enabled: boolean,
+): "primary" | "danger" | "secondary" {
+  if (!enabled) return "secondary";
+  return kind === "kill" || kind === "remove" ? "danger" : "primary";
+}
+
 /** Whether an action makes sense for a container in `state`; the engine has the final say. */
 export function canApply(kind: ActionKind, state: ContainerState): boolean {
   switch (kind) {

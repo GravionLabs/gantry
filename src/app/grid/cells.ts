@@ -5,6 +5,7 @@ import type { ICellRendererParams } from "ag-grid-community";
 import type { Container, PortMapping } from "../core/bindings";
 import { portLabel, stateLabel } from "../core/containers";
 import type { StackRow } from "../core/stacks";
+import { type GroupRow, NO_STACK } from "./stack-groups";
 
 /** What the cells of a container grid call back into the view; handed to the grid as `[context]`. */
 export interface ContainerGridContext {
@@ -129,30 +130,39 @@ export class ContainerStateCell implements ICellRendererAngularComp {
       } @else {
         <span class="port">{{ label(p) }}</span>
       }
+      @if (!$last) {
+        <span class="sep">, </span>
+      }
     }
   </span>`,
   styles: `
-    .ports {
-      display: inline-flex;
-      gap: 0.25rem;
-      align-items: center;
-      overflow: hidden;
+    :host {
+      display: block;
+      min-width: 0;
     }
-    .port {
-      padding: 0 0.4rem;
-      border: 1px solid var(--h-border-color, rgb(128 128 128 / 35%));
-      border-radius: 0.25rem;
+    .ports {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       font-family: var(--h-font-mono, monospace);
       font-size: 0.9em;
-      line-height: 1.5;
-      white-space: nowrap;
+    }
+    .port {
       color: inherit;
       text-decoration: none;
     }
+    a.port {
+      color: var(--h-primary-color);
+    }
     a.port:hover,
     a.port:focus-visible {
-      border-color: var(--h-primary-color);
-      color: var(--h-primary-color);
+      text-decoration: underline;
+    }
+    a.port:focus-visible {
+      outline: 2px solid var(--h-primary-color);
+      outline-offset: 1px;
+      border-radius: 0.125rem;
     }
   `,
 })
@@ -310,5 +320,72 @@ export class StackNameCell implements ICellRendererAngularComp {
   protected details(event: Event, container: Container): void {
     event.preventDefault();
     this.context?.details(container);
+  }
+}
+
+/** What the group row of a stack calls back into the view. */
+export interface StackGroupContext {
+  isCollapsed(stack: string | null): boolean;
+  toggle(stack: string | null): void;
+}
+
+interface StackGroupParams {
+  data: GroupRow;
+  context: StackGroupContext;
+}
+
+/** The full-width row that heads a stack: its name, how many of its containers run, and a collapse button. */
+@Component({
+  selector: "app-stack-group-cell",
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `@if (row(); as g) {
+    <button type="button" class="group" [attr.aria-expanded]="!collapsed()" (click)="toggle()">
+      <span class="chevron" aria-hidden="true">{{ collapsed() ? "▸" : "▾" }}</span>
+      <strong>{{ g.stack ?? noStack }}</strong>
+      <span class="count">{{ g.running }} of {{ g.total }} running</span>
+    </button>
+  }`,
+  styles: `
+    .group {
+      all: unset;
+      box-sizing: border-box;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+      padding-inline: 0.75rem;
+      cursor: pointer;
+    }
+    .group:focus-visible {
+      outline: 2px solid var(--h-primary-color);
+      outline-offset: -2px;
+    }
+    .count {
+      color: var(--h-text-muted-color);
+    }
+  `,
+})
+export class StackGroupCell {
+  protected readonly noStack = NO_STACK;
+  protected readonly row = signal<GroupRow | null>(null);
+  protected readonly collapsed = signal(false);
+  private params: StackGroupParams | null = null;
+
+  agInit(params: StackGroupParams): void {
+    this.refresh(params);
+  }
+
+  refresh(params: StackGroupParams): boolean {
+    this.params = params;
+    this.row.set(params.data);
+    this.collapsed.set(params.context.isCollapsed(params.data.stack));
+    return true;
+  }
+
+  protected toggle(): void {
+    if (!this.params) return;
+    this.params.context.toggle(this.params.data.stack);
+    this.collapsed.set(this.params.context.isCollapsed(this.params.data.stack));
   }
 }

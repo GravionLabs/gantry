@@ -7,47 +7,51 @@
   </header>
 
   <div class="bar" role="toolbar" aria-label="Volume actions">
-    <button
-      hx-button
-      size="small"
-      type="button"
-      [disabled]="!endpoint() || busy()"
-      (click)="openCreate()"
-    >
-      Create…
-    </button>
-    <button
-      hx-button
-      size="small"
-      variant="outlined"
-      severity="secondary"
-      type="button"
-      [disabled]="!selected() || busy()"
-      (click)="askRemove()"
-    >
-      Remove…
-    </button>
-    <button
-      hx-button
-      size="small"
-      variant="outlined"
-      severity="secondary"
-      type="button"
-      [disabled]="busy()"
-      (click)="askPrune()"
-    >
-      Prune unused…
-    </button>
-    <button
-      hx-button
-      size="small"
-      variant="outlined"
-      severity="secondary"
-      type="button"
-      (click)="refresh()"
-    >
-      Refresh
-    </button>
+    <div class="group group-start">
+      <button
+        hx-button
+        size="small"
+        type="button"
+        [disabled]="!endpoint() || busy()"
+        (click)="openCreate()"
+      >
+        Create…
+      </button>
+      <button
+        hx-button
+        size="small"
+        variant="outlined"
+        severity="secondary"
+        type="button"
+        [disabled]="!selected() || busy()"
+        (click)="askRemove()"
+      >
+        Remove…
+      </button>
+    </div>
+    <div class="group group-end">
+      <button
+        hx-button
+        size="small"
+        variant="outlined"
+        severity="secondary"
+        type="button"
+        [disabled]="busy()"
+        (click)="askPrune()"
+      >
+        Prune unused…
+      </button>
+      <button
+        hx-button
+        size="small"
+        variant="outlined"
+        severity="secondary"
+        type="button"
+        (click)="refresh()"
+      >
+        Refresh
+      </button>
+    </div>
   </div>
 
   @if (problem(); as text) {

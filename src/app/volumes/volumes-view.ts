@@ -16,6 +16,7 @@ import type {
   SelectionChangedEvent,
 } from "ag-grid-community";
 
+import { pollRefresh } from "../core/settings/refresh-poll";
 import type { Volume } from "../core/bindings";
 import { ContainerList } from "../core/container-list";
 import { EndpointStore } from "../core/endpoint-store";
@@ -33,6 +34,7 @@ import {
   volumeUsageLabel,
 } from "../core/volumes";
 import { GRID_MODULES, GRID_THEME } from "../grid/grid";
+import { volumeMountpointTooltip } from "../grid/tooltips";
 
 const COLUMNS: ColDef<Volume>[] = [
   { colId: "name", headerName: "Name", field: "name", minWidth: 180, flex: 2, sortable: true },
@@ -41,7 +43,7 @@ const COLUMNS: ColDef<Volume>[] = [
     colId: "mountpoint",
     headerName: "Mountpoint",
     field: "mountpoint",
-    tooltipField: "mountpoint",
+    tooltip: volumeMountpointTooltip,
     cellClass: "mono",
     minWidth: 200,
     flex: 3,
@@ -130,6 +132,8 @@ export class VolumesView {
   protected readonly busy = signal(false);
 
   constructor() {
+    // Poll at the interval of the settings; off leaves the engine events and the Refresh button.
+    pollRefresh(() => void this.refresh());
     effect(() => {
       const endpoint = this.endpoint();
       if (!endpoint) return;

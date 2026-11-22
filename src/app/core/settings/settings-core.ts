@@ -6,11 +6,14 @@ export type Theme = (typeof THEMES)[number];
 export interface AppSettings {
   readonly appearance: { readonly theme: Theme };
   readonly updates: { readonly autoCheck: boolean };
+  /** What the containers view starts with; its toggles change the current view only. */
+  readonly containers: { readonly showStats: boolean; readonly groupByStack: boolean };
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   appearance: { theme: "system" },
   updates: { autoCheck: true },
+  containers: { showStats: false, groupByStack: false },
 };
 
 function record(value: unknown): Record<string, unknown> {
@@ -34,12 +37,17 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback
 export function sanitizeSettings(raw: unknown): AppSettings {
   const appearance = record(record(raw)["appearance"]);
   const updates = record(record(raw)["updates"]);
+  const containers = record(record(raw)["containers"]);
   return {
     appearance: {
       theme: oneOf(appearance["theme"], THEMES, DEFAULT_SETTINGS.appearance.theme),
     },
     updates: {
       autoCheck: flag(updates["autoCheck"], DEFAULT_SETTINGS.updates.autoCheck),
+    },
+    containers: {
+      showStats: flag(containers["showStats"], DEFAULT_SETTINGS.containers.showStats),
+      groupByStack: flag(containers["groupByStack"], DEFAULT_SETTINGS.containers.groupByStack),
     },
   };
 }

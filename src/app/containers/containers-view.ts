@@ -38,6 +38,7 @@ import {
 } from "../core/containers";
 import { EndpointStore } from "../core/endpoint-store";
 import { toGantryError } from "../core/invoke";
+import { SettingsService } from "../core/settings/settings.service";
 import { ShellService } from "../core/shell/shell.service";
 import { StatsFeed, formatMemory, formatPercent } from "../core/stats";
 import {
@@ -148,6 +149,7 @@ export class ContainersView {
   private readonly endpoints = inject(EndpointStore);
   private readonly shell = inject(ShellService);
   protected readonly stats = inject(StatsFeed);
+  private readonly settings = inject(SettingsService);
 
   protected readonly modules = GRID_MODULES;
   protected readonly theme = GRID_THEME;
@@ -155,7 +157,7 @@ export class ContainersView {
   protected readonly filter = signal("");
   protected readonly stateFilter = signal<StateFilter>("all");
   /** Whether the list is grouped by stack; the view keeps it, so the refresh of the list does not reset it. */
-  protected readonly grouped = signal(false);
+  protected readonly grouped = signal(this.settings.containers().groupByStack);
   /** The stacks whose containers are hidden (null: the containers without a stack). */
   private readonly collapsed = signal<ReadonlySet<string | null>>(new Set());
 
@@ -236,9 +238,11 @@ export class ContainersView {
     local: () => this.local(),
   };
   private readonly grid = signal<GridApi<Row> | null>(null);
+  /** True once the user changed a toggle of this view. */
+  private toggled = false;
 
   /** Whether the CPU and memory columns are shown; they need one stats stream per running container. */
-  protected readonly showStats = signal(false);
+  protected readonly showStats = signal(this.settings.containers().showStats);
   /** Ids of the running containers in the list; empty while the columns are hidden. */
   private readonly statsIds = computed<ReadonlySet<string>>(
     () =>
@@ -272,6 +276,15 @@ export class ContainersView {
   protected readonly removeVolumes = signal(false);
 
   constructor() {
+    // The defaults apply when the view opens; a late read of the file applies them unless the user already toggled.
+    if (!this.settings.loaded()) {
+      void this.settings.load().then(() => {
+        if (!this.toggled) {
+          this.grouped.set(this.settings.containers().groupByStack);
+          this.showStats.set(this.settings.containers().showStats);
+        }
+      });
+    }
     effect(() => {
       const endpoint = this.endpoint();
       if (endpoint) untracked(() => this.list.start(endpoint));
@@ -314,10 +327,12 @@ export class ContainersView {
   }
 
   protected setGrouped(event: Event): void {
+    this.toggled = true;
     this.grouped.set((event.target as HTMLInputElement).checked);
   }
 
   protected setShowStats(event: Event): void {
+    this.toggled = true;
     this.showStats.set((event.target as HTMLInputElement).checked);
   }
 

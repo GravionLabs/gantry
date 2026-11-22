@@ -70,6 +70,26 @@
         } }
       </div>
     </div>
+    } @if (selected().id === 'containers') {
+    <fieldset class="containers">
+      <legend>Containers view defaults</legend>
+      <label>
+        <input
+          type="checkbox"
+          [checked]="settings.containers().showStats"
+          (change)="setContainerDefault('showStats', $event)"
+        />
+        Show CPU and memory
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          [checked]="settings.containers().groupByStack"
+          (change)="setContainerDefault('groupByStack', $event)"
+        />
+        Group by stack
+      </label>
+    </fieldset>
     } @if (settings.error(); as message) {
     <p class="problem" role="alert">{{ message }}</p>
     }

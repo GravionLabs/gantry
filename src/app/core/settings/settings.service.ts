@@ -31,6 +31,7 @@ export class SettingsService {
   readonly appearance = computed(() => this.state().appearance);
   readonly updates = computed(() => this.state().updates);
   readonly containers = computed(() => this.state().containers);
+  readonly engine = computed(() => this.state().engine);
   /** True once the file was read (or failed and the defaults apply). */
   readonly loaded = this.isLoaded.asReadonly();
   /** The message of the last failed read or write, else null. */

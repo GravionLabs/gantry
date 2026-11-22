@@ -17,6 +17,7 @@ import type {
   SelectionChangedEvent,
 } from "ag-grid-community";
 
+import { pollRefresh } from "../core/settings/refresh-poll";
 import type { Image } from "../core/bindings";
 import { ContainerList } from "../core/container-list";
 import { EndpointStore } from "../core/endpoint-store";
@@ -185,6 +186,8 @@ export class ImagesView {
   protected readonly fraction = layerFraction;
 
   constructor() {
+    // Poll at the interval of the settings; off leaves the engine events and the Refresh button.
+    pollRefresh(() => void this.refresh());
     effect(() => {
       const endpoint = this.endpoint();
       if (!endpoint) return;

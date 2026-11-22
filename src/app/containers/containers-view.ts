@@ -19,6 +19,7 @@ import type {
   SelectionChangedEvent,
 } from "ag-grid-community";
 
+import { pollRefresh } from "../core/settings/refresh-poll";
 import type { Container } from "../core/bindings";
 import { ContainerList } from "../core/container-list";
 import {
@@ -276,6 +277,8 @@ export class ContainersView {
   protected readonly removeVolumes = signal(false);
 
   constructor() {
+    // Poll at the interval of the settings; off leaves the engine events and the Refresh button.
+    pollRefresh(() => this.list.reload());
     // The defaults apply when the view opens; a late read of the file applies them unless the user already toggled.
     if (!this.settings.loaded()) {
       void this.settings.load().then(() => {

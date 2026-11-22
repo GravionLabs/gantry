@@ -9,6 +9,7 @@ import {
 } from "@angular/core";
 import { HxButton, HxCheckbox, HxMessage } from "@gravionlabs/helix-ui";
 
+import { pollRefresh } from "../core/settings/refresh-poll";
 import type { CleanupCategory, CleanupPreview, DiskUsage, EngineDetails } from "../core/bindings";
 import { EndpointStore } from "../core/endpoint-store";
 import { toGantryError } from "../core/invoke";
@@ -101,6 +102,8 @@ export class SystemView {
   );
 
   constructor() {
+    // Poll at the interval of the settings; off leaves the engine events and the Refresh button.
+    pollRefresh(() => void this.refresh());
     effect(() => {
       const endpoint = this.endpoint();
       if (!endpoint) return;

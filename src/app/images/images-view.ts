@@ -7,7 +7,7 @@ import {
   signal,
   untracked,
 } from "@angular/core";
-import { HxButton, HxCheckbox, HxInput, HxMessage } from "@gravionlabs/helix-ui";
+import { HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton } from "@gravionlabs/helix-ui";
 import { AgGridAngular } from "ag-grid-angular";
 import type {
   ColDef,
@@ -24,6 +24,7 @@ import { EndpointStore } from "../core/endpoint-store";
 import {
   EMPTY_PULL,
   applyPullEvent,
+  filterImages,
   imageName,
   layerFraction,
   layerLabel,
@@ -40,6 +41,7 @@ import {
 } from "../core/images";
 import { toGantryError } from "../core/invoke";
 import { formatBytes } from "../core/stats";
+import { USAGE_OPTIONS, countLabel, type UsageFilter } from "../core/usage-filter";
 import { GRID_MODULES, GRID_THEME } from "../grid/grid";
 import { imageIdTooltip, imageReferenceTooltip } from "../grid/tooltips";
 
@@ -123,7 +125,7 @@ interface PruneRequest {
 @Component({
   selector: "app-images-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AgGridAngular, HxButton, HxCheckbox, HxInput, HxMessage],
+  imports: [AgGridAngular, HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton],
   providers: [ContainerList],
   templateUrl: "./images-view.html",
   styleUrl: "./images-view.css",
@@ -137,6 +139,13 @@ export class ImagesView {
   });
 
   protected readonly images = signal<Image[]>([]);
+  protected readonly usageOptions = USAGE_OPTIONS;
+  protected readonly usageFilter = signal<UsageFilter>("all");
+  /** The images the usage filter lets through. */
+  protected readonly visible = computed(() => filterImages(this.images(), this.usageFilter()));
+  protected readonly count = computed(() =>
+    countLabel(this.visible().length, this.images().length, this.usageFilter()),
+  );
   protected readonly loaded = signal(false);
   protected readonly problem = signal<string | null>(null);
   private requests = 0;
@@ -157,7 +166,7 @@ export class ImagesView {
 
   private readonly selectedRowId = signal<string | null>(null);
   protected readonly selected = computed(
-    () => this.images().find((i) => rowId(i) === this.selectedRowId()) ?? null,
+    () => this.visible().find((i) => rowId(i) === this.selectedRowId()) ?? null,
   );
 
   /** The reference typed into the pull form. */
@@ -211,6 +220,12 @@ export class ImagesView {
   protected selectionChanged(event: SelectionChangedEvent<Image>): void {
     const [image] = event.api.getSelectedRows();
     this.selectedRowId.set(image ? rowId(image) : null);
+  }
+
+  protected setUsageFilter(value: unknown): void {
+    this.usageFilter.set(value as UsageFilter);
+    // A row the filter hides is no longer selected, also when the filter is lifted again.
+    if (!this.selected()) this.selectedRowId.set(null);
   }
 
   protected retry(): void {

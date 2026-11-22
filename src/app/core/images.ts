@@ -1,6 +1,7 @@
 import type { Endpoint, Image, PruneOutcome, PullEvent, RemoveOutcome } from "./bindings";
 import { invoke, stream } from "./invoke";
 import { formatBytes } from "./stats";
+import { matchesUsage, type UsageFilter } from "./usage-filter";
 
 export type { Image, PruneOutcome, PullEvent, RemoveOutcome } from "./bindings";
 
@@ -101,6 +102,11 @@ export function imageName(image: Pick<Image, "reference" | "id">): string {
 export function usageLabel(containers: number): string {
   if (containers === 0) return "unused";
   return `in use by ${containers} ${containers === 1 ? "container" : "containers"}`;
+}
+
+/** The images that pass the usage filter. */
+export function filterImages(images: readonly Image[], usage: UsageFilter): Image[] {
+  return images.filter((i) => matchesUsage(usage, i.containers));
 }
 
 /** The images a prune would remove, each image once: the dangling ones, or with `all` every unused one. */

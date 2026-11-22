@@ -13,6 +13,7 @@ import {
   EMPTY_PULL,
   applyPullEvent,
   imageName,
+  filterImages,
   layerFraction,
   layerLabel,
   listImages,
@@ -168,5 +169,21 @@ describe("pruneCandidates", () => {
       "sha256:unused",
       "sha256:both",
     ]);
+  });
+});
+
+describe("filterImages", () => {
+  const images = [image("a", "nginx:1", 2), image("b", "alpine:3", 0), image("c", null, 0)];
+
+  it("keeps every image for All", () => {
+    expect(filterImages(images, "all")).toHaveLength(3);
+  });
+
+  it("keeps the images a container uses for Used", () => {
+    expect(filterImages(images, "used").map((i) => i.id)).toEqual(["a"]);
+  });
+
+  it("keeps the images no container uses for Unused", () => {
+    expect(filterImages(images, "unused").map((i) => i.id)).toEqual(["b", "c"]);
   });
 });

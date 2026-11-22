@@ -11,6 +11,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 import type { Endpoint, Volume } from "./bindings";
 import {
   createVolume,
+  filterVolumes,
   listVolumes,
   parseLabels,
   pruneCandidates,
@@ -98,5 +99,21 @@ describe("volume labels", () => {
     expect(pruneSummary({ removed: [], reclaimed: null })).toBe(
       "Removed 0 volumes, 0 B reclaimed.",
     );
+  });
+});
+
+describe("filterVolumes", () => {
+  const volumes = [volume("a", ["web"]), volume("b"), volume("c", ["db", "web"])];
+
+  it("keeps every volume for All", () => {
+    expect(filterVolumes(volumes, "all")).toHaveLength(3);
+  });
+
+  it("keeps the volumes a container mounts for Used", () => {
+    expect(filterVolumes(volumes, "used").map((v) => v.name)).toEqual(["a", "c"]);
+  });
+
+  it("keeps the volumes no container mounts for Unused", () => {
+    expect(filterVolumes(volumes, "unused").map((v) => v.name)).toEqual(["b"]);
   });
 });

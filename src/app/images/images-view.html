@@ -2,11 +2,23 @@
   <header class="head">
     <h1 id="images-title">Images</h1>
     @if (loaded()) {
-    <span class="total">{{ images().length }}</span>
+    <span class="total">{{ count() }}</span>
     }
   </header>
 
   <div class="bar">
+    <div class="filters">
+      <hx-select-button
+        size="small"
+        ariaLabel="Filter by usage"
+        optionLabel="label"
+        optionValue="value"
+        [options]="usageOptions"
+        [allowEmpty]="false"
+        [value]="usageFilter()"
+        (valueChange)="setUsageFilter($event)"
+      />
+    </div>
     <form class="pull" (submit)="$event.preventDefault(); pull()">
       <input
         hx-input
@@ -160,12 +172,14 @@
   <p class="state" role="status">Loading images…</p>
   } @else if (images().length === 0) {
   <p class="state">There are no images on this endpoint.</p>
+  } @else if (visible().length === 0) {
+  <p class="state">No image matches the filter.</p>
   } @else {
   <ag-grid-angular
     class="grid"
     [modules]="modules"
     [theme]="theme"
-    [rowData]="images()"
+    [rowData]="visible()"
     [columnDefs]="columnDefs"
     [defaultColDef]="defaultColDef"
     [rowSelection]="rowSelection"

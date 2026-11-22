@@ -14,6 +14,8 @@ import type {
   GetRowIdParams,
   GridApi,
   GridReadyEvent,
+  IRowNode,
+  IsFullWidthRowParams,
   RowClassRules,
   RowSelectionOptions,
   SelectionChangedEvent,
@@ -46,6 +48,8 @@ import {
   ContainerPortsCell,
   ContainerStateCell,
 } from "../grid/cells";
+import { StackGroupCell } from "../grid/cells";
+import { type Row, isGroup, passesCollapse, regroup, withGroups } from "../grid/stack-groups";
 import { GRID_MODULES, GRID_THEME } from "../grid/grid";
 import { containerPortsTooltip } from "../grid/tooltips";
 
@@ -56,14 +60,15 @@ export interface ActionFailure {
 }
 
 /** A sortable column that compares whole containers, so that a missing port or project stays last. */
-function sortedBy(key: SortKey): Pick<ColDef<Container>, "comparator"> {
+function sortedBy(key: SortKey): Pick<ColDef<Row>, "comparator"> {
   return {
     comparator: (_a, _b, nodeA, nodeB, descending) =>
-      nodeA.data && nodeB.data ? compareContainers(nodeA.data, nodeB.data, key, descending) : 0,
+      nodeA.data && nodeB.data && !isGroup(nodeA.data) && !isGroup(nodeB.data)
+        ? compareContainers(nodeA.data, nodeB.data, key, descending) : 0,
   };
 }
 
-const COLUMNS: ColDef<Container>[] = [
+const COLUMNS: ColDef<Row>[] = [
   {
     colId: "name",
     headerName: "Name",
@@ -87,7 +92,7 @@ const COLUMNS: ColDef<Container>[] = [
     colId: "state",
     headerName: "State",
     // The cell refreshes only when its value changes: the value holds all it shows.
-    valueGetter: (p) => (p.data ? `${stateLabel(p.data)} ${p.data.status}` : ""),
+    valueGetter: (p) => (p.data && !isGroup(p.data) ? `${stateLabel(p.data)} ${p.data.status}` : ""),
     cellRenderer: ContainerStateCell,
     width: 150,
     ...sortedBy("state"),
@@ -97,7 +102,7 @@ const COLUMNS: ColDef<Container>[] = [
     headerName: "Ports",
     field: "ports",
     cellRenderer: ContainerPortsCell,
-    tooltip: containerPortsTooltip,
+    tooltip: containerPortsTooltip as never,
     cellDataType: false,
     minWidth: 140,
     flex: 2,
@@ -163,14 +168,14 @@ export class ContainersView {
   );
 
   /** The columns, with CPU and memory while the stats are shown. */
-  protected readonly columnDefs = computed<ColDef<Container>[]>(() =>
+  protected readonly columnDefs = computed<ColDef<Row>[]>(() =>
     this.showStats()
       ? [
           ...COLUMNS,
           {
             colId: "cpu",
             headerName: "CPU",
-            valueGetter: (p) => (p.data ? this.cpu(p.data) : ""),
+            valueGetter: (p) => (p.data && !isGroup(p.data) ? this.cpu(p.data) : ""),
             type: "rightAligned",
             width: 90,
             sortable: false,
@@ -178,7 +183,7 @@ export class ContainersView {
           {
             colId: "memory",
             headerName: "Memory",
-            valueGetter: (p) => (p.data ? this.memory(p.data) : ""),
+            valueGetter: (p) => (p.data && !isGroup(p.data) ? this.memory(p.data) : ""),
             type: "rightAligned",
             width: 150,
             sortable: false,
@@ -186,24 +191,47 @@ export class ContainersView {
         ]
       : COLUMNS,
   );
-  protected readonly defaultColDef: ColDef<Container> = { resizable: true, sortable: true };
-  protected readonly rowSelection: RowSelectionOptions<Container> = {
+  protected readonly defaultColDef: ColDef<Row> = { resizable: true, sortable: true };
+  protected readonly rowSelection: RowSelectionOptions<Row> = {
     mode: "multiRow",
+    isRowSelectable: (n) => !isGroup(n.data),
     checkboxes: true,
     headerCheckbox: true,
     selectAll: "filtered",
     enableClickSelection: false,
   };
-  protected readonly rowClassRules: RowClassRules<Container> = {
-    busy: (p) => (p.data ? this.busy().has(p.data.id) : false),
+  protected readonly rowClassRules: RowClassRules<Row> = {
+    busy: (p) => (p.data && !isGroup(p.data) ? this.busy().has(p.data.id) : false),
   };
-  protected readonly getRowId = (p: GetRowIdParams<Container>) => p.data.id;
-  protected readonly context: ContainerGridContext = {
+  protected readonly getRowId = (p: GetRowIdParams<Row>) => p.data.id;
+  /** Spike: stacks whose containers are hidden; lives here, so a list refresh keeps it. */
+  private readonly collapsed = signal<ReadonlySet<string | null>>(new Set());
+  protected readonly rows = computed(() => withGroups(this.visible()));
+  protected readonly fullWidthCellRenderer = StackGroupCell;
+  protected readonly isFullWidthRow = (p: IsFullWidthRowParams<Row>) => isGroup(p.rowNode.data);
+  protected readonly postSortRows = (p: { nodes: IRowNode<Row>[] }) => regroup(p.nodes);
+  protected readonly isExternalFilterPresent = () => this.collapsed().size > 0;
+  protected readonly doesExternalFilterPass = (n: IRowNode<Row>) =>
+    n.data ? passesCollapse(n.data, this.collapsed()) : true;
+  protected readonly context: ContainerGridContext & {
+    isCollapsed(stack: string | null): boolean;
+    toggle(stack: string | null): void;
+  } = {
+    isCollapsed: (stack) => this.collapsed().has(stack),
+    toggle: (stack) => {
+      this.collapsed.update((set) => {
+        const next = new Set(set);
+        if (!next.delete(stack)) next.add(stack);
+        return next;
+      });
+      this.grid()?.onFilterChanged();
+      this.grid()?.redrawRows();
+    },
     details: (c) => this.shell.openContainer(c.id),
     openPort: (port) => void openLocalPort(port).catch(() => {}),
     local: () => this.local(),
   };
-  private readonly grid = signal<GridApi<Container> | null>(null);
+  private readonly grid = signal<GridApi<Row> | null>(null);
 
   /** Whether the CPU and memory columns are shown; they need one stats stream per running container. */
   protected readonly showStats = signal(false);
@@ -260,7 +288,7 @@ export class ContainersView {
     });
   }
 
-  protected gridReady(event: GridReadyEvent<Container>): void {
+  protected gridReady(event: GridReadyEvent<Row>): void {
     this.grid.set(event.api);
   }
 
@@ -270,7 +298,7 @@ export class ContainersView {
     this.selectedIds.set(new Set());
   }
 
-  protected selectionChanged(event: SelectionChangedEvent<Container>): void {
+  protected selectionChanged(event: SelectionChangedEvent<Row>): void {
     this.selectedIds.set(new Set(event.api.getSelectedRows().map((c) => c.id)));
   }
 

@@ -5,6 +5,7 @@ import type { ICellRendererParams } from "ag-grid-community";
 import type { Container, PortMapping } from "../core/bindings";
 import { portLabel, stateLabel } from "../core/containers";
 import type { StackRow } from "../core/stacks";
+import type { GroupRow } from "./stack-groups";
 
 /** What the cells of a container grid call back into the view; handed to the grid as `[context]`. */
 export interface ContainerGridContext {
@@ -320,4 +321,46 @@ export class StackNameCell implements ICellRendererAngularComp {
     event.preventDefault();
     this.context?.details(container);
   }
+}
+
+/** Spike: the full-width row that heads a stack; a click collapses or expands it. */
+@Component({
+  selector: "app-stack-group-cell",
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `@if (row(); as g) {
+    <button type="button" class="group" [attr.aria-expanded]="!collapsed()" (click)="toggle()">
+      <span aria-hidden="true">{{ collapsed() ? "▸" : "▾" }}</span>
+      <strong>{{ g.stack ?? "No stack" }}</strong>
+      <span class="n">{{ g.running }} of {{ g.total }} running</span>
+    </button>
+  }`,
+  styles: `
+    .group { all: unset; display: flex; gap: 0.5rem; align-items: center; width: 100%; height: 100%; cursor: pointer; padding-inline: 0.75rem; box-sizing: border-box; }
+    .n { color: var(--h-text-muted-color); }
+  `,
+})
+export class StackGroupCell {
+  protected readonly row = signal<GroupRow | null>(null);
+  protected readonly collapsed = signal(false);
+  private params: IGroupParams | null = null;
+
+  agInit(params: IGroupParams): void {
+    this.refresh(params);
+  }
+
+  refresh(params: IGroupParams): boolean {
+    this.params = params;
+    this.row.set(params.data);
+    this.collapsed.set(params.context.isCollapsed(params.data.stack));
+    return true;
+  }
+
+  protected toggle(): void {
+    if (this.params) this.params.context.toggle(this.params.data.stack);
+  }
+}
+
+interface IGroupParams {
+  data: GroupRow;
+  context: { isCollapsed(stack: string | null): boolean; toggle(stack: string | null): void };
 }

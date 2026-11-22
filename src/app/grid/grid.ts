@@ -3,6 +3,7 @@ import { helixGridTheme } from "@gravionlabs/helix-ag-grid";
 import {
   CellStyleModule,
   ClientSideRowModelModule,
+  ExternalFilterModule,
   type Module,
   RenderApiModule,
   RowApiModule,
@@ -19,6 +20,7 @@ import {
  */
 export const GRID_MODULES: Module[] = [
   ClientSideRowModelModule,
+  ExternalFilterModule,
   RowSelectionModule,
   RowStyleModule,
   CellStyleModule,

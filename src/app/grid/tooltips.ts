@@ -19,7 +19,9 @@ export function volumeMountpointTooltip(p: ITooltipParams<Volume>): string | und
 }
 
 /** Tooltip of the ports column: the full, comma separated list; nothing without ports. */
-export function containerPortsTooltip(p: ITooltipParams<Container>): string | undefined {
+export function containerPortsTooltip(
+  p: Pick<ITooltipParams<Container>, "data">,
+): string | undefined {
   const ports = p.data?.ports ?? [];
   return ports.length > 0 ? ports.map(portLabel).join(", ") : undefined;
 }

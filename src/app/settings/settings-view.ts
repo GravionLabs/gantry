@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@a
 import { THEMES, type Theme } from "../core/settings/settings-core";
 import { SettingsService } from "../core/settings/settings.service";
 import { ThemeService } from "../core/settings/theme";
+import { UpdateSettings } from "../core/settings/updates";
 import {
   SETTINGS_CATEGORIES,
   readSelectedCategory,
@@ -19,6 +20,7 @@ import {
 })
 export class SettingsView {
   protected readonly settings = inject(SettingsService);
+  protected readonly updates = inject(UpdateSettings);
   private readonly themes = inject(ThemeService);
   protected readonly themeChoices = THEMES.map((id) => ({
     id,
@@ -34,6 +36,10 @@ export class SettingsView {
     const resolved = resolveCategory(id);
     this.selectedId.set(resolved);
     writeSelectedCategory(localStorage, resolved);
+  }
+
+  protected setAutoCheck(event: Event): void {
+    void this.updates.setAutoCheck((event.target as HTMLInputElement).checked);
   }
 
   protected chooseTheme(theme: Theme): void {

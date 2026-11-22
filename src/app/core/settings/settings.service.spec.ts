@@ -63,7 +63,7 @@ describe("SettingsService", () => {
     await service.load();
     await service.update((s) => ({ ...s, appearance: { theme: "dark" } }));
     expect(service.appearance().theme).toBe("dark");
-    expect(save).toHaveBeenCalledWith({ appearance: { theme: "dark" } });
+    expect(save).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, appearance: { theme: "dark" } });
     expect(service.error()).toBeNull();
   });
 

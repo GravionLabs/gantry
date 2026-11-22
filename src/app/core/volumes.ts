@@ -1,6 +1,7 @@
 import type { Endpoint, Label, Volume, VolumePruneOutcome, VolumeSpec } from "./bindings";
 import { invoke } from "./invoke";
 import { formatBytes } from "./stats";
+import { matchesUsage, type UsageFilter } from "./usage-filter";
 
 export type { Volume, VolumePruneOutcome, VolumeSpec } from "./bindings";
 
@@ -49,6 +50,11 @@ export function sizeLabel(volume: Pick<Volume, "size">): string {
 /** `in use by web, db`, or `unused`. */
 export function volumeUsageLabel(containers: readonly string[]): string {
   return containers.length === 0 ? "unused" : `in use by ${containers.join(", ")}`;
+}
+
+/** The volumes that pass the usage filter. */
+export function filterVolumes(volumes: readonly Volume[], usage: UsageFilter): Volume[] {
+  return volumes.filter((v) => matchesUsage(usage, v.containers.length));
 }
 
 /** The volumes a prune removes: those no container mounts. */

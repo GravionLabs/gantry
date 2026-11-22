@@ -7,7 +7,7 @@ import {
   signal,
   untracked,
 } from "@angular/core";
-import { HxButton, HxCheckbox, HxInput, HxMessage } from "@gravionlabs/helix-ui";
+import { HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton } from "@gravionlabs/helix-ui";
 import { AgGridAngular } from "ag-grid-angular";
 import type {
   ColDef,
@@ -22,8 +22,10 @@ import { ContainerList } from "../core/container-list";
 import { EndpointStore } from "../core/endpoint-store";
 import { toGantryError } from "../core/invoke";
 import { formatBytes } from "../core/stats";
+import { USAGE_OPTIONS, countLabel, type UsageFilter } from "../core/usage-filter";
 import {
   createVolume,
+  filterVolumes,
   listVolumes,
   parseLabels,
   pruneCandidates,
@@ -77,7 +79,7 @@ const COLUMNS: ColDef<Volume>[] = [
 @Component({
   selector: "app-volumes-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AgGridAngular, HxButton, HxCheckbox, HxInput, HxMessage],
+  imports: [AgGridAngular, HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton],
   providers: [ContainerList],
   templateUrl: "./volumes-view.html",
   styleUrl: "./volumes-view.css",
@@ -91,6 +93,13 @@ export class VolumesView {
   });
 
   protected readonly volumes = signal<Volume[]>([]);
+  protected readonly usageOptions = USAGE_OPTIONS;
+  protected readonly usageFilter = signal<UsageFilter>("all");
+  /** The volumes the usage filter lets through. */
+  protected readonly visible = computed(() => filterVolumes(this.volumes(), this.usageFilter()));
+  protected readonly count = computed(() =>
+    countLabel(this.visible().length, this.volumes().length, this.usageFilter()),
+  );
   protected readonly loaded = signal(false);
   protected readonly problem = signal<string | null>(null);
   private requests = 0;
@@ -108,7 +117,7 @@ export class VolumesView {
 
   private readonly selectedName = signal<string | null>(null);
   protected readonly selected = computed(
-    () => this.volumes().find((v) => v.name === this.selectedName()) ?? null,
+    () => this.visible().find((v) => v.name === this.selectedName()) ?? null,
   );
 
   /** The create form; null while closed. */
@@ -157,6 +166,12 @@ export class VolumesView {
   protected selectionChanged(event: SelectionChangedEvent<Volume>): void {
     const [volume] = event.api.getSelectedRows();
     this.selectedName.set(volume?.name ?? null);
+  }
+
+  protected setUsageFilter(value: unknown): void {
+    this.usageFilter.set(value as UsageFilter);
+    // A row the filter hides is no longer selected, also when the filter is lifted again.
+    if (!this.selected()) this.selectedName.set(null);
   }
 
   protected retry(): void {

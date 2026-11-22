@@ -49,7 +49,10 @@ const views: [string, string, string[], string[]][] = [
 describe.each(views)("%s toolbar", (view, label, start, end) => {
   const bar = toolbar(view);
   const groups = elements(bar.children);
-  const labels = (el: TmplAstElement) => elements(el.children).map(text);
+  const labels = (el: TmplAstElement) =>
+    elements(el.children)
+      .filter((c) => c.name === "button")
+      .map(text);
 
   it("stays a labelled toolbar", () => {
     expect(attr(bar, "role")).toBe("toolbar");
@@ -68,6 +71,16 @@ describe.each(views)("%s toolbar", (view, label, start, end) => {
 
   it("keeps the tab order equal to the visual order", () => {
     expect(groups.flatMap(labels)).toEqual([...start, ...end]);
+  });
+});
+
+describe("volumes usage filter", () => {
+  it("sits in the left group of the toolbar", () => {
+    const [start, end] = elements(toolbar("volumes").children);
+    const filter = (g: TmplAstElement | undefined) =>
+      elements(g?.children ?? []).find((c) => c.name === "hx-select-button");
+    expect(attr(filter(start) as TmplAstElement, "ariaLabel")).toBe("Filter by usage");
+    expect(filter(end)).toBeUndefined();
   });
 });
 

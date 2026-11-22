@@ -2,7 +2,7 @@
   <header class="head">
     <h1 id="volumes-title">Volumes</h1>
     @if (loaded()) {
-    <span class="total">{{ volumes().length }}</span>
+    <span class="total">{{ count() }}</span>
     }
   </header>
 
@@ -28,6 +28,16 @@
       >
         Remove…
       </button>
+      <hx-select-button
+        size="small"
+        ariaLabel="Filter by usage"
+        optionLabel="label"
+        optionValue="value"
+        [options]="usageOptions"
+        [allowEmpty]="false"
+        [value]="usageFilter()"
+        (valueChange)="setUsageFilter($event)"
+      />
     </div>
     <div class="group group-end">
       <button
@@ -159,12 +169,14 @@
   <p class="state" role="status">Loading volumes…</p>
   } @else if (volumes().length === 0) {
   <p class="state">There are no volumes on this endpoint.</p>
+  } @else if (visible().length === 0) {
+  <p class="state">No volume matches the filter.</p>
   } @else {
   <ag-grid-angular
     class="grid"
     [modules]="modules"
     [theme]="theme"
-    [rowData]="volumes()"
+    [rowData]="visible()"
     [columnDefs]="columnDefs"
     [defaultColDef]="defaultColDef"
     [rowSelection]="rowSelection"

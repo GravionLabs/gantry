@@ -1,6 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
 
-import { THEMES, type Theme } from "../core/settings/settings-core";
+import {
+  REFRESH_INTERVALS,
+  THEMES,
+  type RefreshInterval,
+  type Theme,
+} from "../core/settings/settings-core";
 import { SettingsService } from "../core/settings/settings.service";
 import { ThemeService } from "../core/settings/theme";
 import { UpdateSettings } from "../core/settings/updates";
@@ -26,6 +31,10 @@ export class SettingsView {
     id,
     label: id[0].toUpperCase() + id.slice(1),
   }));
+  protected readonly refreshChoices = REFRESH_INTERVALS.map((seconds) => ({
+    seconds,
+    label: seconds === 0 ? "Off" : `${seconds} s`,
+  }));
   protected readonly categories = SETTINGS_CATEGORIES;
   protected readonly selectedId = signal(readSelectedCategory(localStorage));
   protected readonly selected = computed(
@@ -48,6 +57,10 @@ export class SettingsView {
       ...current,
       containers: { ...current.containers, [key]: value },
     }));
+  }
+
+  protected chooseRefresh(refreshSeconds: RefreshInterval): void {
+    void this.settings.update((current) => ({ ...current, engine: { refreshSeconds } }));
   }
 
   protected chooseTheme(theme: Theme): void {

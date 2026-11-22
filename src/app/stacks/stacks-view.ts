@@ -11,6 +11,7 @@ import { HxButton, HxMessage, HxTable } from "@gravionlabs/helix-ui";
 import { AgGridAngular } from "ag-grid-angular";
 import type { ColDef, GetRowIdParams, RowClassRules } from "ag-grid-community";
 
+import { pollRefresh } from "../core/settings/refresh-poll";
 import type { ComposeAction, ComposeAvailability, Container, Stack } from "../core/bindings";
 import { ContainerList } from "../core/container-list";
 import { stateLabel } from "../core/containers";
@@ -168,6 +169,8 @@ export class StacksView {
   private stopRun: (() => void) | null = null;
 
   constructor() {
+    // Poll at the interval of the settings; off leaves the engine events and the Refresh button.
+    pollRefresh(() => this.list.reload());
     effect(() => {
       const endpoint = this.endpoint();
       if (endpoint) untracked(() => this.list.start(endpoint));

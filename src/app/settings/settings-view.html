@@ -90,6 +90,23 @@
         Group by stack
       </label>
     </fieldset>
+    } @if (selected().id === 'engine') {
+    <fieldset class="engine">
+      <legend>Refresh interval of the lists</legend>
+      @for (choice of refreshChoices; track choice.seconds) {
+      <label>
+        <input
+          type="radio"
+          name="refresh"
+          [value]="choice.seconds"
+          [checked]="settings.engine().refreshSeconds === choice.seconds"
+          (change)="chooseRefresh(choice.seconds)"
+        />
+        {{ choice.label }}
+      </label>
+      }
+      <p class="hint">Off refreshes on engine events and the Refresh button only.</p>
+    </fieldset>
     } @if (settings.error(); as message) {
     <p class="problem" role="alert">{{ message }}</p>
     }

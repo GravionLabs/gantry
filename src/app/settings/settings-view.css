@@ -64,7 +64,8 @@
   color: var(--hx-color-danger, #c33);
 }
 .theme,
-.containers {
+.containers,
+.engine {
   margin: 1rem 0 0;
   padding: 0;
   border: 0;
@@ -73,13 +74,15 @@
   gap: 0.4rem;
 }
 .theme legend,
-.containers legend {
+.containers legend,
+.engine legend {
   padding: 0;
   margin-bottom: 0.4rem;
   font-weight: 600;
 }
 .theme label,
-.containers label {
+.containers label,
+.engine label {
   display: flex;
   align-items: center;
   gap: 0.5rem;

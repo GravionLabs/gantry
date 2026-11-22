@@ -13,12 +13,17 @@ change `devCsp` the same way. Tauri does not rewrite assets the dev server serve
 ## Release flow
 
 1. Work is integrated on `release/next` through one pull request per PBI.
-2. When the milestone is done, the release pull request `release/next` → `main` is opened and reviewed by the owner.
-3. A push to `main` runs `.github/workflows/release.yml`. It calls the shared workflow
+2. Every milestone ends with its release test: `/github-milestone create M<nnn>` adds the PBI
+   `[PBI] test: release candidate test of M<nnn> on <platforms>` (label `release-test`, body from
+   `.github/release-test.md`, configured in `.agents/config.json` under `release`). The owner installs the RC built from
+   `release/next` and works through it.
+3. When the milestone is done, the release pull request `release/next` → `main` is opened and reviewed by the owner.
+   With `release.test.gate: true`, `github-release finish` refuses while the release-test issue is open.
+4. A push to `main` runs `.github/workflows/release.yml`. It calls the shared workflow
    `GravionLabs/ci/.github/workflows/tauri-app.yml@v1`, versions the build with GitVersion, builds the installers
    for Linux, macOS and Windows, signs the update packages and publishes one GitHub release `v<version>` with
    `latest.json`.
-4. Installed apps find the release through `releases/latest/download/latest.json` at startup
+5. Installed apps find the release through `releases/latest/download/latest.json` at startup
    (see [docs/updater.md](docs/updater.md)).
 
 ### Validation and RC builds

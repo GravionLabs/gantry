@@ -129,30 +129,39 @@ export class ContainerStateCell implements ICellRendererAngularComp {
       } @else {
         <span class="port">{{ label(p) }}</span>
       }
+      @if (!$last) {
+        <span class="sep">, </span>
+      }
     }
   </span>`,
   styles: `
-    .ports {
-      display: inline-flex;
-      gap: 0.25rem;
-      align-items: center;
-      overflow: hidden;
+    :host {
+      display: block;
+      min-width: 0;
     }
-    .port {
-      padding: 0 0.4rem;
-      border: 1px solid var(--h-border-color, rgb(128 128 128 / 35%));
-      border-radius: 0.25rem;
+    .ports {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       font-family: var(--h-font-mono, monospace);
       font-size: 0.9em;
-      line-height: 1.5;
-      white-space: nowrap;
+    }
+    .port {
       color: inherit;
       text-decoration: none;
     }
+    a.port {
+      color: var(--h-primary-color);
+    }
     a.port:hover,
     a.port:focus-visible {
-      border-color: var(--h-primary-color);
-      color: var(--h-primary-color);
+      text-decoration: underline;
+    }
+    a.port:focus-visible {
+      outline: 2px solid var(--h-primary-color);
+      outline-offset: 1px;
+      border-radius: 0.125rem;
     }
   `,
 })

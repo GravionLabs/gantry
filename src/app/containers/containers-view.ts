@@ -47,6 +47,7 @@ import {
   ContainerStateCell,
 } from "../grid/cells";
 import { GRID_MODULES, GRID_THEME } from "../grid/grid";
+import { containerPortsTooltip } from "../grid/tooltips";
 
 /** A container for which the last action failed, with the engine's message. */
 export interface ActionFailure {
@@ -96,6 +97,7 @@ const COLUMNS: ColDef<Container>[] = [
     headerName: "Ports",
     field: "ports",
     cellRenderer: ContainerPortsCell,
+    tooltip: containerPortsTooltip,
     cellDataType: false,
     minWidth: 140,
     flex: 2,

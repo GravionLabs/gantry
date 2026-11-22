@@ -1,8 +1,13 @@
 import type { ITooltipParams } from "ag-grid-community";
 import { describe, expect, it } from "vitest";
 
-import type { Image, Volume } from "../core/bindings";
-import { imageIdTooltip, imageReferenceTooltip, volumeMountpointTooltip } from "./tooltips";
+import type { Container, Image, Volume } from "../core/bindings";
+import {
+  containerPortsTooltip,
+  imageIdTooltip,
+  imageReferenceTooltip,
+  volumeMountpointTooltip,
+} from "./tooltips";
 
 function params<T>(data: T | undefined): ITooltipParams<T> {
   return { data } as ITooltipParams<T>;
@@ -26,5 +31,14 @@ describe("grid tooltips", () => {
     );
     expect(imageReferenceTooltip(params({ id: "sha256:a" } as Image))).toBe("sha256:a");
     expect(imageIdTooltip(params({ id: "sha256:a" } as Image))).toBe("sha256:a");
+  });
+
+  it("lists all ports of a container, comma separated", () => {
+    const ports = [
+      { privatePort: 80, publicPort: 8080, protocol: "tcp" },
+      { privatePort: 53, publicPort: null, protocol: "udp" },
+    ];
+    expect(containerPortsTooltip(params({ ports } as Container))).toBe("8080→80/tcp, 53/udp");
+    expect(containerPortsTooltip(params({ ports: [] } as unknown as Container))).toBeUndefined();
   });
 });

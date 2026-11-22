@@ -1,6 +1,7 @@
 import type { ITooltipParams } from "ag-grid-community";
 
-import type { Image, Volume } from "../core/bindings";
+import type { Container, Image, Volume } from "../core/bindings";
+import { portLabel } from "../core/containers";
 
 /** Tooltip of the image column: the full reference, else the ID; nothing without row data. */
 export function imageReferenceTooltip(p: ITooltipParams<Image>): string | undefined {
@@ -15,4 +16,10 @@ export function imageIdTooltip(p: ITooltipParams<Image>): string | undefined {
 /** Tooltip of the volume mountpoint column; nothing without row data. */
 export function volumeMountpointTooltip(p: ITooltipParams<Volume>): string | undefined {
   return p.data?.mountpoint;
+}
+
+/** Tooltip of the ports column: the full, comma separated list; nothing without ports. */
+export function containerPortsTooltip(p: ITooltipParams<Container>): string | undefined {
+  const ports = p.data?.ports ?? [];
+  return ports.length > 0 ? ports.map(portLabel).join(", ") : undefined;
 }

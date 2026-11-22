@@ -4,26 +4,30 @@
   </header>
 
   <div class="bar" role="toolbar" aria-label="System actions">
-    <button
-      hx-button
-      size="small"
-      type="button"
-      [disabled]="!endpoint() || busy() || !loaded()"
-      (click)="openCleanup()"
-    >
-      Clean up…
-    </button>
-    <button
-      hx-button
-      size="small"
-      variant="outlined"
-      severity="secondary"
-      type="button"
-      [disabled]="!endpoint()"
-      (click)="refresh()"
-    >
-      Refresh
-    </button>
+    <div class="group group-start">
+      <button
+        hx-button
+        size="small"
+        type="button"
+        [disabled]="!endpoint() || busy() || !loaded()"
+        (click)="openCleanup()"
+      >
+        Clean up…
+      </button>
+    </div>
+    <div class="group group-end">
+      <button
+        hx-button
+        size="small"
+        variant="outlined"
+        severity="secondary"
+        type="button"
+        [disabled]="!endpoint()"
+        (click)="refresh()"
+      >
+        Refresh
+      </button>
+    </div>
   </div>
 
   @if (problem(); as text) {

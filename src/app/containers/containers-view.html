@@ -37,6 +37,16 @@
         />
         CPU and memory
       </label>
+      <label class="toggle">
+        <input
+          type="checkbox"
+          hx-checkbox
+          size="small"
+          [checked]="grouped()"
+          (change)="setGrouped($event)"
+        />
+        Group by stack
+      </label>
     </div>
     @if (list.phase() === 'ready' && list.containers().length > 0) {
     <div class="actions" role="toolbar" aria-label="Container actions">
@@ -114,12 +124,17 @@
     class="grid"
     [modules]="modules"
     [theme]="theme"
-    [rowData]="visible()"
+    [rowData]="rows()"
     [columnDefs]="columnDefs()"
     [defaultColDef]="defaultColDef"
     [rowSelection]="rowSelection"
     [rowClassRules]="rowClassRules"
     [getRowId]="getRowId"
+    [isFullWidthRow]="groupOptions.isFullWidthRow"
+    [fullWidthCellRenderer]="groupRenderer"
+    [postSortRows]="groupOptions.postSortRows"
+    [isExternalFilterPresent]="groupOptions.isExternalFilterPresent"
+    [doesExternalFilterPass]="groupOptions.doesExternalFilterPass"
     [context]="context"
     [suppressCellFocus]="true"
     (gridReady)="gridReady($event)"

@@ -33,6 +33,7 @@ import {
   volumeUsageLabel,
 } from "../core/volumes";
 import { GRID_MODULES, GRID_THEME } from "../grid/grid";
+import { volumeMountpointTooltip } from "../grid/tooltips";
 
 const COLUMNS: ColDef<Volume>[] = [
   { colId: "name", headerName: "Name", field: "name", minWidth: 180, flex: 2, sortable: true },
@@ -41,7 +42,7 @@ const COLUMNS: ColDef<Volume>[] = [
     colId: "mountpoint",
     headerName: "Mountpoint",
     field: "mountpoint",
-    tooltipField: "mountpoint",
+    tooltip: volumeMountpointTooltip,
     cellClass: "mono",
     minWidth: 200,
     flex: 3,

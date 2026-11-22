@@ -40,6 +40,7 @@ import {
 import { toGantryError } from "../core/invoke";
 import { formatBytes } from "../core/stats";
 import { GRID_MODULES, GRID_THEME } from "../grid/grid";
+import { imageIdTooltip, imageReferenceTooltip } from "../grid/tooltips";
 
 /** Row ids must be unique: an image with several tags has a row per tag. */
 function rowId(image: Image): string {
@@ -51,7 +52,7 @@ const COLUMNS: ColDef<Image>[] = [
     colId: "repository",
     headerName: "Repository",
     valueGetter: (p) => p.data?.repository ?? "<none>",
-    tooltipValueGetter: (p) => p.data?.reference ?? p.data?.id,
+    tooltip: imageReferenceTooltip,
     minWidth: 180,
     flex: 2,
     sortable: true,
@@ -67,7 +68,7 @@ const COLUMNS: ColDef<Image>[] = [
     colId: "id",
     headerName: "Image ID",
     valueGetter: (p) => (p.data ? shortId(p.data.id) : ""),
-    tooltipValueGetter: (p) => p.data?.id,
+    tooltip: imageIdTooltip,
     cellClass: "mono",
     width: 130,
   },

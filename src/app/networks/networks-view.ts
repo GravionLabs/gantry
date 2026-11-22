@@ -52,7 +52,7 @@ const COLUMNS: ColDef<Network>[] = [
     colId: "containers",
     headerName: "Containers",
     valueGetter: (p) => (p.data ? connectedLabel(p.data.containers) : ""),
-    tooltipValueGetter: (p) => (p.data ? connectedLabel(p.data.containers) : ""),
+    tooltip: (p) => (p.data ? connectedLabel(p.data.containers) : ""),
     minWidth: 180,
     flex: 3,
     comparator: (_a, _b, nodeA, nodeB) =>

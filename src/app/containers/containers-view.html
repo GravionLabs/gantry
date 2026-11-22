@@ -55,9 +55,9 @@
       <button
         hx-button
         size="small"
-        variant="outlined"
         type="button"
-        [severity]="severity(kind)"
+        [variant]="look(kind).variant"
+        [severity]="look(kind).severity"
         [disabled]="disabled(kind)"
         (click)="request(kind)"
       >

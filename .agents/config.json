@@ -1,0 +1,9 @@
+{
+  "release": {
+    "test": {
+      "gate": true,
+      "platforms": ["Linux"],
+      "template": ".github/release-test.md"
+    }
+  }
+}

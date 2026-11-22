@@ -2,6 +2,14 @@
 
 Read [AGENTS.md](AGENTS.md) first: architecture, rules, verify commands and the issue and PR conventions.
 
+## Development
+
+`pnpm tauri dev` runs the webview under the release CSP (`devCsp` in `src-tauri/tauri.conf.json` equals `csp`), so a
+CSP problem shows up while developing and not only in the installers (#96). Only `connect-src` is extended, with
+`ws://localhost:1420` and `http://localhost:1420` for the Angular dev server's live reload. When you change `csp`,
+change `devCsp` the same way. Tauri does not rewrite assets the dev server serves, so
+`dangerousDisableAssetCspModification` has no effect there; the CSP header itself still applies.
+
 ## Release flow
 
 1. Work is integrated on `release/next` through one pull request per PBI.

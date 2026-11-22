@@ -73,7 +73,7 @@ export const VIEWS: readonly GantryView[] = [
     icon: "settings",
     placement: "sidebar",
     position: "bottom",
-    description: "Application settings appear here.",
+    description: "Appearance, updates, containers and engine settings.",
   },
 ];
 

@@ -1,0 +1,203 @@
+<section class="networks" aria-labelledby="networks-title">
+  <header class="head">
+    <h1 id="networks-title">Networks</h1>
+    @if (loaded()) {
+    <span class="total">{{ networks().length }}</span>
+    }
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="Network actions">
+    <button
+      hx-button
+      size="small"
+      type="button"
+      [disabled]="!endpoint() || busy()"
+      (click)="openCreate()"
+    >
+      Create…
+    </button>
+    <button
+      hx-button
+      size="small"
+      variant="outlined"
+      severity="secondary"
+      type="button"
+      [disabled]="!selected() || busy()"
+      (click)="askRemove()"
+    >
+      Remove…
+    </button>
+    <button
+      hx-button
+      size="small"
+      variant="outlined"
+      severity="secondary"
+      type="button"
+      [disabled]="busy()"
+      (click)="askPrune()"
+    >
+      Prune unused…
+    </button>
+    <button
+      hx-button
+      size="small"
+      variant="outlined"
+      severity="secondary"
+      type="button"
+      (click)="refresh()"
+    >
+      Refresh
+    </button>
+  </div>
+
+  @if (problem(); as text) {
+  <hx-message severity="error" role="alert">
+    Cannot read the networks: {{ text }}
+    <button hx-button variant="outlined" type="button" (click)="retry()">Retry</button>
+  </hx-message>
+  } @if (creating(); as form) {
+  <form
+    class="confirm"
+    aria-labelledby="create-title"
+    (submit)="$event.preventDefault(); confirmCreate()"
+  >
+    <h2 id="create-title">Create a network</h2>
+    <label>
+      Name
+      <input
+        hx-input
+        size="small"
+        type="text"
+        placeholder="e.g. app-net"
+        [value]="form.name"
+        (input)="setField('name', $event)"
+      />
+    </label>
+    <label>
+      Subnet (optional, bridge network)
+      <input
+        hx-input
+        size="small"
+        type="text"
+        placeholder="172.30.0.0/16"
+        [value]="form.subnet"
+        (input)="setField('subnet', $event)"
+      />
+    </label>
+    @if (createProblem(); as text) {
+    <hx-message severity="error" role="alert">{{ text }}</hx-message>
+    }
+    <div class="buttons">
+      <button hx-button variant="outlined" type="button" (click)="cancelCreate()">Cancel</button>
+      <button hx-button type="submit" [disabled]="busy()">Create</button>
+    </div>
+  </form>
+  } @if (removal(); as network) {
+  <div class="confirm" role="alertdialog" aria-labelledby="remove-title">
+    <h2 id="remove-title">Remove {{ network.name }}?</h2>
+    <p>This deletes the network <strong>{{ network.name }}</strong>.</p>
+    @if (network.builtin) {
+    <p>It is built in; the engine refuses to remove it.</p>
+    } @else if (network.containers.length > 0) {
+    <p>
+      It is used by <strong>{{ network.containers.join(', ') }}</strong>; the engine refuses to
+      remove a network that a container is still connected to.
+    </p>
+    }
+    <div class="buttons">
+      <button hx-button variant="outlined" type="button" (click)="cancelRemove()">Cancel</button>
+      <button hx-button type="button" [disabled]="busy()" (click)="confirmRemove()">Remove</button>
+    </div>
+  </div>
+  } @if (pruneRequest(); as candidates) {
+  <div class="confirm" role="alertdialog" aria-labelledby="prune-title">
+    <h2 id="prune-title">Remove all unused networks?</h2>
+    @if (candidates.length === 0) {
+    <p>No network is unused right now; the engine decides when it runs.</p>
+    } @else {
+    <p>
+      This removes {{ candidates.length }} {{ candidates.length === 1 ? 'network' : 'networks' }}:
+      <strong>{{ pruneNames() }}</strong>.
+    </p>
+    }
+    <p>Every network that no container uses is removed; the built-in ones stay.</p>
+    <div class="buttons">
+      <button hx-button variant="outlined" type="button" (click)="cancelPrune()">Cancel</button>
+      <button hx-button type="button" [disabled]="busy()" (click)="confirmPrune()">Prune</button>
+    </div>
+  </div>
+  }@if (selected(); as network) {
+  <section class="members" [attr.aria-label]="'Containers on ' + network.name">
+    <h2>Containers on {{ network.name }}</h2>
+    @if (network.containers.length === 0) {
+    <p class="state">No container is connected.</p>
+    } @else {
+    <ul>
+      @for (name of network.containers; track name) {
+      <li>
+        <span>{{ name }}</span>
+        <button
+          hx-button
+          size="small"
+          variant="outlined"
+          severity="secondary"
+          type="button"
+          [disabled]="busy()"
+          [attr.aria-label]="'Disconnect ' + name + ' from ' + network.name"
+          (click)="disconnect(name)"
+        >
+          Disconnect
+        </button>
+      </li>
+      }
+    </ul>
+    }
+    <div class="attach">
+      <select
+        aria-label="Container to connect"
+        [value]="toConnect()"
+        (change)="setToConnect($event)"
+      >
+        <option value="">Connect a container…</option>
+        @for (container of attachable(); track container.id) {
+        <option [value]="container.name">{{ container.name }}</option>
+        }
+      </select>
+      <button
+        hx-button
+        size="small"
+        type="button"
+        [disabled]="!toConnect() || busy()"
+        (click)="connect()"
+      >
+        Connect
+      </button>
+    </div>
+  </section>
+  } @if (result(); as outcome) {
+  <hx-message
+    [severity]="outcome.failed ? 'error' : 'success'"
+    [attr.role]="outcome.failed ? 'alert' : 'status'"
+  >
+    {{ outcome.text }}
+    <button hx-button variant="outlined" type="button" (click)="dismissResult()">Dismiss</button>
+  </hx-message>
+  } @if (!loaded()) {
+  <p class="state" role="status">Loading networks…</p>
+  } @else if (networks().length === 0) {
+  <p class="state">There are no networks on this endpoint.</p>
+  } @else {
+  <ag-grid-angular
+    class="grid"
+    [modules]="modules"
+    [theme]="theme"
+    [rowData]="networks()"
+    [columnDefs]="columnDefs"
+    [defaultColDef]="defaultColDef"
+    [rowSelection]="rowSelection"
+    [getRowId]="getRowId"
+    [suppressCellFocus]="true"
+    (selectionChanged)="selectionChanged($event)"
+  />
+  }
+</section>

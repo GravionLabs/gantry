@@ -1,5 +1,6 @@
 import type {
   ComposeAction,
+  Container,
   ComposeAvailability,
   ComposeEvent,
   ComposeProject,
@@ -25,6 +26,56 @@ export function listStacks(endpoint: Endpoint): Promise<Stack[]> {
 /** `2/3 running`: the containers that are up out of all containers of the stack. */
 export function stackSummary(stack: Pick<Stack, "running" | "total">): string {
   return `${stack.running}/${stack.total} running`;
+}
+
+/** A row of the stack grid: a stack, or a container of an expanded stack right below it. */
+export type StackRow =
+  | {
+      readonly kind: "stack";
+      readonly id: string;
+      readonly stack: Stack;
+      readonly expanded: boolean;
+    }
+  | {
+      readonly kind: "container";
+      readonly id: string;
+      readonly stack: string;
+      readonly service: string;
+      readonly container: Container;
+    };
+
+const byName = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+
+/**
+ * The rows of the stack grid: the stacks by name, each expanded one followed by its containers in
+ * the order of its services. A stack name that is no longer listed is ignored.
+ */
+export function stackRows(stacks: readonly Stack[], expanded: ReadonlySet<string>): StackRow[] {
+  const rows: StackRow[] = [];
+  for (const stack of [...stacks].sort((a, b) => byName.compare(a.name, b.name))) {
+    const open = expanded.has(stack.name);
+    rows.push({ kind: "stack", id: `stack:${stack.name}`, stack, expanded: open });
+    if (!open) continue;
+    for (const service of stack.services) {
+      for (const container of service.containers) {
+        rows.push({
+          kind: "container",
+          id: `container:${container.id}`,
+          stack: stack.name,
+          service: service.name,
+          container,
+        });
+      }
+    }
+  }
+  return rows;
+}
+
+/** The expanded stacks with `name` opened or closed. */
+export function toggleStack(expanded: ReadonlySet<string>, name: string): Set<string> {
+  const next = new Set(expanded);
+  if (!next.delete(name)) next.add(name);
+  return next;
 }
 
 /** The number of services of a stack. */

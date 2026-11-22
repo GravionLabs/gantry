@@ -3,10 +3,12 @@
 //! Commands return `gantry_core::Error`, which serializes to `{ kind, message }`.
 
 use gantry_core::{
-    ActionEvent, ActionTarget, ComposeAction, ComposeAvailability, ComposeEvent, ComposeProject,
-    Connections, Container, ContainerAction, ContainerDetails, ContainerWatchEvent, ContextList,
-    DetectedEngine, Endpoint, EngineInfo, ExecEvent, ExecOptions, ExecSessions, LogEvent,
-    LogOptions, Stack, StatsEvent, TlsFiles, WatchTiming, Watches,
+    ActionEvent, ActionTarget, CleanupCategory, CleanupPreview, CleanupResult, ComposeAction,
+    ComposeAvailability, ComposeEvent, ComposeProject, Connections, Container, ContainerAction,
+    ContainerDetails, ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EngineInfo,
+    ExecEvent, ExecOptions, ExecSessions, Image, LogEvent, LogOptions, Network,
+    NetworkPruneOutcome, NetworkSpec, PruneOutcome, PullEvent, RemoveOutcome, Stack, StatsEvent,
+    SystemOverview, TlsFiles, Volume, VolumePruneOutcome, VolumeSpec, WatchTiming, Watches,
 };
 use tauri::ipc::Channel;
 use tauri::{Manager, RunEvent};
@@ -210,6 +212,192 @@ async fn containers_stats(
     result
 }
 
+/// Lists the images of `endpoint` with the number of containers that use each.
+#[tauri::command]
+async fn images_list(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<Vec<Image>, gantry_core::Error> {
+    gantry_core::list_images(&connections.activate(&endpoint)?).await
+}
+
+/// Pulls `reference` and streams the progress per layer through `on_event` until it ends or
+/// `containers_unwatch` stops the pull `watch_id`. Resolves with `false` when it was stopped.
+#[tauri::command]
+async fn images_pull(
+    connections: tauri::State<'_, Connections>,
+    watches: tauri::State<'_, Watches>,
+    endpoint: Endpoint,
+    reference: String,
+    watch_id: String,
+    on_event: Channel<PullEvent>,
+) -> Result<bool, gantry_core::Error> {
+    let docker = connections.activate(&endpoint)?;
+    let cancel = watches.register(&watch_id);
+    let result = gantry_core::pull_image(&docker, &reference, &cancel, |event| {
+        let _ = on_event.send(event);
+    })
+    .await;
+    watches.finish(&watch_id);
+    result
+}
+
+/// Removes an image by reference or ID.
+#[tauri::command]
+async fn images_remove(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    target: String,
+    force: bool,
+) -> Result<RemoveOutcome, gantry_core::Error> {
+    gantry_core::remove_image(&connections.activate(&endpoint)?, &target, force).await
+}
+
+/// Removes the images no container uses: the dangling ones, or with `all` every unused image.
+#[tauri::command]
+async fn images_prune(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    all: bool,
+) -> Result<PruneOutcome, gantry_core::Error> {
+    gantry_core::prune_images(&connections.activate(&endpoint)?, all).await
+}
+
+/// Lists the volumes of `endpoint` with their size and the containers that use them.
+#[tauri::command]
+async fn volumes_list(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<Vec<Volume>, gantry_core::Error> {
+    gantry_core::list_volumes(&connections.activate(&endpoint)?).await
+}
+
+/// Creates a volume.
+#[tauri::command]
+async fn volumes_create(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    spec: VolumeSpec,
+) -> Result<(), gantry_core::Error> {
+    gantry_core::create_volume(&connections.activate(&endpoint)?, spec).await
+}
+
+/// Removes a volume by name.
+#[tauri::command]
+async fn volumes_remove(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    name: String,
+    force: bool,
+) -> Result<(), gantry_core::Error> {
+    gantry_core::remove_volume(&connections.activate(&endpoint)?, &name, force).await
+}
+
+/// Removes every volume no container uses.
+#[tauri::command]
+async fn volumes_prune(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<VolumePruneOutcome, gantry_core::Error> {
+    gantry_core::prune_volumes(&connections.activate(&endpoint)?).await
+}
+
+/// Lists the networks of `endpoint` with their subnets and the containers on them.
+#[tauri::command]
+async fn networks_list(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<Vec<Network>, gantry_core::Error> {
+    gantry_core::list_networks(&connections.activate(&endpoint)?).await
+}
+
+/// Creates a bridge network.
+#[tauri::command]
+async fn networks_create(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    spec: NetworkSpec,
+) -> Result<(), gantry_core::Error> {
+    gantry_core::create_network(&connections.activate(&endpoint)?, spec).await
+}
+
+/// Removes a network by name or id.
+#[tauri::command]
+async fn networks_remove(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    name: String,
+) -> Result<(), gantry_core::Error> {
+    gantry_core::remove_network(&connections.activate(&endpoint)?, &name).await
+}
+
+/// Removes every network no container uses.
+#[tauri::command]
+async fn networks_prune(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<NetworkPruneOutcome, gantry_core::Error> {
+    gantry_core::prune_networks(&connections.activate(&endpoint)?).await
+}
+
+/// Connects a container to a network.
+#[tauri::command]
+async fn networks_connect(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    network: String,
+    container: String,
+) -> Result<(), gantry_core::Error> {
+    gantry_core::connect_network(&connections.activate(&endpoint)?, &network, &container).await
+}
+
+/// Disconnects a container from a network.
+#[tauri::command]
+async fn networks_disconnect(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    network: String,
+    container: String,
+    force: bool,
+) -> Result<(), gantry_core::Error> {
+    gantry_core::disconnect_network(
+        &connections.activate(&endpoint)?,
+        &network,
+        &container,
+        force,
+    )
+    .await
+}
+
+/// Reads the engine information and the disk usage of `endpoint`.
+#[tauri::command]
+async fn system_overview(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+) -> Result<SystemOverview, gantry_core::Error> {
+    gantry_core::system_overview(&connections.activate(&endpoint)?).await
+}
+
+/// Lists what a cleanup of `categories` would remove, without removing anything.
+#[tauri::command]
+async fn system_cleanup_preview(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    categories: Vec<CleanupCategory>,
+) -> Result<Vec<CleanupPreview>, gantry_core::Error> {
+    gantry_core::cleanup_preview(&connections.activate(&endpoint)?, &categories).await
+}
+
+/// Removes the unused data of `categories` and reports what each category freed.
+#[tauri::command]
+async fn system_cleanup(
+    connections: tauri::State<'_, Connections>,
+    endpoint: Endpoint,
+    categories: Vec<CleanupCategory>,
+) -> Result<CleanupResult, gantry_core::Error> {
+    Ok(gantry_core::cleanup(&connections.activate(&endpoint)?, &categories).await)
+}
+
 /// Tells whether Compose actions can run for `project`: the plugin is installed and the Compose
 /// files exist on this machine.
 #[tauri::command]
@@ -285,6 +473,23 @@ pub fn run() {
             endpoints_detect,
             containers_list,
             stacks_list,
+            images_list,
+            images_pull,
+            images_remove,
+            images_prune,
+            volumes_list,
+            volumes_create,
+            volumes_remove,
+            volumes_prune,
+            networks_list,
+            networks_create,
+            networks_remove,
+            networks_prune,
+            networks_connect,
+            networks_disconnect,
+            system_overview,
+            system_cleanup_preview,
+            system_cleanup,
             containers_inspect,
             containers_watch,
             containers_unwatch,

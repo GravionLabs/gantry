@@ -2,22 +2,13 @@
   display: block;
   height: 100vh;
 }
-.sidebar {
-  padding: 0.75rem;
-}
-.sidebar h2 {
-  margin: 0;
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--h-text-muted-color);
-}
 .content {
   display: grid;
-  place-content: center;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   height: 100%;
 }
 .empty {
+  place-self: center;
   display: grid;
   justify-items: center;
   gap: 0.5rem;
@@ -75,19 +66,4 @@
 }
 .dot[data-state="denied"] {
   background: var(--h-red-500, #e5484d);
-}
-
-.update-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 360px;
-  padding: 8px;
-}
-
-.update-panel .notes {
-  max-height: 200px;
-  margin: 0;
-  overflow: auto;
-  white-space: pre-wrap;
 }

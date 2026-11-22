@@ -5,10 +5,22 @@
   overflow: auto;
 }
 .stacks {
-  display: grid;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 1rem;
+}
+.grid {
+  flex: 1;
+  min-height: 12rem;
+}
+.grid ::ng-deep .child {
+  background: var(--h-surface-hover-color, rgb(128 128 128 / 6%));
+}
+.grid ::ng-deep .mono {
+  font-family: var(--h-font-mono, monospace);
 }
 .head {
   display: flex;
@@ -20,6 +32,13 @@
 .head h1,
 h2 {
   margin: 0;
+}
+.head h1 {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+h2 {
+  font-size: 1rem;
 }
 .facts {
   display: grid;

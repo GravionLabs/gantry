@@ -12,10 +12,14 @@ mod endpoint;
 mod engine;
 mod error;
 mod exec;
+mod images;
 mod logs;
+mod networks;
 mod ssh;
 mod stacks;
 mod stats;
+mod system;
+mod volumes;
 
 pub use compose::{
     ComposeAction, ComposeAvailability, ComposeCommand, ComposeEvent, ComposeProject, PluginProbe,
@@ -40,7 +44,23 @@ pub use endpoint::{Endpoint, EndpointKind, TlsFiles};
 pub use engine::{Connections, EngineInfo, connect, ping};
 pub use error::{Error, ErrorKind, ErrorPayload, Result};
 pub use exec::{ExecEvent, ExecOptions, ExecSessions, run_exec};
+pub use images::{
+    Image, PruneOutcome, PullEvent, RemoveOutcome, images_of, list_images, prune_images,
+    pull_image, remove_image, split_reference,
+};
 pub use logs::{LogBatching, LogEvent, LogLine, LogOptions, LogStream, stream_logs};
+pub use networks::{
+    Network, NetworkPruneOutcome, NetworkSpec, connect_network, create_network, disconnect_network,
+    list_networks, prune_networks, remove_network,
+};
 pub use ssh::SshTarget;
 pub use stacks::{Stack, StackService, list_stacks, stacks_of};
 pub use stats::{StatsEvent, StatsSample, sample_of, stream_stats};
+pub use system::{
+    CleanupCategory, CleanupFailure, CleanupOutcome, CleanupPreview, CleanupResult, DiskUsage,
+    EngineDetails, SystemOverview, cleanup, cleanup_preview, system_overview,
+};
+pub use volumes::{
+    Volume, VolumePruneOutcome, VolumeSpec, create_volume, list_volumes, prune_volumes,
+    remove_volume,
+};

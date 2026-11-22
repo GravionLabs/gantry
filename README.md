@@ -2,7 +2,7 @@
 
 # Gantry
 
-A native desktop client for Docker engines: manage containers, Compose stacks, images, volumes and networks on your local engine and on remote hosts over SSH. Think Portainer without the server container, or the Docker Desktop dashboard for any engine.
+A native desktop client for Docker engines: manage containers, Compose stacks, images, volumes and networks, with an engine overview and guided cleanup, on your local engine and on remote hosts over SSH. Think Portainer without the server container, or the Docker Desktop dashboard for any engine.
 
 Gantry is a client only. It connects to an engine you already run:
 
@@ -14,6 +14,10 @@ Gantry is a client only. It connects to an engine you already run:
 | Any      | Remote hosts over SSH, TCP endpoints, Docker contexts |
 
 > Status: early development. See the [issues](https://github.com/GravionLabs/gantry/issues) for the roadmap.
+
+## Documentation
+
+[User guide](docs/user-guide.md): install Gantry, set up an engine on Linux, macOS and Windows, connect to remote hosts over SSH and fix common problems.
 
 ## Development
 

@@ -78,7 +78,14 @@ export const VIEWS: readonly GantryView[] = [
 ];
 
 /** The views that have a feature behind them; the detail views link only to these. */
-const AVAILABLE_VIEWS: ReadonlySet<string> = new Set(["containers", "stacks"]);
+const AVAILABLE_VIEWS: ReadonlySet<string> = new Set([
+  "containers",
+  "stacks",
+  "images",
+  "volumes",
+  "networks",
+  "system",
+]);
 
 /** Whether a link to the view can be offered, i.e. its feature has landed. */
 export function isViewAvailable(id: string): boolean {
@@ -100,6 +107,14 @@ export const STATUS_ITEMS: readonly StatusItemDecl[] = [
   { id: "engine-version", side: "end" },
   { id: "app-version", side: "end" },
 ];
+
+/**
+ * The engine version in the status bar, e.g. `Docker 29.0.1`. Not through `hx-status-version`: that
+ * puts a `v` in front of its value and is meant for the app version.
+ */
+export function engineVersionLabel(version: string): string {
+  return `Docker ${version}`;
+}
 
 /** The views that show data of the active endpoint; the others work without a reachable engine. */
 export function requiresEndpoint(id: string): boolean {

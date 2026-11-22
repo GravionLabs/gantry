@@ -13,6 +13,55 @@ export type ActionTarget = {
 	name: string,
 };
 
+/**  The kinds of data a cleanup can remove. */
+export type CleanupCategory = 
+/**  Stopped containers. */
+"containers" | 
+/**  Dangling images (no tag, no container). */
+"images" | 
+/**  Volumes no container uses, named ones included. */
+"volumes" | 
+/**  Build cache records no build uses. */
+"buildCache";
+
+/**  A category that could not be cleaned. */
+export type CleanupFailure = {
+	category: CleanupCategory,
+	message: string,
+};
+
+/**  What a cleanup of one category removed. */
+export type CleanupOutcome = {
+	category: CleanupCategory,
+	/**  The number of items the engine deleted. */
+	removed: number,
+	/**  The disk space that was freed, in bytes. */
+	reclaimed: number | null,
+};
+
+/**  What a cleanup of one category would remove. */
+export type CleanupPreview = {
+	category: CleanupCategory,
+	/**  How many items go. For the build cache this can exceed `names`, which it does not list. */
+	count: number,
+	/**  The names (containers, volumes) or ids (images) that go. */
+	names: string[],
+	/**
+	 *  The disk space freed, in bytes; absent when the engine does not tell. Layers shared with
+	 *  an image that stays are counted too, so it is an upper bound for images.
+	 */
+	reclaimable: number | null,
+};
+
+/**
+ *  The result of a cleanup: one entry per category that was removed and one per failure. A failing
+ *  category does not stop the ones after it, and the freed space of the others is not lost.
+ */
+export type CleanupResult = {
+	outcomes: CleanupOutcome[],
+	failures: CleanupFailure[],
+};
+
 /**  A Compose action on a stack. */
 export type ComposeAction = 
 /**  `docker compose up -d`. */
@@ -128,6 +177,20 @@ export type DetectedEngine = {
 	status: EngineStatus,
 };
 
+/**
+ *  The disk usage of one category as `system df` reports it. A value the engine does not report
+ *  (an engine older than API 1.52 reports a different shape) is `None`.
+ */
+export type DiskUsage = {
+	category: CleanupCategory,
+	totalCount: number | null,
+	activeCount: number | null,
+	/**  Disk space in use, in bytes. */
+	size: number | null,
+	/**  Disk space a cleanup of the category frees, in bytes. */
+	reclaimable: number | null,
+};
+
 /**  A Docker engine the user can connect to. */
 export type Endpoint = {
 	name: string,
@@ -152,6 +215,19 @@ export type EndpointKind =
 "tcp" | 
 /**  An SSH remote, e.g. `ssh://user@host`. */
 "ssh";
+
+/**  What the engine reports about itself. */
+export type EngineDetails = {
+	version: string | null,
+	apiVersion: string | null,
+	/**  The operating system of the host, e.g. `Ubuntu 24.04 LTS`; falls back to `linux`. */
+	os: string | null,
+	arch: string | null,
+	cpus: number | null,
+	/**  Total memory of the host in bytes. */
+	memory: number | null,
+	storageDriver: string | null,
+};
 
 /**  Version information of a connected engine. */
 export type EngineInfo = {
@@ -220,6 +296,24 @@ export type ExecOptions = {
 	rows: number,
 };
 
+/**  One row of the image list: an image under one of its tags, or an untagged (dangling) image. */
+export type Image = {
+	/**  The full image ID, e.g. `sha256:…`. */
+	id: string,
+	/**  `repository:tag`; absent for a dangling image. */
+	reference: string | null,
+	repository: string | null,
+	tag: string | null,
+	/**  Size in bytes, including layers shared with other images. */
+	size: number | null,
+	/**  Creation time in seconds since the Unix epoch. */
+	created: number,
+	/**  The number of containers (in any state) created from the image. */
+	containers: number,
+	/**  True for an image that has no tag; `docker image prune` removes it. */
+	dangling: boolean,
+};
+
 /**  A label of the container. */
 export type Label = {
 	key: string,
@@ -263,6 +357,20 @@ export type MountInfo = {
 	readWrite: boolean,
 };
 
+/**  One row of the network list. */
+export type Network = {
+	id: string,
+	name: string,
+	driver: string,
+	scope: string,
+	/**  The subnets of the address pool (IPv4 and IPv6); empty for `host` and `none`. */
+	subnets: string[],
+	/**  The names of the containers (in any state) that are connected to the network. */
+	containers: string[],
+	/**  `bridge`, `host` and `none`: the engine does not remove them. */
+	builtin: boolean,
+};
+
 /**  The attachment of a container to a network. */
 export type NetworkAttachment = {
 	name: string,
@@ -271,6 +379,19 @@ export type NetworkAttachment = {
 	gateway: string,
 	macAddress: string,
 	aliases: string[],
+};
+
+/**  What a prune removed. */
+export type NetworkPruneOutcome = {
+	/**  The names of the networks the engine deleted. */
+	removed: string[],
+};
+
+/**  What creating a network takes: a bridge network with an optional subnet. */
+export type NetworkSpec = {
+	name: string,
+	/**  The subnet in CIDR notation; empty for the engine's choice. */
+	subnet: string,
 };
 
 /**  A published port: a container port that is reachable on the host. */
@@ -282,6 +403,29 @@ export type PortMapping = {
 	publicPort: number | null,
 	/**  `tcp`, `udp` or `sctp`. */
 	protocol: string,
+};
+
+/**  What a prune removed. */
+export type PruneOutcome = {
+	/**  The number of images (tags or layers) the engine deleted or untagged. */
+	removed: number,
+	/**  The disk space that was freed, in bytes. */
+	reclaimed: number | null,
+};
+
+/**  Progress of a pull. */
+export type PullEvent = 
+/**  A status line of the pull (`Pulling from library/nginx`, `Digest: …`, `Status: …`). */
+{ type: "status"; message: string } | 
+/**  The state of one layer; `current` and `total` are bytes and only known while it transfers. */
+{ type: "layer"; id: string; status: string; current: number | null; total: number | null };
+
+/**  What removing an image did. */
+export type RemoveOutcome = {
+	/**  The tags that were removed from the image. */
+	untagged: string[],
+	/**  The IDs of the layers that were deleted. */
+	deleted: string[],
 };
 
 /**  A restart policy, e.g. `on-failure` with at most 3 retries. */
@@ -336,9 +480,48 @@ export type StatsSample = {
 	blockWrite: number | null,
 };
 
+/**  Engine information and disk usage at a glance. */
+export type SystemOverview = {
+	engine: EngineDetails,
+	usage: DiskUsage[],
+};
+
 /**  Client certificates for a TLS-secured TCP endpoint (Docker's `ca.pem`, `cert.pem`, `key.pem`). */
 export type TlsFiles = {
 	ca: string,
 	cert: string,
 	key: string,
+};
+
+/**  One row of the volume list. */
+export type Volume = {
+	name: string,
+	driver: string,
+	mountpoint: string,
+	/**
+	 *  Disk space in bytes as `system df` reports it; absent when the engine does not know it
+	 *  (a driver that cannot measure, or an engine that does not report volume usage).
+	 */
+	size: number | null,
+	/**  Creation time as the engine reports it (RFC 3339). */
+	created: string | null,
+	labels: Label[],
+	/**  The names of the containers (in any state) that mount the volume. */
+	containers: string[],
+};
+
+/**  What a prune removed. */
+export type VolumePruneOutcome = {
+	/**  The names of the volumes the engine deleted. */
+	removed: string[],
+	/**  The disk space that was freed, in bytes. */
+	reclaimed: number | null,
+};
+
+/**  What creating a volume takes. */
+export type VolumeSpec = {
+	name: string,
+	/**  The volume driver; empty for the engine's default (`local`). */
+	driver: string,
+	labels: Label[],
 };

@@ -7,12 +7,15 @@ use specta::Types;
 use specta_typescript::Typescript;
 
 use crate::{
-    ActionEvent, ActionTarget, ComposeAction, ComposeAvailability, ComposeEvent, ComposeProject,
-    Container, ContainerAction, ContainerDetails, ContainerHealth, ContainerState,
-    ContainerWatchEvent, ContextList, DetectedEngine, Endpoint, EndpointKind, EngineInfo,
-    EngineStatus, EnvVar, ErrorKind, ErrorPayload, ExecEvent, ExecOptions, Label, LogEvent,
-    LogLine, LogOptions, LogStream, MountInfo, NetworkAttachment, PortMapping, RestartPolicy,
-    Stack, StackService, StatsEvent, StatsSample, TlsFiles,
+    ActionEvent, ActionTarget, CleanupCategory, CleanupFailure, CleanupOutcome, CleanupPreview,
+    CleanupResult, ComposeAction, ComposeAvailability, ComposeEvent, ComposeProject, Container,
+    ContainerAction, ContainerDetails, ContainerHealth, ContainerState, ContainerWatchEvent,
+    ContextList, DetectedEngine, DiskUsage, Endpoint, EndpointKind, EngineDetails, EngineInfo,
+    EngineStatus, EnvVar, ErrorKind, ErrorPayload, ExecEvent, ExecOptions, Image, Label, LogEvent,
+    LogLine, LogOptions, LogStream, MountInfo, Network, NetworkAttachment, NetworkPruneOutcome,
+    NetworkSpec, PortMapping, PruneOutcome, PullEvent, RemoveOutcome, RestartPolicy, Stack,
+    StackService, StatsEvent, StatsSample, SystemOverview, TlsFiles, Volume, VolumePruneOutcome,
+    VolumeSpec,
 };
 
 /// All types exposed to the frontend.
@@ -20,6 +23,11 @@ pub fn ipc_types() -> Types {
     Types::default()
         .register::<ActionEvent>()
         .register::<ActionTarget>()
+        .register::<CleanupCategory>()
+        .register::<CleanupFailure>()
+        .register::<CleanupOutcome>()
+        .register::<CleanupPreview>()
+        .register::<CleanupResult>()
         .register::<ComposeAction>()
         .register::<ComposeAvailability>()
         .register::<ComposeEvent>()
@@ -34,6 +42,9 @@ pub fn ipc_types() -> Types {
         .register::<Endpoint>()
         .register::<EndpointKind>()
         .register::<DetectedEngine>()
+        .register::<DiskUsage>()
+        .register::<EngineDetails>()
+        .register::<SystemOverview>()
         .register::<EngineInfo>()
         .register::<EngineStatus>()
         .register::<ErrorKind>()
@@ -41,6 +52,7 @@ pub fn ipc_types() -> Types {
         .register::<ErrorPayload>()
         .register::<ExecEvent>()
         .register::<ExecOptions>()
+        .register::<Image>()
         .register::<Label>()
         .register::<LogEvent>()
         .register::<LogLine>()
@@ -49,12 +61,21 @@ pub fn ipc_types() -> Types {
         .register::<MountInfo>()
         .register::<NetworkAttachment>()
         .register::<PortMapping>()
+        .register::<PruneOutcome>()
+        .register::<PullEvent>()
+        .register::<RemoveOutcome>()
         .register::<RestartPolicy>()
         .register::<Stack>()
         .register::<StackService>()
+        .register::<Network>()
+        .register::<NetworkPruneOutcome>()
+        .register::<NetworkSpec>()
         .register::<StatsEvent>()
         .register::<StatsSample>()
         .register::<TlsFiles>()
+        .register::<Volume>()
+        .register::<VolumePruneOutcome>()
+        .register::<VolumeSpec>()
 }
 
 /// Renders the TypeScript bindings file.

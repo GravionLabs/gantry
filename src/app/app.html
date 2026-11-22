@@ -45,52 +45,55 @@
     /></svg
 ></ng-template>
 
-<hx-app-shell
-  [(sidebarWidth)]="shell.sidebarWidth"
-  [(collapsed)]="shell.collapsed"
-  [(activeId)]="shell.activeId"
->
+<hx-app-shell [collapsed]="true" [activeId]="shell.activeId()">
   <hx-activity-bar
     slot="activity"
     label="Views"
     [items]="barItems()"
     [activeId]="shell.activeId()"
-    [expanded]="!shell.collapsed()"
+    [expanded]="true"
     (selected)="shell.select($event)"
   />
 
-  <nav slot="sidebar" class="sidebar" [attr.aria-label]="shell.activeView().label">
-    <h2>{{ shell.activeView().label }}</h2>
-  </nav>
-
   <main class="content">
-    @for (generation of [endpoints.generation()]; track generation) { @if (shell.activeId() ===
-    'endpoints') {
-    <app-endpoints-view />
-    } @else if (needsEndpoint() && endpoints.connection() === 'unreachable') {
-    <section class="empty" role="alert" [attr.aria-label]="shell.activeView().label">
-      <h1>{{ endpoints.activeName() }} is unreachable</h1>
-      <p>{{ endpoints.activeError() }}</p>
-      <div class="buttons">
-        <button hx-button type="button" (click)="endpoints.retry()">Retry</button>
-        <button hx-button variant="outlined" type="button" (click)="shell.select('endpoints')">
-          Manage endpoints
-        </button>
-      </div>
-    </section>
-    } @else if (shell.activeId() === 'containers') { @if (shell.containerId(); as id) {
-    <app-container-details [id]="id" />
-    } @else {
-    <app-containers-view />
-    } } @else if (shell.activeId() === 'stacks') {
-    <app-stacks-view />
-    } @else {
-    <section class="empty" role="region" [attr.aria-label]="shell.activeView().label">
-      <img src="favicon.svg" alt="" width="64" height="64" />
-      <h1>{{ shell.activeView().label }}</h1>
-      <p>{{ shell.activeView().description }}</p>
-    </section>
-    } }
+    <ng-container *appRecreateOn="endpoints.generation()">
+      @if (shell.activeId() === 'endpoints') {
+      <app-endpoints-view />
+      } @else if (needsEndpoint() && endpoints.connection() === 'unreachable') {
+      <section class="empty" role="alert" [attr.aria-label]="shell.activeView().label">
+        <h1>{{ endpoints.activeName() }} is unreachable</h1>
+        <p>{{ endpoints.activeError() }}</p>
+        <div class="buttons">
+          <button hx-button type="button" (click)="endpoints.retry()">Retry</button>
+          <button hx-button variant="outlined" type="button" (click)="shell.select('endpoints')">
+            Manage endpoints
+          </button>
+        </div>
+      </section>
+      } @else if (shell.activeId() === 'containers') { @if (shell.containerId(); as id) {
+      <app-container-details [id]="id" />
+      } @else {
+      <!-- The lists load AG Grid in a chunk of their own, out of the initial bundle. -->
+      @defer (on immediate) {
+      <app-containers-view />
+      } } } @else if (shell.activeId() === 'stacks') { @defer (on immediate) {
+      <app-stacks-view />
+      } } @else if (shell.activeId() === 'images') { @defer (on immediate) {
+      <app-images-view />
+      } } @else if (shell.activeId() === 'volumes') { @defer (on immediate) {
+      <app-volumes-view />
+      } } @else if (shell.activeId() === 'networks') { @defer (on immediate) {
+      <app-networks-view />
+      } } @else if (shell.activeId() === 'system') { @defer (on immediate) {
+      <app-system-view />
+      } } @else {
+      <section class="empty" role="region" [attr.aria-label]="shell.activeView().label">
+        <img src="favicon.svg" alt="" width="64" height="64" />
+        <h1>{{ shell.activeView().label }}</h1>
+        <p>{{ shell.activeView().description }}</p>
+      </section>
+      }
+    </ng-container>
   </main>
 
   <hx-status-bar slot="status">
@@ -123,48 +126,9 @@
       </div>
     </hx-status-item>
     @if (endpoints.engineVersion(); as version) {
-    <hx-status-version slot="end" class="engine-version" [version]="'Docker ' + version" />
+    <hx-status-item slot="end" class="engine-version">{{ engineLabel(version) }}</hx-status-item>
     }
     <hx-status-app-version slot="end" />
-    @if (updater.enabled()) {
-    <hx-status-item
-      slot="end"
-      class="update"
-      kind="button"
-      title="Updates"
-      ariaLabel="Updates"
-      [tone]="updater.phase() === 'error' ? 'error' : 'neutral'"
-      [announce]="true"
-      [(popoverOpen)]="updateOpen"
-    >
-      {{ updateLabel() }}
-      <div hxStatusPopover class="update-panel">
-        @if (updater.error(); as message) {
-        <p role="alert">{{ message }}</p>
-        } @if (updater.update(); as update) {
-        <h3>Gantry {{ update.version }}</h3>
-        <p class="current">You have {{ updater.version() }}.</p>
-        @if (update.body) {
-        <pre class="notes">{{ update.body }}</pre>
-        }
-        <button hx-button type="button" [disabled]="updater.busy()" (click)="updater.install()">
-          {{ updater.failedStep() === 'update' ? 'Retry install and restart' : 'Install and restart'
-          }}
-        </button>
-        } @else if (updater.upToDate()) {
-        <p>Gantry {{ updater.version() }} is up to date.</p>
-        }
-        <button
-          hx-button
-          variant="outlined"
-          type="button"
-          [disabled]="updater.busy()"
-          (click)="updater.check()"
-        >
-          Check for Updates…
-        </button>
-      </div>
-    </hx-status-item>
-    }
+    <hx-status-update slot="end" />
   </hx-status-bar>
 </hx-app-shell>

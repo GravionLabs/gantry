@@ -17,18 +17,26 @@ import {
   HxStatusBar,
   HxStatusItem,
   HxStatusPopover,
-  HxStatusVersion,
 } from "@gravionlabs/helix-desktop";
 
 import { HxButton } from "@gravionlabs/helix-ui";
 
 import { EndpointStore } from "./core/endpoint-store";
-import { HxStatusAppVersion, ShellService } from "./core/shell/shell.service";
-import { requiresEndpoint } from "./core/shell/views";
+import {
+  HxStatusAppVersion,
+  HxStatusUpdate,
+  HxUpdateService,
+  ShellService,
+} from "./core/shell/shell.service";
+import { RecreateOn } from "./core/shell/recreate-on";
+import { engineVersionLabel, requiresEndpoint } from "./core/shell/views";
 import { ContainerDetailsView } from "./containers/container-details";
 import { ContainersView } from "./containers/containers-view";
-import { UpdateService } from "./core/updater/update.service";
+import { ImagesView } from "./images/images-view";
 import { StacksView } from "./stacks/stacks-view";
+import { NetworksView } from "./networks/networks-view";
+import { SystemView } from "./system/system-view";
+import { VolumesView } from "./volumes/volumes-view";
 import { EndpointsView } from "./endpoints/endpoints-view";
 
 /** Marks the template of an activity bar icon with the icon name of the views registry. */
@@ -47,13 +55,18 @@ export class NavIconDirective {
     HxStatusBar,
     HxStatusItem,
     HxStatusPopover,
-    HxStatusVersion,
     HxStatusAppVersion,
+    HxStatusUpdate,
     NavIconDirective,
+    RecreateOn,
     HxButton,
     EndpointsView,
     ContainersView,
     StacksView,
+    ImagesView,
+    VolumesView,
+    NetworksView,
+    SystemView,
     ContainerDetailsView,
   ],
   templateUrl: "./app.html",
@@ -62,9 +75,9 @@ export class NavIconDirective {
 export class App implements OnInit {
   protected readonly shell = inject(ShellService);
   protected readonly endpoints = inject(EndpointStore);
-  protected readonly updater = inject(UpdateService);
-  protected readonly updateOpen = signal(false);
+  private readonly updater = inject(HxUpdateService);
   protected readonly switcherOpen = signal(false);
+  protected readonly engineLabel = engineVersionLabel;
   protected readonly needsEndpoint = computed(() => requiresEndpoint(this.shell.activeId()));
   private readonly icons = viewChildren(NavIconDirective);
 
@@ -90,24 +103,8 @@ export class App implements OnInit {
 
   ngOnInit(): void {
     void this.endpoints.init();
-    void this.updater.init();
-  }
-
-  protected updateLabel(): string {
-    switch (this.updater.phase()) {
-      case "checking":
-        return "Checking for updates…";
-      case "installing":
-        return this.updater.percent() === null
-          ? "Installing update…"
-          : `Installing update… ${this.updater.percent()}%`;
-      case "available":
-        return `Update ${this.updater.update()?.version}`;
-      case "error":
-        return this.updater.update() ? "Update failed, retry" : "Check for updates failed";
-      default:
-        return this.updater.upToDate() ? "Up to date" : "Check for Updates…";
-    }
+    // The automatic check at startup; an RC build never checks by itself.
+    void this.updater.start();
   }
 
   protected switchTo(id: string): void {
@@ -117,7 +114,6 @@ export class App implements OnInit {
 
   protected manage(): void {
     this.shell.activeId.set("endpoints");
-    this.shell.collapsed.set(false);
     this.switcherOpen.set(false);
   }
 }

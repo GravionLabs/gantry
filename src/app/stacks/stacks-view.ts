@@ -8,6 +8,8 @@ import {
   untracked,
 } from "@angular/core";
 import { HxButton, HxMessage, HxTable } from "@gravionlabs/helix-ui";
+import { AgGridAngular } from "ag-grid-angular";
+import type { ColDef, GetRowIdParams, RowClassRules } from "ag-grid-community";
 
 import type { ComposeAction, ComposeAvailability, Container, Stack } from "../core/bindings";
 import { ContainerList } from "../core/container-list";
@@ -24,9 +26,66 @@ import {
   listStacks,
   runCompose,
   serviceCount,
+  stackRows,
   stackSummary,
+  toggleStack,
+  type StackRow,
 } from "../core/stacks";
+import { StackGridContext, StackNameCell } from "../grid/cells";
+import { GRID_MODULES, GRID_THEME } from "../grid/grid";
 import { StackDeploy } from "./stack-deploy";
+
+const COLUMNS: ColDef<StackRow>[] = [
+  {
+    colId: "name",
+    headerName: "Stack",
+    // The cell refreshes only when its value changes: the value holds all it shows.
+    valueGetter: (p) =>
+      p.data?.kind === "stack"
+        ? `${p.data.stack.name} ${p.data.expanded}`
+        : p.data
+          ? `${p.data.container.name} ${p.data.container.state} ${p.data.container.health}`
+          : "",
+    cellRenderer: StackNameCell,
+    minWidth: 200,
+    flex: 2,
+  },
+  {
+    colId: "services",
+    headerName: "Services",
+    valueGetter: (p) =>
+      p.data?.kind === "stack" ? String(serviceCount(p.data.stack)) : (p.data?.service ?? ""),
+    width: 140,
+  },
+  {
+    colId: "image",
+    headerName: "Image",
+    valueGetter: (p) => (p.data?.kind === "container" ? p.data.container.image : ""),
+    tooltip: true,
+    minWidth: 160,
+    flex: 2,
+  },
+  {
+    colId: "state",
+    headerName: "State",
+    valueGetter: (p) =>
+      p.data?.kind === "stack"
+        ? stackSummary(p.data.stack)
+        : p.data
+          ? stateLabel(p.data.container)
+          : "",
+    width: 150,
+  },
+  {
+    colId: "workingDir",
+    headerName: "Working directory",
+    valueGetter: (p) => (p.data?.kind === "stack" ? (p.data.stack.workingDir ?? "–") : ""),
+    tooltip: true,
+    cellClass: "mono",
+    minWidth: 200,
+    flex: 3,
+  },
+];
 
 /**
  * The Stacks view: the Compose projects of the active endpoint. The stacks are read again whenever
@@ -35,7 +94,7 @@ import { StackDeploy } from "./stack-deploy";
 @Component({
   selector: "app-stacks-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HxButton, HxMessage, HxTable, StackDeploy],
+  imports: [AgGridAngular, HxButton, HxMessage, HxTable, StackDeploy],
   providers: [ContainerList],
   templateUrl: "./stacks-view.html",
   styleUrl: "./stacks-view.css",
@@ -72,6 +131,23 @@ export class StacksView {
   });
 
   private requests = 0;
+
+  /** The stacks whose containers are shown below them in the grid. */
+  protected readonly expanded = signal<ReadonlySet<string>>(new Set());
+  protected readonly rows = computed(() => stackRows(this.stacks(), this.expanded()));
+  protected readonly modules = GRID_MODULES;
+  protected readonly theme = GRID_THEME;
+  protected readonly columnDefs = COLUMNS;
+  protected readonly defaultColDef: ColDef<StackRow> = { resizable: true, sortable: false };
+  protected readonly rowClassRules: RowClassRules<StackRow> = {
+    child: (p) => p.data?.kind === "container",
+  };
+  protected readonly getRowId = (p: GetRowIdParams<StackRow>) => p.data.id;
+  protected readonly context: StackGridContext = {
+    toggle: (name) => this.expanded.update((names) => toggleStack(names, name)),
+    openStack: (name) => this.selectedName.set(name),
+    details: (container) => this.shell.openContainer(container.id),
+  };
 
   /** True while the form for a new deployment is shown instead of the list. */
   protected readonly deploying = signal(false);
@@ -221,11 +297,6 @@ export class StacksView {
   protected services = serviceCount;
   protected state(container: Container): string {
     return stateLabel(container);
-  }
-
-  protected open(event: Event, stack: Stack): void {
-    event.preventDefault();
-    this.selectedName.set(stack.name);
   }
 
   protected startDeploy(): void {

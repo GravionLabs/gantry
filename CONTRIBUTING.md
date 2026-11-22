@@ -10,16 +10,16 @@ Read [AGENTS.md](AGENTS.md) first: architecture, rules, verify commands and the 
    `GravionLabs/ci/.github/workflows/tauri-app.yml@v1`, versions the build with GitVersion, builds the installers
    for Linux, macOS and Windows, signs the update packages and publishes one GitHub release `v<version>` with
    `latest.json`.
-4. Installed apps find the release through `releases/latest/download/latest.json` when the user chooses
-   **Check for Updates…** (see [docs/updater.md](docs/updater.md)).
+4. Installed apps find the release through `releases/latest/download/latest.json` at startup
+   (see [docs/updater.md](docs/updater.md)).
 
 ### Validation and RC builds
 
 Run the `release` workflow with `workflow_dispatch` on a branch to validate the matrix. Such a run gets the
 throw-away version `0.0.<run number>` and creates no release. A dispatch on any branch other than `main` builds
 **Gantry RC** with the overlay `src-tauri/tauri.rc.conf.json`: identifier `dev.gravionlabs.gantry.rc`, binary
-`gantry-rc`, no updater artifacts and no endpoint. It installs next to the stable app, and the app disables its
-update item when its identifier ends in `.rc`.
+`gantry-rc`, no updater artifacts and no endpoint. It installs next to the stable app, and the app has the channel `rc`,
+shows the RC badge and does not check for updates.
 
 ## Signing secrets
 

@@ -23,7 +23,21 @@ import { GantryView, VIEWS, findView, resolveView } from "./views";
  */
 export async function provideShell(): Promise<EnvironmentProviders> {
   const version = await readTauriVersion("0.0.0");
-  return makeEnvironmentProviders([providePlatform(), provideHxAppInfo({ version })]);
+  const channel = (await readTauriIdentifier()).endsWith(RC_IDENTIFIER_SUFFIX) ? "rc" : undefined;
+  return makeEnvironmentProviders([providePlatform(), provideHxAppInfo({ version, channel })]);
+}
+
+/** The identifier of the RC build is `dev.gravionlabs.gantry.rc`; it installs next to the stable app. */
+export const RC_IDENTIFIER_SUFFIX = ".rc";
+
+/** The bundle identifier from Tauri; empty outside Tauri. */
+async function readTauriIdentifier(): Promise<string> {
+  try {
+    const { getIdentifier } = await import("@tauri-apps/api/app");
+    return await getIdentifier();
+  } catch {
+    return "";
+  }
 }
 
 /**
@@ -76,4 +90,8 @@ export class ShellService {
 }
 
 // Re-exported so that no file outside core/shell imports the /tauri entry.
-export { HxStatusAppVersion } from "@gravionlabs/helix-desktop/tauri";
+export {
+  HxStatusAppVersion,
+  HxStatusUpdate,
+  HxUpdateService,
+} from "@gravionlabs/helix-desktop/tauri";

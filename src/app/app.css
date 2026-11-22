@@ -67,18 +67,3 @@
 .dot[data-state="denied"] {
   background: var(--h-red-500, #e5484d);
 }
-
-.update-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 360px;
-  padding: 8px;
-}
-
-.update-panel .notes {
-  max-height: 200px;
-  margin: 0;
-  overflow: auto;
-  white-space: pre-wrap;
-}

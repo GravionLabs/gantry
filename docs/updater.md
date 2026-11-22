@@ -59,13 +59,18 @@ a new pair, replace `pubkey`, update both secrets, and announce the manual insta
 
 ## Use
 
-- The update item at the right of the status bar shows `Check for Updates…`; its popover has **Check for Updates…**
-  and the running version. A check runs **only** when you ask for it: not at startup and not on a timer.
-- If a newer version exists, the item shows `Update <version>`; the popover has the release notes and
+The in-app side is the update service of `@gravionlabs/helix-desktop/tauri` (`HxUpdateService`, as in Nixe and Poimen), on
+top of `tauri-plugin-updater` and `tauri-plugin-process`.
+
+- At startup the app checks once (`HxUpdateService.start()`); there is no timer.
+- `<hx-status-update>` at the right of the status bar shows nothing while idle or current. While checking, when a version
+  is available, while installing and after an error it shows the state; its popover has the version, the release notes and
   **Install and restart**. The package is verified against `plugins.updater.pubkey` before it is installed.
-- An error names the failed step ("Check for updates failed", "Update failed"). After a failed install the update
-  stays known and **Retry install and restart** installs again without a new check.
-- An RC build (identifier `dev.gravionlabs.gantry.rc`, built by a `release.yml` dispatch on a branch other than `main` with `src-tauri/tauri.rc.conf.json`: product name `Gantry RC`, no updater artifacts, empty endpoints) or a pre-release version (`0.2.0-rc1`) shows no update item. A stable install ignores a pre-release answer.
+- An error names the failed step (check, install, relaunch) and offers **Try again**.
+- An RC build (identifier `dev.gravionlabs.gantry.rc`, built by a `release.yml` dispatch on a branch other than `main`
+  with `src-tauri/tauri.rc.conf.json`: product name `Gantry RC`, no updater artifacts, empty endpoints) has the channel
+  `rc` (`provideShell()` in `core/shell/shell.service.ts` reads the identifier): the status bar shows the RC badge and the
+  app does not check at startup. A stable install ignores pre-releases because the endpoint is `releases/latest`.
 - `src-tauri/capabilities/desktop.json` grants `updater:default` and `process:allow-restart` on Linux, macOS and Windows.
   The plugins are registered for desktop targets only.
 

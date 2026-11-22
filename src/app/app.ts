@@ -22,12 +22,16 @@ import {
 import { HxButton } from "@gravionlabs/helix-ui";
 
 import { EndpointStore } from "./core/endpoint-store";
-import { HxStatusAppVersion, ShellService } from "./core/shell/shell.service";
+import {
+  HxStatusAppVersion,
+  HxStatusUpdate,
+  HxUpdateService,
+  ShellService,
+} from "./core/shell/shell.service";
 import { RecreateOn } from "./core/shell/recreate-on";
 import { engineVersionLabel, requiresEndpoint } from "./core/shell/views";
 import { ContainerDetailsView } from "./containers/container-details";
 import { ContainersView } from "./containers/containers-view";
-import { UpdateService } from "./core/updater/update.service";
 import { ImagesView } from "./images/images-view";
 import { StacksView } from "./stacks/stacks-view";
 import { NetworksView } from "./networks/networks-view";
@@ -52,6 +56,7 @@ export class NavIconDirective {
     HxStatusItem,
     HxStatusPopover,
     HxStatusAppVersion,
+    HxStatusUpdate,
     NavIconDirective,
     RecreateOn,
     HxButton,
@@ -70,8 +75,7 @@ export class NavIconDirective {
 export class App implements OnInit {
   protected readonly shell = inject(ShellService);
   protected readonly endpoints = inject(EndpointStore);
-  protected readonly updater = inject(UpdateService);
-  protected readonly updateOpen = signal(false);
+  private readonly updater = inject(HxUpdateService);
   protected readonly switcherOpen = signal(false);
   protected readonly engineLabel = engineVersionLabel;
   protected readonly needsEndpoint = computed(() => requiresEndpoint(this.shell.activeId()));
@@ -99,24 +103,8 @@ export class App implements OnInit {
 
   ngOnInit(): void {
     void this.endpoints.init();
-    void this.updater.init();
-  }
-
-  protected updateLabel(): string {
-    switch (this.updater.phase()) {
-      case "checking":
-        return "Checking for updates…";
-      case "installing":
-        return this.updater.percent() === null
-          ? "Installing update…"
-          : `Installing update… ${this.updater.percent()}%`;
-      case "available":
-        return `Update ${this.updater.update()?.version}`;
-      case "error":
-        return this.updater.update() ? "Update failed, retry" : "Check for updates failed";
-      default:
-        return this.updater.upToDate() ? "Up to date" : "Check for Updates…";
-    }
+    // The automatic check at startup; an RC build never checks by itself.
+    void this.updater.start();
   }
 
   protected switchTo(id: string): void {

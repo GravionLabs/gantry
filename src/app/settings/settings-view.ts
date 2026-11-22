@@ -42,6 +42,14 @@ export class SettingsView {
     void this.updates.setAutoCheck((event.target as HTMLInputElement).checked);
   }
 
+  protected setContainerDefault(key: "showStats" | "groupByStack", event: Event): void {
+    const value = (event.target as HTMLInputElement).checked;
+    void this.settings.update((current) => ({
+      ...current,
+      containers: { ...current.containers, [key]: value },
+    }));
+  }
+
   protected chooseTheme(theme: Theme): void {
     void this.themes.setTheme(theme);
   }

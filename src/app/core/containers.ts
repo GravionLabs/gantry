@@ -233,13 +233,19 @@ export const ACTION_KINDS: readonly ActionKind[] = [
   "remove",
 ];
 
-/** Severity of a toolbar action: grey when disabled, danger for destructive ones, else primary. */
-export function actionSeverity(
-  kind: ActionKind,
-  enabled: boolean,
-): "primary" | "danger" | "secondary" {
-  if (!enabled) return "secondary";
-  return kind === "kill" || kind === "remove" ? "danger" : "primary";
+/** Look of a toolbar action: filled and colored when enabled, outlined and grey when disabled. */
+export interface ActionLook {
+  variant: "filled" | "outlined";
+  severity: "primary" | "danger" | "secondary";
+}
+
+/** Look of a toolbar action: danger for kill and remove, else primary; disabled is outlined grey. */
+export function actionLook(kind: ActionKind, enabled: boolean): ActionLook {
+  if (!enabled) return { variant: "outlined", severity: "secondary" };
+  return {
+    variant: "filled",
+    severity: kind === "kill" || kind === "remove" ? "danger" : "primary",
+  };
 }
 
 /** Whether an action makes sense for a container in `state`; the engine has the final say. */

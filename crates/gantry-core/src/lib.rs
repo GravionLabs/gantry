@@ -15,6 +15,7 @@ mod exec;
 mod images;
 mod logs;
 mod networks;
+mod settings;
 mod ssh;
 mod stacks;
 mod stats;
@@ -53,6 +54,7 @@ pub use networks::{
     Network, NetworkPruneOutcome, NetworkSpec, connect_network, create_network, disconnect_network,
     list_networks, prune_networks, remove_network,
 };
+pub use settings::{SETTINGS_FILE, Settings, read_settings, settings_path, write_settings};
 pub use ssh::SshTarget;
 pub use stacks::{Stack, StackService, list_stacks, stacks_of};
 pub use stats::{StatsEvent, StatsSample, sample_of, stream_stats};

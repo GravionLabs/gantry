@@ -14,6 +14,28 @@ use tauri::ipc::Channel;
 use tauri::{Manager, RunEvent};
 use tauri_plugin_opener::OpenerExt;
 
+/// Reads `settings.json` of the app config directory (empty when the file does not exist yet).
+#[tauri::command]
+fn load_settings(app: tauri::AppHandle) -> Result<gantry_core::Settings, gantry_core::Error> {
+    gantry_core::read_settings(&settings_dir(&app)?)
+}
+
+/// Replaces `settings.json` of the app config directory with `settings`.
+#[tauri::command]
+fn save_settings(
+    app: tauri::AppHandle,
+    settings: gantry_core::Settings,
+) -> Result<(), gantry_core::Error> {
+    gantry_core::write_settings(&settings_dir(&app)?, &settings)
+}
+
+/// The app config directory; it follows the bundle identifier, so the RC build has its own.
+fn settings_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, gantry_core::Error> {
+    app.path()
+        .app_config_dir()
+        .map_err(|error| gantry_core::Error::InvalidInput(format!("app config directory: {error}")))
+}
+
 /// Connects to an endpoint and reads the engine version ("Test connection" and the status bar).
 #[tauri::command]
 async fn endpoint_test(endpoint: Endpoint) -> Result<EngineInfo, gantry_core::Error> {
@@ -466,6 +488,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
+            load_settings,
+            save_settings,
             endpoint_test,
             endpoint_activate,
             endpoint_build,

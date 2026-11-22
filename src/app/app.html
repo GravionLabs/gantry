@@ -59,6 +59,8 @@
     <ng-container *appRecreateOn="endpoints.generation()">
       @if (shell.activeId() === 'endpoints') {
       <app-endpoints-view />
+      } @else if (shell.activeId() === 'settings') {
+      <app-settings-view />
       } @else if (needsEndpoint() && endpoints.connection() === 'unreachable') {
       <section class="empty" role="alert" [attr.aria-label]="shell.activeView().label">
         <h1>{{ endpoints.activeName() }} is unreachable</h1>

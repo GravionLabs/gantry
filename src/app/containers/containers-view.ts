@@ -6,8 +6,17 @@ import {
   inject,
   signal,
   untracked,
+  DestroyRef,
+  TemplateRef,
 } from "@angular/core";
-import { HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton } from "@gravionlabs/helix-ui";
+import {
+  HxButton,
+  HxCheckbox,
+  HxConfirmationService,
+  HxInput,
+  HxMessage,
+  HxSelectButton,
+} from "@gravionlabs/helix-ui";
 import { AgGridAngular } from "ag-grid-angular";
 import type {
   ColDef,
@@ -146,6 +155,8 @@ const STATE_OPTIONS: readonly { label: string; value: StateFilter }[] = [
   styleUrl: "./containers-view.css",
 })
 export class ContainersView {
+  private readonly confirmation = inject(HxConfirmationService);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly list = inject(ContainerList);
   private readonly endpoints = inject(EndpointStore);
   private readonly shell = inject(ShellService);
@@ -272,8 +283,7 @@ export class ContainersView {
   protected readonly progress = signal<string | null>(null);
   protected readonly failures = signal<readonly ActionFailure[]>([]);
   protected readonly summary = signal<string | null>(null);
-  /** The containers a `remove` waits for confirmation for; null when there is no request. */
-  protected readonly removal = signal<readonly Container[] | null>(null);
+  /** The option of the remove question. */
   protected readonly removeVolumes = signal(false);
 
   constructor() {
@@ -370,34 +380,28 @@ export class ContainersView {
     return actionLook(kind, !this.disabled(kind));
   }
 
-  protected request(kind: ActionKind): void {
+  /** Runs an action; `remove` asks first, with `option` as the controls of the question. */
+  protected async request(kind: ActionKind, option?: TemplateRef<unknown>): Promise<void> {
     const containers = this.applicable(kind);
     if (!containers.length) return;
-    if (kind === "remove") {
-      this.removeVolumes.set(false);
-      this.removal.set(containers);
-    } else {
-      void this.run({ type: kind }, kind, containers);
-    }
+    if (kind !== "remove") return this.run({ type: kind }, kind, containers);
+    const endpoint = this.endpoint();
+    this.removeVolumes.set(false);
+    const accepted = await this.confirmation.confirmAsync({
+      header: `Remove ${containers.length} container(s)?`,
+      message: `This permanently removes: ${containers.map((c) => c.name).join(", ")}.`,
+      content: option,
+      acceptLabel: "Remove",
+      rejectLabel: "Cancel",
+      acceptSeverity: "danger",
+    });
+    // The view or its endpoint may be gone by the time of the answer.
+    if (!accepted || this.destroyRef.destroyed || this.endpoint() !== endpoint) return;
+    await this.run({ type: "remove", volumes: this.removeVolumes() }, "remove", containers);
   }
 
   protected setRemoveVolumes(event: Event): void {
     this.removeVolumes.set((event.target as HTMLInputElement).checked);
-  }
-
-  protected cancelRemoval(): void {
-    this.removal.set(null);
-  }
-
-  protected confirmRemoval(): void {
-    const containers = this.removal();
-    if (!containers) return;
-    this.removal.set(null);
-    void this.run({ type: "remove", volumes: this.removeVolumes() }, "remove", containers);
-  }
-
-  protected removalNames(): string {
-    return (this.removal() ?? []).map((c) => c.name).join(", ");
   }
 
   private async run(

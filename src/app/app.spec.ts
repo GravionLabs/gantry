@@ -119,3 +119,11 @@ describe("endpoint switcher", () => {
     expect(element.textContent).toContain("No endpoints found");
   });
 });
+
+describe("confirmations", () => {
+  it("has the one confirm dialog that asks the questions of the views", () => {
+    const template = readFileSync(resolve(process.cwd(), "src/app/app.html"), "utf8");
+
+    expect(template.match(/<hx-confirm-dialog \/>/g)).toHaveLength(1);
+  });
+});

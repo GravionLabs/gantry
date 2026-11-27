@@ -6,8 +6,16 @@ import {
   inject,
   signal,
   untracked,
+  DestroyRef,
+  TemplateRef,
 } from "@angular/core";
-import { HxButton, HxMessage, HxTable } from "@gravionlabs/helix-ui";
+import {
+  HxButton,
+  HxCheckbox,
+  HxConfirmationService,
+  HxMessage,
+  HxTable,
+} from "@gravionlabs/helix-ui";
 import { AgGridAngular } from "ag-grid-angular";
 import type { ColDef, GetRowIdParams, RowClassRules } from "ag-grid-community";
 
@@ -95,13 +103,15 @@ const COLUMNS: ColDef<StackRow>[] = [
 @Component({
   selector: "app-stacks-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AgGridAngular, HxButton, HxMessage, HxTable, StackDeploy],
+  imports: [AgGridAngular, HxButton, HxCheckbox, HxMessage, HxTable, StackDeploy],
   providers: [ContainerList],
   templateUrl: "./stacks-view.html",
   styleUrl: "./stacks-view.css",
 })
 export class StacksView {
   private readonly list = inject(ContainerList);
+  private readonly confirmation = inject(HxConfirmationService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly endpoints = inject(EndpointStore);
   private readonly shell = inject(ShellService);
 
@@ -162,8 +172,7 @@ export class StacksView {
   protected readonly output = signal<readonly string[]>([]);
   protected readonly outcome = signal<string | null>(null);
   protected readonly failed = signal(false);
-  /** True while `down` waits for confirmation. */
-  protected readonly confirmingDown = signal(false);
+  /** The option of the down question. */
   protected readonly removeVolumes = signal(false);
   protected readonly canAct = computed(() => this.availability()?.available === true);
   private stopRun: (() => void) | null = null;
@@ -206,8 +215,6 @@ export class StacksView {
     this.output.set([]);
     this.outcome.set(null);
     this.failed.set(false);
-    this.confirmingDown.set(false);
-    this.removeVolumes.set(false);
   }
 
   private async check(stack: Stack): Promise<void> {
@@ -226,7 +233,6 @@ export class StacksView {
     const endpoint = this.endpoint();
     const stack = this.selected();
     if (!endpoint || !stack || this.running() || !this.canAct()) return;
-    this.confirmingDown.set(false);
     this.output.set([]);
     this.outcome.set(null);
     this.failed.set(false);
@@ -257,21 +263,28 @@ export class StacksView {
     this.stopRun?.();
   }
 
-  protected askDown(): void {
+  /** Asks, with `option` as the controls of the question, and takes the selected stack down. */
+  protected async askDown(option: TemplateRef<unknown>): Promise<void> {
+    const endpoint = this.endpoint();
+    const name = this.selected()?.name;
+    if (!endpoint || !name) return;
     this.removeVolumes.set(false);
-    this.confirmingDown.set(true);
-  }
-
-  protected cancelDown(): void {
-    this.confirmingDown.set(false);
+    const accepted = await this.confirmation.confirmAsync({
+      header: `Take down ${name}?`,
+      message: `This stops and removes the containers and networks of ${name}.`,
+      content: option,
+      acceptLabel: "Take down",
+      rejectLabel: "Cancel",
+      acceptSeverity: "danger",
+    });
+    // The view, its endpoint or the open stack may be another one by the time of the answer.
+    if (!accepted || this.destroyRef.destroyed) return;
+    if (this.endpoint() !== endpoint || this.selectedName() !== name) return;
+    this.perform({ type: "down", volumes: this.removeVolumes() });
   }
 
   protected setRemoveVolumes(event: Event): void {
     this.removeVolumes.set((event.target as HTMLInputElement).checked);
-  }
-
-  protected confirmDown(): void {
-    this.perform({ type: "down", volumes: this.removeVolumes() });
   }
 
   protected retry(): void {

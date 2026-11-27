@@ -70,19 +70,10 @@ h2 {
   gap: 0.5rem;
   flex-wrap: wrap;
 }
-.confirm {
-  display: grid;
-  gap: 0.75rem;
-  padding: 1rem;
-  border: 1px solid var(--h-red-500, #e5484d);
-  border-radius: 0.5rem;
-}
-.confirm h2,
-.confirm p {
-  margin: 0;
-}
-.confirm .buttons {
-  justify-content: flex-end;
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 .output {
   margin: 0;

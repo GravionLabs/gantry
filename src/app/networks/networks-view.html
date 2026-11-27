@@ -110,40 +110,6 @@
     Cannot read the networks: {{ text }}
     <button hx-button variant="outlined" type="button" (click)="retry()">Retry</button>
   </hx-message>
-  } @if (removal(); as network) {
-  <div class="confirm" role="alertdialog" aria-labelledby="remove-title">
-    <h2 id="remove-title">Remove {{ network.name }}?</h2>
-    <p>This deletes the network <strong>{{ network.name }}</strong>.</p>
-    @if (network.builtin) {
-    <p>It is built in; the engine refuses to remove it.</p>
-    } @else if (network.containers.length > 0) {
-    <p>
-      It is used by <strong>{{ network.containers.join(', ') }}</strong>; the engine refuses to
-      remove a network that a container is still connected to.
-    </p>
-    }
-    <div class="buttons">
-      <button hx-button variant="outlined" type="button" (click)="cancelRemove()">Cancel</button>
-      <button hx-button type="button" [disabled]="busy()" (click)="confirmRemove()">Remove</button>
-    </div>
-  </div>
-  } @if (pruneRequest(); as candidates) {
-  <div class="confirm" role="alertdialog" aria-labelledby="prune-title">
-    <h2 id="prune-title">Remove all unused networks?</h2>
-    @if (candidates.length === 0) {
-    <p>No network is unused right now; the engine decides when it runs.</p>
-    } @else {
-    <p>
-      This removes {{ candidates.length }} {{ candidates.length === 1 ? 'network' : 'networks' }}:
-      <strong>{{ pruneNames() }}</strong>.
-    </p>
-    }
-    <p>Every network that no container uses is removed; the built-in ones stay.</p>
-    <div class="buttons">
-      <button hx-button variant="outlined" type="button" (click)="cancelPrune()">Cancel</button>
-      <button hx-button type="button" [disabled]="busy()" (click)="confirmPrune()">Prune</button>
-    </div>
-  </div>
   }@if (selected(); as network) {
   <section class="members" [attr.aria-label]="'Containers on ' + network.name">
     <h2>Containers on {{ network.name }}</h2>

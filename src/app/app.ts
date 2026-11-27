@@ -19,7 +19,7 @@ import {
   HxStatusPopover,
 } from "@gravionlabs/helix-desktop";
 
-import { HxButton, HxList, HxListRow } from "@gravionlabs/helix-ui";
+import { HxButton, HxConfirmDialog, HxList, HxListRow } from "@gravionlabs/helix-ui";
 
 import { EndpointStore } from "./core/endpoint-store";
 import { HxStatusAppVersion, HxStatusUpdate, ShellService } from "./core/shell/shell.service";
@@ -59,6 +59,7 @@ export class NavIconDirective {
     NavIconDirective,
     RecreateOn,
     HxButton,
+    HxConfirmDialog,
     HxList,
     HxListRow,
     EndpointsView,

@@ -107,7 +107,11 @@
       <li>
         <span class="mono layer-id">{{ layer.id }}</span>
         @if (fraction(layer); as share) {
-        <progress max="1" [value]="share" [attr.aria-label]="'Layer ' + layer.id"></progress>
+        <hx-progress-bar
+          [value]="share * 100"
+          [showValue]="false"
+          [ariaLabel]="'Layer ' + layer.id"
+        />
         } @else {
         <span class="no-bar"></span>
         }

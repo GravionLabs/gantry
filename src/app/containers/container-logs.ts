@@ -11,7 +11,7 @@ import {
   untracked,
   viewChild,
 } from "@angular/core";
-import { HxButton, HxMessage } from "@gravionlabs/helix-ui";
+import { HxButton, HxInput, HxMessage, HxSelect, HxSwitch } from "@gravionlabs/helix-ui";
 
 import type { Endpoint } from "../core/bindings";
 import { streamContainerLogs } from "../core/containers";
@@ -37,7 +37,7 @@ export const LINE_HEIGHT = 20;
 @Component({
   selector: "app-container-logs",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ScrollingModule, HxButton, HxMessage],
+  imports: [ScrollingModule, HxButton, HxInput, HxMessage, HxSelect, HxSwitch],
   templateUrl: "./container-logs.html",
   styleUrl: "./container-logs.css",
 })
@@ -51,13 +51,22 @@ export class ContainerLogs {
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
 
   protected readonly lineHeight = LINE_HEIGHT;
-  protected readonly tailChoices = TAIL_CHOICES;
-  protected readonly sinceChoices = SINCE_CHOICES;
+  /** `hx-select` reads null as "nothing selected", so the choices carry strings. */
+  protected readonly tailOptions = TAIL_CHOICES.map((c) => ({
+    label: c.label,
+    value: String(c.value ?? "all"),
+  }));
+  protected readonly sinceOptions = SINCE_CHOICES.map((c) => ({
+    label: c.label,
+    value: String(c.seconds ?? ""),
+  }));
 
   protected readonly follow = signal(true);
   protected readonly tail = signal<number | null>(1000);
   protected readonly since = signal<number | null>(null);
   protected readonly timestamps = signal(false);
+  protected readonly tailValue = computed(() => String(this.tail() ?? "all"));
+  protected readonly sinceValue = computed(() => String(this.since() ?? ""));
   protected readonly query = signal("");
 
   protected readonly lines = signal<LogEntry[]>([]);

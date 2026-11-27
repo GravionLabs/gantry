@@ -17,3 +17,13 @@ describe("settings styles", () => {
     expect(rule(selector)).toMatch(/(?:^|;)\s*color:\s*var\(--h-text-muted-color\);/);
   });
 });
+
+describe("app styles", () => {
+  it("read no palette step", () => {
+    const app = readFileSync(resolve(process.cwd(), "src/app/app.css"), "utf8");
+
+    expect(app).not.toMatch(
+      /--h-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|primary|surface)-\d+\b/,
+    );
+  });
+});

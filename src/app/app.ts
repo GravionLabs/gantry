@@ -2,8 +2,10 @@ import {
   ChangeDetectionStrategy,
   Component,
   Directive,
+  ElementRef,
   OnInit,
   TemplateRef,
+  afterRenderEffect,
   computed,
   inject,
   signal,
@@ -16,12 +18,11 @@ import {
   HxAppShell,
   HxStatusBar,
   HxStatusItem,
-  HxStatusPopover,
 } from "@gravionlabs/helix-desktop";
 
-import { HxButton, HxConfirmDialog, HxList, HxListRow } from "@gravionlabs/helix-ui";
+import { HxButton, HxConfirmDialog, HxList, HxListRow, HxPopover } from "@gravionlabs/helix-ui";
 
-import { EndpointStore } from "./core/endpoint-store";
+import { EndpointStore, stateLabel } from "./core/endpoint-store";
 import { HxStatusAppVersion, HxStatusUpdate, ShellService } from "./core/shell/shell.service";
 import { RecreateOn } from "./core/shell/recreate-on";
 import { engineVersionLabel, requiresEndpoint } from "./core/shell/views";
@@ -53,7 +54,6 @@ export class NavIconDirective {
     HxAppShell,
     HxStatusBar,
     HxStatusItem,
-    HxStatusPopover,
     HxStatusAppVersion,
     HxStatusUpdate,
     NavIconDirective,
@@ -62,6 +62,7 @@ export class NavIconDirective {
     HxConfirmDialog,
     HxList,
     HxListRow,
+    HxPopover,
     EndpointsView,
     SettingsView,
     ContainersView,
@@ -85,7 +86,18 @@ export class App implements OnInit {
   protected readonly switcherOpen = signal(false);
   protected readonly engineLabel = engineVersionLabel;
   protected readonly needsEndpoint = computed(() => requiresEndpoint(this.shell.activeId()));
+  protected readonly stateLabel = stateLabel;
   private readonly icons = viewChildren(NavIconDirective);
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+
+  constructor() {
+    // hx-status-item says that it opens a dialog only for its own popover, so the app says it.
+    afterRenderEffect(() => {
+      const trigger = this.endpointButton();
+      trigger?.setAttribute("aria-haspopup", "dialog");
+      trigger?.setAttribute("aria-expanded", String(this.switcherOpen()));
+    });
+  }
 
   /** The items of the activity bar with the icon names resolved to the inline SVG templates. */
   protected readonly barItems = computed<HxActivityBarItem[]>(() => {
@@ -114,13 +126,23 @@ export class App implements OnInit {
     void this.updates.startup();
   }
 
-  protected switchTo(id: string): void {
-    this.endpoints.select(id);
-    this.switcherOpen.set(false);
+  /** Opens the switcher at the status bar button, which gets the focus back when it closes. */
+  protected toggleSwitcher(switcher: HxPopover): void {
+    const trigger = this.endpointButton();
+    if (trigger) switcher.toggle(trigger);
   }
 
-  protected manage(): void {
+  protected switchTo(id: string, switcher: HxPopover): void {
+    this.endpoints.select(id);
+    switcher.hide();
+  }
+
+  protected manage(switcher: HxPopover): void {
     this.shell.activeId.set("endpoints");
-    this.switcherOpen.set(false);
+    switcher.hide();
+  }
+
+  private endpointButton(): HTMLButtonElement | null {
+    return this.host.nativeElement.querySelector("hx-status-item.endpoint button");
   }
 }

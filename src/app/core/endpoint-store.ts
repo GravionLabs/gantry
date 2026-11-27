@@ -65,6 +65,18 @@ export function kindLabel(endpoint: Endpoint): string {
   }
 }
 
+const STATE_LABELS: Record<EndpointState, string> = {
+  checking: "Checking…",
+  reachable: "Reachable",
+  unreachable: "Unreachable",
+  denied: "Permission denied",
+};
+
+/** The text of an endpoint status; a status is never color alone. */
+export function stateLabel(state: EndpointState): string {
+  return STATE_LABELS[state];
+}
+
 export function endpointId(origin: EndpointOrigin, name: string): string {
   return `${origin}:${name}`;
 }

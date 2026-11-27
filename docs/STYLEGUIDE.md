@@ -34,6 +34,11 @@ Binding for every UI change. Read the base guide named above first (`pnpm instal
 - Scrolling up pauses following and offers a button to follow again.
 - In the log search, Enter goes to the next match and Shift+Enter to the previous one.
 
+### Endpoint switcher
+
+- The switcher is an `hx-popover` that the status bar button opens, not the popover of `hx-status-item`, which opens past the window edge for an item at the start ([GravionLabs/helix#1283](https://github.com/GravionLabs/helix/issues/1283)). The app sets `aria-haspopup` and `aria-expanded` on that button.
+- Each row names the status of its endpoint in text (`.hx-list-row-meta`, `stateLabel`); the dot adds to it.
+
 ### Headings and type
 
 - The heading of a view (`h1`) is `--h-font-size-lg`, weight 600; the heading of a section, form or panel in it (`h2`) is `--h-font-size-md`. In Settings, the category heading is the size of the view heading.

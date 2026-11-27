@@ -11,14 +11,14 @@ import { SettingsView } from "./settings-view";
 
 TestBed.initTestEnvironment(BrowserTestingModule, platformBrowserTesting());
 
-async function open() {
+async function open(load: () => Promise<unknown> = async () => ({})) {
   const save = vi.fn(async () => {});
   const state = signal<{ status: string }>({ status: "idle" });
   const check = vi.fn(async () => state.set({ status: "checking" }));
   renderTemplateOf(SettingsView, "settings/settings-view.html");
   TestBed.configureTestingModule({
     providers: [
-      { provide: SETTINGS_BACKEND, useValue: { load: async () => ({}), save } },
+      { provide: SETTINGS_BACKEND, useValue: { load, save } },
       { provide: HxUpdateService, useValue: { channel: "stable", state, check } },
     ],
   });
@@ -109,6 +109,52 @@ describe("settings view", () => {
 
     click("Group by stack");
     expect(settings.containers()).toEqual({ showStats: true, groupByStack: true });
+  });
+
+  it("says that the update check failed and what to do", async () => {
+    const { fixture, element, state, category } = await open();
+    category("Updates");
+    expect(element.querySelector("hx-message")).toBeNull();
+
+    state.set({ status: "error", message: "network down" });
+    fixture.detectChanges();
+
+    const message = element.querySelector("hx-message[severity=error][role=alert]");
+    expect(message?.textContent?.trim()).toBe(
+      "The update check failed. Check your connection and try again.",
+    );
+  });
+
+  it("says that a setting was not saved and retries the save", async () => {
+    const { fixture, element, settings, save, click } = await open();
+    save.mockRejectedValueOnce(new Error("disk full"));
+
+    click("Dark");
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const message = element.querySelector("hx-message[severity=error][role=alert]");
+    expect(message?.textContent).toContain("The setting was not saved.");
+    expect(message?.textContent).toContain("then retry");
+
+    message?.querySelector<HTMLButtonElement>("button[hx-button]")?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save).toHaveBeenLastCalledWith(settings.settings());
+    expect(element.querySelector("hx-message")).toBeNull();
+  });
+
+  it("says that the settings could not be loaded and what to do", async () => {
+    const { element } = await open(async () => {
+      throw new Error("bad file");
+    });
+
+    const message = element.querySelector("hx-message[severity=error][role=alert]");
+    expect(message?.textContent).toContain("could not be loaded, so the defaults apply");
+    expect(message?.textContent).toContain("Restart Gantry");
+    expect(message?.querySelector("button")).toBeNull();
   });
 
   it("shows Check now as loading while checking", async () => {

@@ -65,10 +65,13 @@
         <span role="status">Gantry is up to date.</span>
         } @case ('available') {
         <span role="status">An update is available.</span>
-        } @case ('error') {
-        <span role="alert" class="problem">The check failed.</span>
         } }
       </div>
+      @if (updates.result().kind === 'error') {
+      <hx-message severity="error" role="alert">
+        The update check failed. Check your connection and try again.
+      </hx-message>
+      }
     </div>
     } @if (selected().id === 'containers') {
     <hx-fieldset class="section" legend="Containers view defaults">
@@ -115,8 +118,14 @@
         }
       </div>
     </hx-fieldset>
-    } @if (settings.error(); as message) {
-    <p class="problem" role="alert">{{ message }}</p>
+    } @if (settings.error(); as failure) {
+    <hx-message class="failure" severity="error" role="alert">
+      @if (failure.action === 'save') { The setting was not saved. Check that the settings file can
+      be written, then retry.
+      <button hx-button variant="outlined" type="button" (click)="retrySave()">Retry</button>
+      } @else { The settings could not be loaded, so the defaults apply. Restart Gantry to try
+      again. }
+    </hx-message>
     }
   </div>
 </section>

@@ -17,6 +17,12 @@ export const SETTINGS_BACKEND = new InjectionToken<SettingsBackend>("SettingsBac
   }),
 });
 
+/** Which access to the settings file failed, and why. */
+export interface SettingsFailure {
+  readonly action: "load" | "save";
+  readonly message: string;
+}
+
 /** Keeps the application settings: loaded once on startup, exposed as signals, saved on change. */
 @Injectable({ providedIn: "root" })
 export class SettingsService {
@@ -25,7 +31,7 @@ export class SettingsService {
 
   private readonly state = signal<AppSettings>(DEFAULT_SETTINGS);
   private readonly isLoaded = signal(false);
-  private readonly failure = signal<string | null>(null);
+  private readonly failure = signal<SettingsFailure | null>(null);
 
   readonly settings = this.state.asReadonly();
   readonly appearance = computed(() => this.state().appearance);
@@ -34,7 +40,7 @@ export class SettingsService {
   readonly engine = computed(() => this.state().engine);
   /** True once the file was read (or failed and the defaults apply). */
   readonly loaded = this.isLoaded.asReadonly();
-  /** The message of the last failed read or write, else null. */
+  /** The last failed read or write, else null. */
   readonly error = this.failure.asReadonly();
 
   /** Loads the settings once; later calls return the same promise. A failure keeps the defaults. */
@@ -42,7 +48,7 @@ export class SettingsService {
     this.loading ??= this.backend
       .load()
       .then((raw) => this.state.set(sanitizeSettings(raw)))
-      .catch((error: unknown) => this.failure.set(messageOf(error)))
+      .catch((error: unknown) => this.failure.set({ action: "load", message: messageOf(error) }))
       .finally(() => this.isLoaded.set(true));
     return this.loading;
   }
@@ -55,7 +61,7 @@ export class SettingsService {
       await this.backend.save(next);
       this.failure.set(null);
     } catch (error) {
-      this.failure.set(messageOf(error));
+      this.failure.set({ action: "save", message: messageOf(error) });
     }
   }
 }

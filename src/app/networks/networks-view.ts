@@ -1,13 +1,16 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
+  Injector,
   signal,
   untracked,
 } from "@angular/core";
-import { HxButton, HxInput, HxMessage, HxSelect } from "@gravionlabs/helix-ui";
+import { HxButton, HxField, HxInput, HxMessage, HxPopover, HxSelect } from "@gravionlabs/helix-ui";
 import { AgGridAngular } from "ag-grid-angular";
 import type {
   ColDef,
@@ -70,7 +73,7 @@ const COLUMNS: ColDef<Network>[] = [
 @Component({
   selector: "app-networks-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AgGridAngular, HxButton, HxInput, HxMessage, HxSelect],
+  imports: [AgGridAngular, HxButton, HxField, HxInput, HxMessage, HxPopover, HxSelect],
   providers: [ContainerList],
   templateUrl: "./networks-view.html",
   styleUrl: "./networks-view.css",
@@ -78,6 +81,8 @@ const COLUMNS: ColDef<Network>[] = [
 export class NetworksView {
   private readonly list = inject(ContainerList);
   private readonly endpoints = inject(EndpointStore);
+  private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly endpoint = computed(() => this.endpoints.active()?.endpoint ?? null, {
     equal: (a, b) => a?.address === b?.address,
@@ -113,6 +118,12 @@ export class NetworksView {
   /** The create form; null while closed. */
   protected readonly creating = signal<{ name: string; subnet: string } | null>(null);
   protected readonly createProblem = signal<string | null>(null);
+  /** The problem, when the name is what it is about. */
+  protected readonly nameError = computed(() =>
+    this.creating()?.name.trim() === "" ? this.createProblem() : null,
+  );
+  /** A problem that belongs to no field, such as the refusal of the engine. */
+  protected readonly formError = computed(() => (this.nameError() ? null : this.createProblem()));
 
   protected readonly removal = signal<Network | null>(null);
   protected readonly pruneRequest = signal<readonly Network[] | null>(null);
@@ -175,6 +186,15 @@ export class NetworksView {
     }
   }
 
+  protected toggleCreate(popover: HxPopover, event: Event): void {
+    if (popover.open()) {
+      popover.hide();
+      return;
+    }
+    this.openCreate();
+    popover.show(event);
+  }
+
   protected openCreate(): void {
     this.createProblem.set(null);
     this.creating.set({ name: "", subnet: "" });
@@ -187,6 +207,7 @@ export class NetworksView {
   protected setField(field: "name" | "subnet", event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.creating.update((form) => (form ? { ...form, [field]: value } : form));
+    this.createProblem.set(null);
   }
 
   protected async confirmCreate(): Promise<void> {
@@ -209,6 +230,26 @@ export class NetworksView {
       this.busy.set(false);
       void this.refresh();
     }
+  }
+
+  /** Creates, then closes the popover on success or moves the focus to the field in error. */
+  protected async submitCreate(popover: HxPopover, element: HTMLElement): Promise<void> {
+    // A second Enter while creating changes nothing.
+    if (this.busy()) return;
+    await this.confirmCreate();
+    if (this.destroyRef.destroyed) return;
+    if (this.creating()) {
+      if (this.nameError()) element.querySelector<HTMLElement>('[name="name"]')?.focus();
+      return;
+    }
+    const problem = this.createProblem();
+    if (problem) {
+      // The popover was closed while creating: the refusal still has to be read.
+      this.result.set({ text: problem, failed: true });
+      return;
+    }
+    // After the render the toolbar button is enabled again and can take the focus back.
+    afterNextRender(() => popover.hide(), { injector: this.injector });
   }
 
   protected askRemove(): void {

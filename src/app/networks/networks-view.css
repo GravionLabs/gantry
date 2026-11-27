@@ -69,28 +69,22 @@
 .confirm h2 {
   font-size: 1rem;
 }
-.confirm label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
 .buttons {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
 }
-.confirm label {
-  display: grid;
-  gap: 0.2rem;
+.create {
+  display: flex;
+  flex-direction: column;
+  gap: var(--h-space-4);
+  width: 20rem;
 }
-.confirm label:has(input[type="checkbox"]) {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
+.create h2 {
+  margin: 0;
+  font-size: 1rem;
 }
-.confirm textarea {
-  font: inherit;
-  padding: 0.35rem 0.5rem;
+.create textarea {
   resize: vertical;
 }
 .members {

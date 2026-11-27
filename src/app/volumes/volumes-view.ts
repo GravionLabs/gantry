@@ -1,13 +1,24 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
+  Injector,
   signal,
   untracked,
 } from "@angular/core";
-import { HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton } from "@gravionlabs/helix-ui";
+import {
+  HxButton,
+  HxCheckbox,
+  HxField,
+  HxInput,
+  HxMessage,
+  HxPopover,
+  HxSelectButton,
+} from "@gravionlabs/helix-ui";
 import { AgGridAngular } from "ag-grid-angular";
 import type {
   ColDef,
@@ -79,7 +90,16 @@ const COLUMNS: ColDef<Volume>[] = [
 @Component({
   selector: "app-volumes-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AgGridAngular, HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton],
+  imports: [
+    AgGridAngular,
+    HxButton,
+    HxCheckbox,
+    HxField,
+    HxInput,
+    HxMessage,
+    HxPopover,
+    HxSelectButton,
+  ],
   providers: [ContainerList],
   templateUrl: "./volumes-view.html",
   styleUrl: "./volumes-view.css",
@@ -87,6 +107,8 @@ const COLUMNS: ColDef<Volume>[] = [
 export class VolumesView {
   private readonly list = inject(ContainerList);
   private readonly endpoints = inject(EndpointStore);
+  private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly endpoint = computed(() => this.endpoints.active()?.endpoint ?? null, {
     equal: (a, b) => a?.address === b?.address,
@@ -125,6 +147,25 @@ export class VolumesView {
     null,
   );
   protected readonly createProblem = signal<string | null>(null);
+  /** The problem, when the name is what it is about. */
+  protected readonly nameError = computed(() =>
+    this.creating()?.name.trim() === "" ? this.createProblem() : null,
+  );
+  /** The problem, when the labels are what it is about. */
+  protected readonly labelsError = computed(() => {
+    const form = this.creating();
+    if (!form || this.nameError()) return null;
+    try {
+      parseLabels(form.labels);
+      return null;
+    } catch {
+      return this.createProblem();
+    }
+  });
+  /** A problem that belongs to no field, such as the refusal of the engine. */
+  protected readonly formError = computed(() =>
+    this.nameError() || this.labelsError() ? null : this.createProblem(),
+  );
 
   protected readonly removal = signal<Volume | null>(null);
   protected readonly force = signal(false);
@@ -196,6 +237,15 @@ export class VolumesView {
     }
   }
 
+  protected toggleCreate(popover: HxPopover, event: Event): void {
+    if (popover.open()) {
+      popover.hide();
+      return;
+    }
+    this.openCreate();
+    popover.show(event);
+  }
+
   protected openCreate(): void {
     this.createProblem.set(null);
     this.creating.set({ name: "", driver: "", labels: "" });
@@ -208,6 +258,7 @@ export class VolumesView {
   protected setField(field: "name" | "driver" | "labels", event: Event): void {
     const value = (event.target as HTMLInputElement | HTMLTextAreaElement).value;
     this.creating.update((form) => (form ? { ...form, [field]: value } : form));
+    this.createProblem.set(null);
   }
 
   protected async confirmCreate(): Promise<void> {
@@ -237,6 +288,27 @@ export class VolumesView {
       this.busy.set(false);
       void this.refresh();
     }
+  }
+
+  /** Creates, then closes the popover on success or moves the focus to the field in error. */
+  protected async submitCreate(popover: HxPopover, element: HTMLElement): Promise<void> {
+    // A second Enter while creating changes nothing.
+    if (this.busy()) return;
+    await this.confirmCreate();
+    if (this.destroyRef.destroyed) return;
+    if (this.creating()) {
+      const invalid = this.nameError() ? "name" : this.labelsError() ? "labels" : null;
+      if (invalid) element.querySelector<HTMLElement>(`[name="${invalid}"]`)?.focus();
+      return;
+    }
+    const problem = this.createProblem();
+    if (problem) {
+      // The popover was closed while creating: the refusal still has to be read.
+      this.result.set({ text: problem, failed: true });
+      return;
+    }
+    // After the render the toolbar button is enabled again and can take the focus back.
+    afterNextRender(() => popover.hide(), { injector: this.injector });
   }
 
   protected askRemove(): void {

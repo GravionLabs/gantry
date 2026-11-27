@@ -5,7 +5,8 @@
   display: grid;
   gap: 0.5rem;
 }
-.options {
+/* The labeled fields of a toolbar slot line up with the buttons at their lower edge. */
+.group {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -18,9 +19,6 @@
 .count {
   padding-bottom: var(--h-space-2);
 }
-.spacer {
-  flex: 1;
-}
 .search {
   min-width: 14rem;
 }
@@ -28,6 +26,10 @@
   min-width: 4.5rem;
   color: var(--h-text-muted-color);
   font-size: var(--h-font-size-sm);
+}
+.group svg {
+  width: 1rem;
+  height: 1rem;
 }
 .frame {
   position: relative;

@@ -175,6 +175,17 @@ describe("network create form", () => {
     expect(description(field("subnet"))).toContain("172.30.0.0/16");
   });
 
+  it("gives every control of the form the default size", async () => {
+    const { toolbar, popover } = await openCreateForm();
+    const controls = [...popover()!.querySelectorAll("input, textarea, button")];
+
+    expect(controls).toHaveLength(4);
+    for (const control of controls) {
+      expect(control.className).not.toMatch(/-sm\b/);
+    }
+    expect(toolbar.classList).toContain("hx-button-sm");
+  });
+
   it("shows no error when the popover opens", async () => {
     const { popover, field } = await openCreateForm();
 

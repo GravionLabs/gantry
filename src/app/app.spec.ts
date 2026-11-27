@@ -179,6 +179,64 @@ describe("endpoint switcher", () => {
   });
 });
 
+describe("empty state of a resource view", () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  function render(active: EndpointEntry | null, error: string) {
+    const endpoints = {
+      active: signal(active),
+      activeName: signal(active?.endpoint.name ?? "No endpoint"),
+      activeError: signal(error),
+      retry: vi.fn(),
+      init: vi.fn(),
+    };
+    const shell = { items: [], activeView: signal({ label: "Volumes" }), select: vi.fn() };
+    const template = readFileSync(resolve(process.cwd(), "src/app/app.html"), "utf8");
+    TestBed.overrideComponent(App, {
+      set: {
+        template: /<section class="empty" role="alert"[\s\S]*?<\/section>/.exec(template)![0],
+        templateUrl: undefined,
+        styleUrl: undefined,
+        imports: [HxButton],
+      },
+    });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: EndpointStore, useValue: endpoints },
+        { provide: ShellService, useValue: shell },
+        { provide: SettingsService, useValue: { load: vi.fn() } },
+        { provide: UpdateSettings, useValue: { startup: vi.fn() } },
+        { provide: ThemeService, useValue: {} },
+      ],
+    });
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const heading = element.querySelector("h1")?.textContent?.trim();
+    const text = element.querySelector("p")?.textContent?.trim();
+    const buttons = [...element.querySelectorAll("button")].map((b) => b.textContent?.trim());
+    return { heading, text, buttons };
+  }
+
+  it("says that there is no endpoint, names the next action and keeps both buttons", () => {
+    const next = "Start Docker or add an endpoint under Manage endpoints, then retry.";
+
+    const { heading, text, buttons } = render(null, next);
+
+    expect(heading).toBe("No endpoint available");
+    expect(text).toBe(next);
+    expect(buttons).toEqual(["Retry", "Manage endpoints"]);
+  });
+
+  it("names the endpoint that does not answer", () => {
+    const { heading, text, buttons } = render(entry("build", "unreachable"), "build is down");
+
+    expect(heading).toBe("build is unreachable");
+    expect(text).toBe("build is down");
+    expect(buttons).toEqual(["Retry", "Manage endpoints"]);
+  });
+});
+
 describe("confirmations", () => {
   it("has the one confirm dialog that asks the questions of the views", () => {
     const template = readFileSync(resolve(process.cwd(), "src/app/app.html"), "utf8");

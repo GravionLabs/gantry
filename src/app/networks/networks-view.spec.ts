@@ -9,7 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Network } from "../core/bindings";
 import { ContainerList } from "../core/container-list";
 import { EndpointStore } from "../core/endpoint-store";
-import { createNetwork } from "../core/networks";
+import { createNetwork, pruneNetworks, removeNetwork } from "../core/networks";
+import { confirmDialog } from "../../../testing/confirm-dialog";
 import { SETTINGS_BACKEND } from "../core/settings/settings.service";
 import { renderTemplateOf } from "../../../testing/render-template";
 import { NetworksView } from "./networks-view";
@@ -17,6 +18,8 @@ import { NetworksView } from "./networks-view";
 vi.mock("../core/networks", async (original) => ({
   ...(await original<typeof import("../core/networks")>()),
   createNetwork: vi.fn(),
+  removeNetwork: vi.fn(),
+  pruneNetworks: vi.fn(),
   listNetworks: vi.fn(async () => []),
 }));
 
@@ -248,5 +251,77 @@ describe("network create form", () => {
 
     expect(popover()).toBeNull();
     expect(createMock).not.toHaveBeenCalled();
+  });
+});
+
+function openView() {
+  TestBed.configureTestingModule({
+    providers: [
+      { provide: SETTINGS_BACKEND, useValue: { load: async () => ({}), save: async () => {} } },
+      { provide: EndpointStore, useValue: { active: () => ({ endpoint }) } },
+    ],
+  });
+  renderTemplateOf(NetworksView, "networks/networks-view.html", [
+    {
+      provide: ContainerList,
+      useValue: { containers: signal([]), phase: signal("loading"), start: vi.fn() },
+    },
+  ]);
+  const fixture = TestBed.createComponent(NetworksView);
+  const view = fixture.componentInstance as unknown as {
+    networks: WritableSignal<Network[]>;
+    selectedId: WritableSignal<string | null>;
+    loaded: WritableSignal<boolean>;
+  };
+  const confirm = confirmDialog(fixture);
+  const select = async () => {
+    await confirm.render();
+    // The grid is left out: the networks are set while the list still loads.
+    view.networks.set([network]);
+    view.loaded.set(false);
+    view.selectedId.set(network.id);
+    await confirm.render();
+  };
+  return { ...confirm, select };
+}
+
+describe("network removal and prune", () => {
+  beforeEach(() => {
+    vi.mocked(removeNetwork).mockReset();
+    vi.mocked(pruneNetworks).mockReset();
+  });
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    document.body.innerHTML = "";
+  });
+
+  it("names the network to remove and removes only on accept", async () => {
+    const { select, click, dialog, answer } = openView();
+    await select();
+    await click("Remove…");
+
+    expect(dialog()?.textContent).toContain("Remove app-net?");
+    expect(dialog()?.textContent).toContain("This deletes the network app-net.");
+    await answer("Cancel");
+    expect(removeNetwork).not.toHaveBeenCalled();
+
+    await click("Remove…");
+    await answer("Remove");
+    expect(removeNetwork).toHaveBeenCalledExactlyOnceWith(endpoint, "n1");
+  });
+
+  it("names the unused networks and prunes only on accept", async () => {
+    const { select, click, dialog, answer } = openView();
+    await select();
+    await click("Prune unused…");
+
+    expect(dialog()?.textContent).toContain("Remove all unused networks?");
+    expect(dialog()?.textContent).toContain("This removes 1 network: app-net.");
+    await answer("Cancel");
+    expect(pruneNetworks).not.toHaveBeenCalled();
+
+    await click("Prune unused…");
+    await answer("Prune");
+    expect(pruneNetworks).toHaveBeenCalledExactlyOnceWith(endpoint);
   });
 });

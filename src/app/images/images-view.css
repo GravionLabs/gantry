@@ -101,27 +101,8 @@
   color: var(--h-text-muted-color);
   font-variant-numeric: tabular-nums;
 }
-.confirm {
-  display: grid;
-  gap: 0.6rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--h-red-500, #e5484d);
-  border-radius: 0.5rem;
-}
-.confirm h2,
-.confirm p {
-  margin: 0;
-}
-.confirm h2 {
-  font-size: 1rem;
-}
-.confirm label {
+.option {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-}
-.buttons {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
 }

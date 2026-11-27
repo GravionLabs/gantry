@@ -10,7 +10,15 @@ import {
   signal,
   untracked,
 } from "@angular/core";
-import { HxButton, HxField, HxInput, HxMessage, HxPopover, HxSelect } from "@gravionlabs/helix-ui";
+import {
+  HxButton,
+  HxConfirmationService,
+  HxField,
+  HxInput,
+  HxMessage,
+  HxPopover,
+  HxSelect,
+} from "@gravionlabs/helix-ui";
 import { AgGridAngular } from "ag-grid-angular";
 import type {
   ColDef,
@@ -80,6 +88,7 @@ const COLUMNS: ColDef<Network>[] = [
 })
 export class NetworksView {
   private readonly list = inject(ContainerList);
+  private readonly confirmation = inject(HxConfirmationService);
   private readonly endpoints = inject(EndpointStore);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
@@ -124,12 +133,6 @@ export class NetworksView {
   );
   /** A problem that belongs to no field, such as the refusal of the engine. */
   protected readonly formError = computed(() => (this.nameError() ? null : this.createProblem()));
-
-  protected readonly removal = signal<Network | null>(null);
-  protected readonly pruneRequest = signal<readonly Network[] | null>(null);
-  protected readonly pruneNames = computed(() =>
-    (this.pruneRequest() ?? []).map((n) => n.name).join(", "),
-  );
 
   /** What the last action did: a success text or an error. */
   protected readonly result = signal<{ text: string; failed: boolean } | null>(null);
@@ -252,19 +255,24 @@ export class NetworksView {
     afterNextRender(() => popover.hide(), { injector: this.injector });
   }
 
-  protected askRemove(): void {
-    const network = this.selected();
-    if (network) this.removal.set(network);
-  }
-
-  protected cancelRemove(): void {
-    this.removal.set(null);
-  }
-
-  protected async confirmRemove(): Promise<void> {
+  protected async askRemove(): Promise<void> {
     const endpoint = this.endpoint();
-    const network = this.removal();
-    if (!endpoint || !network || this.busy()) return;
+    const network = this.selected();
+    if (!endpoint || !network) return;
+    let message = `This deletes the network ${network.name}.`;
+    if (network.builtin) {
+      message += " It is built in; the engine refuses to remove it.";
+    } else if (network.containers.length > 0) {
+      message += ` It is used by ${network.containers.join(", ")}; the engine refuses to remove a network that a container is still connected to.`;
+    }
+    const accepted = await this.confirmation.confirmAsync({
+      header: `Remove ${network.name}?`,
+      message,
+      acceptLabel: "Remove",
+      rejectLabel: "Cancel",
+      acceptSeverity: "danger",
+    });
+    if (!accepted || !this.mayAct(endpoint)) return;
     this.busy.set(true);
     try {
       await removeNetwork(endpoint, network.id);
@@ -276,22 +284,25 @@ export class NetworksView {
       });
     } finally {
       this.busy.set(false);
-      this.removal.set(null);
       void this.refresh();
     }
   }
 
-  protected askPrune(): void {
-    this.pruneRequest.set(pruneCandidates(this.networks()));
-  }
-
-  protected cancelPrune(): void {
-    this.pruneRequest.set(null);
-  }
-
-  protected async confirmPrune(): Promise<void> {
+  protected async askPrune(): Promise<void> {
     const endpoint = this.endpoint();
-    if (!endpoint || !this.pruneRequest() || this.busy()) return;
+    if (!endpoint) return;
+    const networks = pruneCandidates(this.networks());
+    const matches = networks.length
+      ? `This removes ${networks.length} ${networks.length === 1 ? "network" : "networks"}: ${networks.map((n) => n.name).join(", ")}.`
+      : "No network is unused right now; the engine decides when it runs.";
+    const accepted = await this.confirmation.confirmAsync({
+      header: "Remove all unused networks?",
+      message: `${matches} Every network that no container uses is removed; the built-in ones stay.`,
+      acceptLabel: "Prune",
+      rejectLabel: "Cancel",
+      acceptSeverity: "danger",
+    });
+    if (!accepted || !this.mayAct(endpoint)) return;
     this.busy.set(true);
     try {
       const outcome = await pruneNetworks(endpoint);
@@ -303,9 +314,13 @@ export class NetworksView {
       });
     } finally {
       this.busy.set(false);
-      this.pruneRequest.set(null);
       void this.refresh();
     }
+  }
+
+  /** Whether an accepted question may still act: the view and its endpoint are the ones that asked. */
+  private mayAct(endpoint: object): boolean {
+    return !this.destroyRef.destroyed && this.endpoint() === endpoint && !this.busy();
   }
 
   /** Null is the cleared select. */

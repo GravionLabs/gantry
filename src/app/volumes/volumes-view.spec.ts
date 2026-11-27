@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { signal } from "@angular/core";
+import { signal, type WritableSignal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { BrowserTestingModule, platformBrowserTesting } from "@angular/platform-browser/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,13 +7,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ContainerList } from "../core/container-list";
 import { EndpointStore } from "../core/endpoint-store";
 import { SETTINGS_BACKEND } from "../core/settings/settings.service";
-import { createVolume } from "../core/volumes";
+import type { Volume } from "../core/bindings";
+import { createVolume, pruneVolumes, removeVolume } from "../core/volumes";
+import { confirmDialog } from "../../../testing/confirm-dialog";
 import { renderTemplateOf } from "../../../testing/render-template";
 import { VolumesView } from "./volumes-view";
 
 vi.mock("../core/volumes", async (original) => ({
   ...(await original<typeof import("../core/volumes")>()),
   createVolume: vi.fn(),
+  removeVolume: vi.fn(),
+  pruneVolumes: vi.fn(),
   listVolumes: vi.fn(async () => []),
 }));
 
@@ -194,5 +198,92 @@ describe("volume create form", () => {
     expect(field("name").hasAttribute("aria-invalid")).toBe(false);
     expect(description(field("labels"))).toMatch(/One key=value per line.+\S.*=core/);
     expect(document.activeElement).toBe(field("labels"));
+  });
+});
+
+const volume = { name: "data", containers: [], size: 100 } as unknown as Volume;
+
+function openView() {
+  TestBed.configureTestingModule({
+    providers: [
+      { provide: SETTINGS_BACKEND, useValue: { load: async () => ({}), save: async () => {} } },
+      { provide: EndpointStore, useValue: { active: () => ({ endpoint }) } },
+    ],
+  });
+  renderTemplateOf(VolumesView, "volumes/volumes-view.html", [
+    {
+      provide: ContainerList,
+      useValue: { containers: signal([]), phase: signal("loading"), start: vi.fn() },
+    },
+  ]);
+  const fixture = TestBed.createComponent(VolumesView);
+  const view = fixture.componentInstance as unknown as {
+    volumes: WritableSignal<Volume[]>;
+    selectedName: WritableSignal<string | null>;
+    loaded: WritableSignal<boolean>;
+  };
+  const confirm = confirmDialog(fixture);
+  const select = async () => {
+    await confirm.render();
+    // The grid is left out: the volumes are set while the list still loads.
+    view.volumes.set([volume]);
+    view.loaded.set(false);
+    view.selectedName.set(volume.name);
+    await confirm.render();
+  };
+  return { ...confirm, select };
+}
+
+describe("volume removal and prune", () => {
+  beforeEach(() => {
+    vi.mocked(removeVolume).mockReset();
+    vi.mocked(pruneVolumes).mockReset();
+  });
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    document.body.innerHTML = "";
+  });
+
+  async function askRemove() {
+    const view = openView();
+    await view.select();
+    await view.click("Remove…");
+    return view;
+  }
+
+  it("names the volume to remove and runs nothing on Cancel", async () => {
+    const { dialog, answer, option } = await askRemove();
+
+    expect(dialog()?.textContent).toContain("Remove data?");
+    expect(dialog()?.textContent).toContain("This deletes the volume data and its data");
+    expect(option().checked).toBe(false);
+    await answer("Cancel");
+
+    expect(dialog()).toBeNull();
+    expect(removeVolume).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("removes on accept with force %s", async (force) => {
+    const { answer, option } = await askRemove();
+    if (force) option().click();
+
+    await answer("Remove");
+
+    expect(removeVolume).toHaveBeenCalledExactlyOnceWith(endpoint, "data", force);
+  });
+
+  it("names the unused volumes and prunes only on accept", async () => {
+    const { select, click, dialog, answer } = openView();
+    await select();
+    await click("Prune unused…");
+
+    expect(dialog()?.textContent).toContain("Remove all unused volumes?");
+    expect(dialog()?.textContent).toMatch(/This removes 1 volume and their data \(.+\): data\./);
+    await answer("Cancel");
+    expect(pruneVolumes).not.toHaveBeenCalled();
+
+    await click("Prune unused…");
+    await answer("Prune");
+    expect(pruneVolumes).toHaveBeenCalledExactlyOnceWith(endpoint);
   });
 });

@@ -16,9 +16,19 @@ Angular views ─► Tauri commands (src-tauri) ─► gantry-core ─► bollar
 ### Rules
 
 - **Endpoints are explicit:** every core operation takes the endpoint it acts on; there is no hidden global connection.
-- **Destructive actions** (remove, prune, down) need a confirmation in the UI that names what is removed.
 - **No secrets in plain files:** SSH keys stay with the user's SSH agent and config; Gantry stores no passwords.
 - **Tests never need a running engine** unless marked `#[ignore]` with the reason; use `bollard` mocks or fixtures.
+
+## UI style guide
+
+Before changing UI, read the base guide `node_modules/@gravionlabs/helix-ui/styleguide/STYLEGUIDE.md`, then [`docs/STYLEGUIDE.md`](docs/STYLEGUIDE.md), which lists this project's rules and deviations; read a deep-dive file of either when its condition applies. Both are binding: a deviation needs a reason in the PR description.
+
+- Feedback follows the Helix [UX rules](https://github.com/GravionLabs/helix/blob/main/docs/UX-RULES.md).
+- Build forms with `hx-field`, rows with `hx-list-row`, text sizes with the type scale (`--h-font-size-*`) and gaps and padding with the spacing tokens (`--h-space-*`).
+
+## Lint
+
+`pnpm lint` runs oxlint, ESLint for Angular templates only (`.html` files and the inline templates of `src/app/grid/cells.ts`; ADR 0006 of GravionLabs/skills, [ADR 0006](docs/adr/0006-eslint-for-templates-and-helix-lint.md)) and Stylelint (`stylelint.config.mjs`, `postcss-angular` for inline `styles`); warnings fail it. The Helix preset rejects a raw `<button>`, `<input>`, `<select>`, `<textarea>` or `<progress>` in a template, and hex colors, `rgb()`/`hsl()`, off-scale font sizes, type selectors of native controls and `.btn*` classes in component CSS. Fix a finding; an exception is an entry in `scripts/lint/helix-allow.json` with one file, one rule and a concrete reason (no globs). `@gravionlabs/helix-lint`, `stylelint` and `postcss-angular` are pinned exactly; raise them together and run `src/testing/lint-probe.spec.ts`.
 
 ## Verification
 

@@ -148,6 +148,9 @@ describe("EndpointStore", () => {
       expect(s.store.activeId()).toBeNull();
       expect(s.store.connection()).toBe("unreachable");
       expect(s.store.activeName()).toBe("No endpoint");
+      expect(s.store.activeError()).toBe(
+        "Start Docker or add an endpoint under Manage endpoints, then retry.",
+      );
     });
 
     it("switches, persists and bumps the generation", async () => {

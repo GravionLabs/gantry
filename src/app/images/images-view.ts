@@ -6,8 +6,18 @@ import {
   inject,
   signal,
   untracked,
+  DestroyRef,
+  TemplateRef,
 } from "@angular/core";
-import { HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton } from "@gravionlabs/helix-ui";
+import {
+  HxButton,
+  HxCheckbox,
+  HxConfirmationService,
+  HxInput,
+  HxMessage,
+  HxProgressBar,
+  HxSelectButton,
+} from "@gravionlabs/helix-ui";
 import { AgGridAngular } from "ag-grid-angular";
 import type {
   ColDef,
@@ -111,12 +121,6 @@ const COLUMNS: ColDef<Image>[] = [
   },
 ];
 
-/** A prune that waits for the user's confirmation. */
-interface PruneRequest {
-  readonly all: boolean;
-  readonly images: readonly Image[];
-}
-
 /**
  * The Images view: the images of the active endpoint with pull, remove and prune. The list is read
  * again after every action and whenever the live container list changes, so that the number of
@@ -125,13 +129,15 @@ interface PruneRequest {
 @Component({
   selector: "app-images-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AgGridAngular, HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton],
+  imports: [AgGridAngular, HxButton, HxCheckbox, HxInput, HxMessage, HxProgressBar, HxSelectButton],
   providers: [ContainerList],
   templateUrl: "./images-view.html",
   styleUrl: "./images-view.css",
 })
 export class ImagesView {
   private readonly list = inject(ContainerList);
+  private readonly confirmation = inject(HxConfirmationService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly endpoints = inject(EndpointStore);
 
   protected readonly endpoint = computed(() => this.endpoints.active()?.endpoint ?? null, {
@@ -176,17 +182,8 @@ export class ImagesView {
   protected readonly pullProgress = signal<PullProgress>(EMPTY_PULL);
   private stopPull: (() => void) | null = null;
 
-  /** The image whose removal waits for confirmation. */
-  protected readonly removal = signal<Image | null>(null);
+  /** The option of the remove question. */
   protected readonly force = signal(false);
-  protected readonly pruneRequest = signal<PruneRequest | null>(null);
-  protected readonly pruneNames = computed(() =>
-    (this.pruneRequest()?.images ?? []).map(imageName).join(", "),
-  );
-  protected readonly pruneSize = computed(() =>
-    formatBytes((this.pruneRequest()?.images ?? []).reduce((sum, i) => sum + (i.size ?? 0), 0)),
-  );
-
   /** What the last action did: a success text or an error. */
   protected readonly result = signal<{ text: string; failed: boolean } | null>(null);
   protected readonly busy = signal(false);
@@ -291,26 +288,22 @@ export class ImagesView {
     this.stopPull?.();
   }
 
-  protected askRemove(): void {
-    const image = this.selected();
-    if (!image) return;
-    this.force.set(false);
-    this.removal.set(image);
-  }
-
-  protected cancelRemove(): void {
-    this.removal.set(null);
-  }
-
-  protected setForce(event: Event): void {
-    this.force.set((event.target as HTMLInputElement).checked);
-  }
-
-  protected async confirmRemove(): Promise<void> {
+  /** Asks, with `option` as the controls of the question, and removes the selected image. */
+  protected async askRemove(option: TemplateRef<unknown>): Promise<void> {
     const endpoint = this.endpoint();
-    const image = this.removal();
-    if (!endpoint || !image || this.busy()) return;
+    const image = this.selected();
+    if (!endpoint || !image) return;
     const name = imageName(image);
+    this.force.set(false);
+    const accepted = await this.confirmation.confirmAsync({
+      header: `Remove ${name}?`,
+      message: `This removes ${name} from the engine. A tagged image only loses this tag while other tags point to it.`,
+      content: option,
+      acceptLabel: "Remove",
+      rejectLabel: "Cancel",
+      acceptSeverity: "danger",
+    });
+    if (!accepted || !this.mayAct(endpoint)) return;
     this.busy.set(true);
     try {
       const outcome = await removeImage(endpoint, image.reference ?? image.id, this.force());
@@ -322,26 +315,36 @@ export class ImagesView {
       });
     } finally {
       this.busy.set(false);
-      this.removal.set(null);
       void this.refresh();
     }
   }
 
-  protected askPrune(all: boolean): void {
-    this.pruneRequest.set({ all, images: pruneCandidates(this.images(), all) });
+  protected setForce(event: Event): void {
+    this.force.set((event.target as HTMLInputElement).checked);
   }
 
-  protected cancelPrune(): void {
-    this.pruneRequest.set(null);
-  }
-
-  protected async confirmPrune(): Promise<void> {
+  protected async askPrune(all: boolean): Promise<void> {
     const endpoint = this.endpoint();
-    const request = this.pruneRequest();
-    if (!endpoint || !request || this.busy()) return;
+    if (!endpoint) return;
+    const images = pruneCandidates(this.images(), all);
+    const size = formatBytes(images.reduce((sum, i) => sum + (i.size ?? 0), 0));
+    const matches = images.length
+      ? `This removes ${images.length} ${images.length === 1 ? "image" : "images"} (${size}): ${images.map(imageName).join(", ")}.`
+      : "No image matches right now; the engine decides when it runs.";
+    const rule = all
+      ? "Every image that no container uses is removed, tagged or not."
+      : "Only images without a tag are removed.";
+    const accepted = await this.confirmation.confirmAsync({
+      header: all ? "Remove all unused images?" : "Remove the dangling images?",
+      message: `${matches} ${rule}`,
+      acceptLabel: "Prune",
+      rejectLabel: "Cancel",
+      acceptSeverity: "danger",
+    });
+    if (!accepted || !this.mayAct(endpoint)) return;
     this.busy.set(true);
     try {
-      const outcome = await pruneImages(endpoint, request.all);
+      const outcome = await pruneImages(endpoint, all);
       this.result.set({ text: pruneSummary(outcome), failed: false });
     } catch (error) {
       this.result.set({
@@ -350,14 +353,16 @@ export class ImagesView {
       });
     } finally {
       this.busy.set(false);
-      this.pruneRequest.set(null);
       void this.refresh();
     }
+  }
+
+  /** Whether an accepted question may still act: the view and its endpoint are the ones that asked. */
+  private mayAct(endpoint: object): boolean {
+    return !this.destroyRef.destroyed && this.endpoint() === endpoint && !this.busy();
   }
 
   protected dismissResult(): void {
     this.result.set(null);
   }
-
-  protected name = imageName;
 }

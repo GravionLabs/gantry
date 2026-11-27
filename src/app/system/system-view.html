@@ -35,74 +35,6 @@
     Cannot read the system information: {{ text }}
     <button hx-button variant="outlined" type="button" (click)="refresh()">Retry</button>
   </hx-message>
-  } @if (cleaning(); as state) {
-  <div class="confirm" role="alertdialog" aria-labelledby="cleanup-title">
-    <h2 id="cleanup-title">Clean up unused data</h2>
-    <p>Choose what to remove. Nothing is removed before you confirm the preview.</p>
-    <ul class="choices">
-      @for (category of categories; track category) {
-      <li>
-        <label>
-          <input
-            type="checkbox"
-            hx-checkbox
-            size="small"
-            [checked]="isSelected(category)"
-            [disabled]="busy()"
-            (change)="toggle(category, $event)"
-          />
-          <span
-            ><strong>{{ categoryLabel(category) }}</strong> – {{ categoryScope(category) }}</span
-          >
-        </label>
-      </li>
-      }
-    </ul>
-    @if (previewProblem(); as text) {
-    <hx-message severity="error" role="alert">{{ text }}</hx-message>
-    } @if (state.previews; as previews) {
-    <div class="preview" role="status" aria-label="Cleanup preview">
-      @if (previewCount() === 0) {
-      <p>There is nothing to remove in the selected categories.</p>
-      } @else {
-      <p>
-        This removes {{ previewCount() }} {{ previewCount() === 1 ? 'item' : 'items' }} permanently
-        @if (previewSize() !== null) { and frees up to
-        <strong>{{ sizeOrDash(previewSize()) }}</strong>
-        }:
-      </p>
-      } @for (entry of previews; track entry.category) { @if (entry.count > 0) {
-      <p class="entry">
-        <strong>{{ categoryLabel(entry.category) }}</strong> ({{ entry.count }}): @if
-        (entry.names.length > 0) { {{ entry.names.join(', ') }} } @else { all records } @if
-        (entry.reclaimable !== null) { – {{ sizeOrDash(entry.reclaimable) }} }
-      </p>
-      } }
-    </div>
-    }
-    <div class="buttons">
-      <button hx-button variant="outlined" type="button" (click)="closeCleanup()">Cancel</button>
-      @if (state.confirming) {
-      <button
-        hx-button
-        type="button"
-        [disabled]="busy() || previewCount() === 0"
-        (click)="confirm()"
-      >
-        Remove
-      </button>
-      } @else {
-      <button
-        hx-button
-        type="button"
-        [disabled]="busy() || state.selected.length === 0"
-        (click)="preview()"
-      >
-        Preview
-      </button>
-      }
-    </div>
-  </div>
   } @if (result(); as outcome) {
   <hx-message
     [severity]="outcome.failed ? 'error' : 'success'"
@@ -167,4 +99,107 @@
     </section>
   </div>
   }
+
+  <hx-dialog
+    header="Clean up unused data"
+    size="md"
+    [visible]="cleaning() !== null"
+    [closable]="!removing()"
+    [closeOnEscape]="!removing()"
+    (visibleChange)="$event || closeCleanup()"
+  >
+    @if (cleaning(); as state) {
+    <form
+      #cleanupForm
+      id="cleanup-form"
+      class="cleanup"
+      (submit)="$event.preventDefault(); submitCleanup(cleanupForm)"
+    >
+      <p>Choose what to remove. Nothing is removed before you confirm the preview.</p>
+      <hx-fieldset legend="Categories">
+        <div class="choices">
+          @for (category of categories; track category) {
+          <hx-field [label]="categoryLabel(category)" [hint]="categoryScope(category)">
+            <input
+              type="checkbox"
+              hx-checkbox
+              [checked]="isSelected(category)"
+              [disabled]="busy()"
+              [attr.aria-describedby]="categoryMissing() ? 'cleanup-categories-error' : null"
+              (change)="toggle(category, $event)"
+            />
+          </hx-field>
+          } @if (categoryMissing()) {
+          <hx-message
+            id="cleanup-categories-error"
+            severity="error"
+            variant="simple"
+            size="small"
+            role="alert"
+          >
+            Select at least one category
+          </hx-message>
+          }
+        </div>
+      </hx-fieldset>
+      @if (previewProblem(); as text) {
+      <hx-message severity="error" role="alert">{{ text }}</hx-message>
+      } @if (state.previews; as previews) {
+      <div
+        id="cleanup-preview"
+        class="preview"
+        role="status"
+        aria-label="Cleanup preview"
+        tabindex="-1"
+      >
+        @if (previewCount() === 0) {
+        <p>There is nothing to remove in the selected categories.</p>
+        } @else {
+        <p>
+          This removes {{ previewCount() }} {{ previewCount() === 1 ? 'item' : 'items' }}
+          permanently @if (previewSize() !== null) { and frees up to
+          <strong>{{ sizeOrDash(previewSize()) }}</strong>
+          }:
+        </p>
+        } @for (entry of previews; track entry.category) { @if (entry.count > 0) {
+        <p class="entry">
+          <strong>{{ categoryLabel(entry.category) }}</strong> ({{ entry.count }}): @if
+          (entry.names.length > 0) { {{ entry.names.join(', ') }} } @else { all records } @if
+          (entry.reclaimable !== null) { – {{ sizeOrDash(entry.reclaimable) }} }
+        </p>
+        } }
+      </div>
+      }
+    </form>
+    }
+
+    <button
+      hxDialogFooter
+      hx-button
+      type="button"
+      variant="text"
+      severity="secondary"
+      [disabled]="removing()"
+      (click)="closeCleanup()"
+    >
+      Cancel
+    </button>
+    @if (cleaning()?.confirming) {
+    <button
+      hxDialogFooter
+      hx-button
+      type="button"
+      severity="danger"
+      [loading]="removing()"
+      [disabled]="previewCount() === 0"
+      (click)="confirm()"
+    >
+      Remove
+    </button>
+    } @else {
+    <button hxDialogFooter hx-button type="submit" form="cleanup-form" [loading]="busy()">
+      Preview
+    </button>
+    }
+  </hx-dialog>
 </section>

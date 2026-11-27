@@ -20,7 +20,7 @@
 }
 .head h1 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--h-font-size-lg);
   font-weight: 600;
 }
 .total {
@@ -47,7 +47,7 @@
   gap: 0.4rem;
   flex-wrap: wrap;
 }
-.pull input[type="text"] {
+.reference {
   width: 20rem;
 }
 .grid {
@@ -55,17 +55,17 @@
   min-height: 12rem;
 }
 .grid ::ng-deep .mono {
-  font-family: var(--h-font-mono, monospace);
+  font-family: var(--helix-font-mono, monospace);
 }
 .grid ::ng-deep .dangling {
   color: var(--h-text-muted-color);
 }
 .grid ::ng-deep .dangling-cell {
-  color: var(--h-amber-500, #e5a00d);
+  color: var(--h-amber-500);
   font-weight: 500;
 }
 .mono {
-  font-family: var(--h-font-mono, monospace);
+  font-family: var(--helix-font-mono, monospace);
 }
 .state {
   margin: 2rem 0;
@@ -76,7 +76,7 @@
   display: grid;
   gap: 0.35rem;
   padding: 0.6rem 0.75rem;
-  border: 1px solid var(--h-border-color, #8884);
+  border: 1px solid var(--h-content-border-color);
   border-radius: 0.5rem;
   max-height: 14rem;
   overflow: auto;
@@ -94,34 +94,15 @@
   align-items: center;
   gap: 0.6rem;
 }
-.layers progress {
+.layers hx-progress-bar {
   width: 100%;
 }
 .layer-status {
   color: var(--h-text-muted-color);
   font-variant-numeric: tabular-nums;
 }
-.confirm {
-  display: grid;
-  gap: 0.6rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--h-red-500, #e5484d);
-  border-radius: 0.5rem;
-}
-.confirm h2,
-.confirm p {
-  margin: 0;
-}
-.confirm h2 {
-  font-size: 1rem;
-}
-.confirm label {
+.option {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-}
-.buttons {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
 }

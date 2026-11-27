@@ -65,6 +65,18 @@ export function kindLabel(endpoint: Endpoint): string {
   }
 }
 
+const STATE_LABELS: Record<EndpointState, string> = {
+  checking: "Checking…",
+  reachable: "Reachable",
+  unreachable: "Unreachable",
+  denied: "Permission denied",
+};
+
+/** The text of an endpoint status; a status is never color alone. */
+export function stateLabel(state: EndpointState): string {
+  return STATE_LABELS[state];
+}
+
 export function endpointId(origin: EndpointOrigin, name: string): string {
   return `${origin}:${name}`;
 }
@@ -146,9 +158,14 @@ export class EndpointStore {
 
   /** The name for the status bar. */
   readonly activeName = computed(() => this.active()?.endpoint.name ?? "No endpoint");
-  readonly activeError = computed(
-    () => this.active()?.status.error ?? (this.loading() ? null : "No endpoint is available."),
-  );
+  /** The error of the active endpoint; without one, what to do to get one. */
+  readonly activeError = computed(() => {
+    const active = this.active();
+    if (active) return active.status.error ?? null;
+    return this.loading()
+      ? null
+      : "Start Docker or add an endpoint under Manage endpoints, then retry.";
+  });
   readonly engineVersion = computed(() => this.active()?.status.info?.version ?? null);
 
   /** Reads the preferences, finds the engines and picks the active endpoint. */

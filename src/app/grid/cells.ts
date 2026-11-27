@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from "@angular/core";
 import type { ICellRendererAngularComp } from "ag-grid-angular";
 import type { ICellRendererParams } from "ag-grid-community";
+import { HxButton, HxTooltip } from "@gravionlabs/helix-ui";
 
 import type { Container, PortMapping } from "../core/bindings";
 import { portLabel, stateLabel } from "../core/containers";
@@ -30,9 +31,9 @@ export const DOT_STYLES = `
   .dot[data-state="running"] { background: var(--gantry-container); }
   .dot[data-state="restarting"],
   .dot[data-state="paused"],
-  .dot[data-health="starting"] { background: var(--h-amber-500, #e5a00d); }
+  .dot[data-health="starting"] { background: var(--h-amber-500); }
   .dot[data-health="unhealthy"],
-  .dot[data-state="dead"] { background: var(--h-red-500, #e5484d); }
+  .dot[data-state="dead"] { background: var(--h-red-500); }
 `;
 
 /** The name of a container as a link to its details. */
@@ -145,8 +146,8 @@ export class ContainerStateCell implements ICellRendererAngularComp {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-family: var(--h-font-mono, monospace);
-      font-size: 0.9em;
+      font-family: var(--helix-font-mono, monospace);
+      font-size: var(--h-font-size-sm);
     }
     .port {
       color: inherit;
@@ -203,14 +204,21 @@ export interface StackGridContext {
 @Component({
   selector: "app-stack-name-cell",
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [HxButton, HxTooltip],
   template: `@if (row(); as r) {
     @if (r.kind === "stack") {
       <span class="name">
         <button
+          hx-button
+          iconOnly
+          variant="text"
+          severity="secondary"
+          size="small"
           type="button"
           class="toggle"
           [attr.aria-expanded]="r.expanded"
           [attr.aria-label]="(r.expanded ? 'Collapse ' : 'Expand ') + r.stack.name"
+          [hx-tooltip]="(r.expanded ? 'Collapse ' : 'Expand ') + r.stack.name"
           (click)="toggle(r.stack.name)"
         >
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" /></svg>
@@ -247,21 +255,11 @@ export interface StackGridContext {
     .nested {
       padding-inline-start: 1.85rem;
     }
+    /* a grid row is 30 px high: the button stays inside it */
     .toggle {
-      display: inline-grid;
-      place-items: center;
-      width: 1.25rem;
-      height: 1.25rem;
+      width: 1.5rem;
+      height: 1.5rem;
       padding: 0;
-      border: 0;
-      border-radius: 0.25rem;
-      background: none;
-      color: inherit;
-      cursor: pointer;
-    }
-    .toggle:hover,
-    .toggle:focus-visible {
-      background: var(--h-surface-hover-color, rgb(128 128 128 / 15%));
     }
     .toggle svg {
       width: 0.85rem;
@@ -338,27 +336,35 @@ interface StackGroupParams {
 @Component({
   selector: "app-stack-group-cell",
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [HxButton],
   template: `@if (row(); as g) {
-    <button type="button" class="group" [attr.aria-expanded]="!collapsed()" (click)="toggle()">
+    <button
+      hx-button
+      variant="text"
+      severity="secondary"
+      size="small"
+      type="button"
+      class="group"
+      [attr.aria-expanded]="!collapsed()"
+      (click)="toggle()"
+    >
       <span class="chevron" aria-hidden="true">{{ collapsed() ? "▸" : "▾" }}</span>
       <strong>{{ g.stack ?? noStack }}</strong>
       <span class="count">{{ g.running }} of {{ g.total }} running</span>
     </button>
   }`,
   styles: `
+    /* the header fills the full-width row, so its content starts at the left and the focus ring stays inside */
     .group {
-      all: unset;
-      box-sizing: border-box;
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
+      justify-content: flex-start;
       width: 100%;
       height: 100%;
+      padding-block: 0;
       padding-inline: 0.75rem;
-      cursor: pointer;
+      border-radius: 0;
+      color: inherit;
     }
     .group:focus-visible {
-      outline: 2px solid var(--h-primary-color);
       outline-offset: -2px;
     }
     .count {

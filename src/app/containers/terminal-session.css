@@ -4,17 +4,18 @@
 .terminal {
   height: 60vh;
   min-height: 12rem;
-  padding: 0.25rem;
+  padding: var(--h-space-1);
   background: #111;
-  border: 1px solid var(--h-border-color, currentColor);
+  border: 1px solid var(--h-content-border-color);
 }
 .notice {
-  margin: 0.5rem 0 0;
-  font-size: 0.85em;
+  margin: var(--h-space-2) 0 0;
+  font-size: var(--h-font-size-sm);
   color: var(--h-text-muted-color);
 }
-.notice.error {
-  color: #e5534b;
+.failure {
+  display: block;
+  margin-top: var(--h-space-2);
 }
 :host([hidden]) {
   display: none;

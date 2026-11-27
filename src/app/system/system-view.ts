@@ -1,13 +1,22 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
   effect,
   inject,
+  Injector,
   signal,
   untracked,
 } from "@angular/core";
-import { HxButton, HxCheckbox, HxMessage } from "@gravionlabs/helix-ui";
+import {
+  HxButton,
+  HxCheckbox,
+  HxDialog,
+  HxField,
+  HxFieldset,
+  HxMessage,
+} from "@gravionlabs/helix-ui";
 
 import { pollRefresh } from "../core/settings/refresh-poll";
 import type { CleanupCategory, CleanupPreview, DiskUsage, EngineDetails } from "../core/bindings";
@@ -33,12 +42,13 @@ import {
 @Component({
   selector: "app-system-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HxButton, HxCheckbox, HxMessage],
+  imports: [HxButton, HxCheckbox, HxDialog, HxField, HxFieldset, HxMessage],
   templateUrl: "./system-view.html",
   styleUrl: "./system-view.css",
 })
 export class SystemView {
   private readonly endpoints = inject(EndpointStore);
+  private readonly injector = inject(Injector);
 
   protected readonly endpoint = computed(() => this.endpoints.active()?.endpoint ?? null, {
     equal: (a, b) => a?.address === b?.address,
@@ -57,11 +67,17 @@ export class SystemView {
     confirming: boolean;
   } | null>(null);
   protected readonly previewProblem = signal<string | null>(null);
+  /** A preview was asked for while no category was selected. */
+  protected readonly categoryMissing = signal(false);
   private previewRequests = 0;
 
   /** What the last cleanup did: a text and whether it failed in part or fully. */
   protected readonly result = signal<{ text: string; failed: boolean } | null>(null);
   protected readonly busy = signal(false);
+  /** The confirmed cleanup is running: the dialog cannot be closed. */
+  protected readonly removing = computed(
+    () => this.busy() && (this.cleaning()?.confirming ?? false),
+  );
 
   protected readonly categories = CATEGORIES;
   protected readonly categoryLabel = categoryLabel;
@@ -111,7 +127,7 @@ export class SystemView {
         this.engine.set(null);
         this.usage.set([]);
         this.loaded.set(false);
-        this.cleaning.set(null);
+        this.closeCleanup();
         this.result.set(null);
         void this.refresh();
       });
@@ -138,10 +154,15 @@ export class SystemView {
 
   protected openCleanup(): void {
     this.previewProblem.set(null);
+    this.categoryMissing.set(false);
     this.cleaning.set({ selected: [], previews: null, confirming: false });
   }
 
   protected closeCleanup(): void {
+    // The dialog also reports a close that the view made itself.
+    if (!this.cleaning()) return;
+    // A dropped preview no longer ends the busy state itself; a running removal does.
+    if (!this.removing()) this.busy.set(false);
     this.previewRequests++;
     this.cleaning.set(null);
   }
@@ -161,6 +182,19 @@ export class SystemView {
       return { selected, previews: null, confirming: false };
     });
     this.previewProblem.set(null);
+    if (this.cleaning()?.selected.length) this.categoryMissing.set(false);
+  }
+
+  /** Enter in the form asks for the preview; removing needs its button. */
+  protected submitCleanup(form: HTMLFormElement): void {
+    const state = this.cleaning();
+    if (!state || state.confirming) return;
+    if (state.selected.length === 0) {
+      this.categoryMissing.set(true);
+      form.querySelector("input")?.focus();
+      return;
+    }
+    void this.preview();
   }
 
   /** Reads what the selected categories remove, without removing anything. */
@@ -175,6 +209,10 @@ export class SystemView {
       const previews = await previewCleanup(endpoint, state.selected);
       if (request !== this.previewRequests) return;
       this.cleaning.update((s) => (s ? { ...s, previews, confirming: true } : s));
+      // Remove replaces the Preview button. The focus goes to the preview, where Enter does nothing.
+      afterNextRender(() => document.getElementById("cleanup-preview")?.focus(), {
+        injector: this.injector,
+      });
     } catch (error) {
       if (request !== this.previewRequests) return;
       this.previewProblem.set(`Cannot preview the cleanup: ${toGantryError(error).message}`);

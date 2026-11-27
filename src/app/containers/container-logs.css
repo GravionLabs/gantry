@@ -3,21 +3,21 @@
 }
 .logs {
   display: grid;
-  gap: 0.5rem;
+  gap: var(--h-space-2);
 }
-.options {
+/* The labeled fields of a toolbar slot line up with the buttons at their lower edge. */
+.group {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
+  align-items: flex-end;
+  gap: var(--h-space-3);
 }
-.check {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
+/* A switch and the match count are lower than the small controls: lift them to their middle. */
+.switch {
+  padding-bottom: var(--h-space-1);
 }
-.spacer {
-  flex: 1;
+.count {
+  padding-bottom: var(--h-space-2);
 }
 .search {
   min-width: 14rem;
@@ -25,7 +25,11 @@
 .count {
   min-width: 4.5rem;
   color: var(--h-text-muted-color);
-  font-size: 0.85em;
+  font-size: var(--h-font-size-sm);
+}
+.group svg {
+  width: 1rem;
+  height: 1rem;
 }
 .frame {
   position: relative;
@@ -33,18 +37,18 @@
 .viewport {
   height: 60vh;
   min-height: 12rem;
-  border: 1px solid var(--h-border-color, currentColor);
+  border: 1px solid var(--h-content-border-color);
   background: #111;
   color: #ddd;
 }
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.85rem;
+  font-size: var(--h-font-size-sm);
 }
 .line {
   white-space: pre;
   line-height: 20px;
-  padding: 0 0.5rem;
+  padding: 0 var(--h-space-2);
   box-sizing: border-box;
 }
 .line.stderr {
@@ -82,7 +86,7 @@
 }
 .status {
   margin: 0;
-  font-size: 0.85em;
+  font-size: var(--h-font-size-sm);
   color: var(--h-text-muted-color);
 }
 .ansi-bold {

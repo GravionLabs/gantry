@@ -63,7 +63,11 @@
       <app-settings-view />
       } @else if (needsEndpoint() && endpoints.connection() === 'unreachable') {
       <section class="empty" role="alert" [attr.aria-label]="shell.activeView().label">
+        @if (endpoints.active()) {
         <h1>{{ endpoints.activeName() }} is unreachable</h1>
+        } @else {
+        <h1>No endpoint available</h1>
+        }
         <p>{{ endpoints.activeError() }}</p>
         <div class="buttons">
           <button hx-button type="button" (click)="endpoints.retry()">Retry</button>
@@ -107,25 +111,10 @@
       ariaLabel="Active endpoint: switch"
       [tone]="endpoints.connection() === 'unreachable' ? 'error' : 'neutral'"
       [announce]="true"
-      [(popoverOpen)]="switcherOpen"
+      (pressed)="toggleSwitcher(switcher)"
     >
       <span class="dot" [attr.data-state]="endpoints.connection()"></span>
       {{ endpoints.activeName() }} · {{ connectionLabel() }}
-      <div hxStatusPopover class="switcher">
-        <ul>
-          @for (entry of endpoints.entries(); track entry.id) {
-          <li>
-            <button type="button" (click)="switchTo(entry.id)">
-              <span class="dot" [attr.data-state]="entry.status.state"></span>
-              {{ entry.endpoint.name }} @if (entry.id === endpoints.activeId()) { (active) }
-            </button>
-          </li>
-          } @empty {
-          <li class="none">No endpoints found</li>
-          }
-        </ul>
-        <button type="button" class="manage" (click)="manage()">Manage endpoints…</button>
-      </div>
     </hx-status-item>
     @if (endpoints.engineVersion(); as version) {
     <hx-status-item slot="end" class="engine-version">{{ engineLabel(version) }}</hx-status-item>
@@ -134,3 +123,38 @@
     <hx-status-update slot="end" />
   </hx-status-bar>
 </hx-app-shell>
+
+<!-- Not the popover of hx-status-item: it opens past the window edge for an item at the start
+     (GravionLabs/helix#1283). -->
+<hx-popover
+  #switcher
+  ariaLabel="Switch endpoint"
+  (shown)="switcherOpen.set(true)"
+  (hidden)="switcherOpen.set(false)"
+>
+  <div class="switcher">
+    <hx-list aria-label="Endpoints">
+      @for (entry of endpoints.entries(); track entry.id) {
+      <button
+        hx-list-row
+        type="button"
+        [current]="entry.id === endpoints.activeId() ? 'true' : false"
+        (click)="switchTo(entry.id, switcher)"
+      >
+        <span class="hx-list-row-icon dot" [attr.data-state]="entry.status.state"></span>
+        <span class="hx-list-row-label">{{ entry.endpoint.name }}</span>
+        <span class="hx-list-row-meta">{{ stateLabel(entry.status.state) }}</span>
+      </button>
+      }
+    </hx-list>
+    @if (endpoints.entries().length === 0) {
+    <p class="none">No endpoints found</p>
+    }
+    <button hx-button variant="link" fluid class="manage" type="button" (click)="manage(switcher)">
+      Manage endpoints…
+    </button>
+  </div>
+</hx-popover>
+
+<!-- Asks every question of HxConfirmationService. -->
+<hx-confirm-dialog />

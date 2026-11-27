@@ -1,13 +1,27 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
+  Injector,
   signal,
   untracked,
+  TemplateRef,
 } from "@angular/core";
-import { HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton } from "@gravionlabs/helix-ui";
+import { FormField, form, submit, validate } from "@angular/forms/signals";
+import {
+  HxButton,
+  HxCheckbox,
+  HxConfirmationService,
+  HxField,
+  HxInput,
+  HxMessage,
+  HxPopover,
+  HxSelectButton,
+} from "@gravionlabs/helix-ui";
 import { AgGridAngular } from "ag-grid-angular";
 import type {
   ColDef,
@@ -71,6 +85,8 @@ const COLUMNS: ColDef<Volume>[] = [
   },
 ];
 
+const EMPTY_FORM = { name: "", driver: "", labels: "" };
+
 /**
  * The Volumes view: the volumes of the active endpoint with create, remove and prune. The list is
  * read again after every action and whenever the live container list changes, so that the
@@ -79,14 +95,27 @@ const COLUMNS: ColDef<Volume>[] = [
 @Component({
   selector: "app-volumes-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AgGridAngular, HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton],
+  imports: [
+    AgGridAngular,
+    FormField,
+    HxButton,
+    HxCheckbox,
+    HxField,
+    HxInput,
+    HxMessage,
+    HxPopover,
+    HxSelectButton,
+  ],
   providers: [ContainerList],
   templateUrl: "./volumes-view.html",
   styleUrl: "./volumes-view.css",
 })
 export class VolumesView {
   private readonly list = inject(ContainerList);
+  private readonly confirmation = inject(HxConfirmationService);
   private readonly endpoints = inject(EndpointStore);
+  private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly endpoint = computed(() => this.endpoints.active()?.endpoint ?? null, {
     equal: (a, b) => a?.address === b?.address,
@@ -120,22 +149,29 @@ export class VolumesView {
     () => this.visible().find((v) => v.name === this.selectedName()) ?? null,
   );
 
-  /** The create form; null while closed. */
-  protected readonly creating = signal<{ name: string; driver: string; labels: string } | null>(
-    null,
-  );
+  /** Whether the create form is open. */
+  protected readonly creating = signal(false);
+  private readonly createModel = signal(EMPTY_FORM);
+  /** The create form; a field shows its error once it was left or the form was submitted. */
+  protected readonly createForm = form(this.createModel, (path) => {
+    validate(path.name, ({ value }) =>
+      value().trim() ? undefined : { kind: "required", message: "Enter a volume name" },
+    );
+    validate(path.labels, ({ value }) => {
+      try {
+        parseLabels(value());
+        return undefined;
+      } catch (error) {
+        const reason = (error as Error).message;
+        return { kind: "labels", message: `Enter one key=value per line: ${reason}` };
+      }
+    });
+  });
+  /** Why the engine refused to create the volume. */
   protected readonly createProblem = signal<string | null>(null);
 
-  protected readonly removal = signal<Volume | null>(null);
+  /** The option of the remove question. */
   protected readonly force = signal(false);
-  protected readonly pruneRequest = signal<readonly Volume[] | null>(null);
-  protected readonly pruneNames = computed(() =>
-    (this.pruneRequest() ?? []).map((v) => v.name).join(", "),
-  );
-  protected readonly pruneSize = computed(() =>
-    formatBytes((this.pruneRequest() ?? []).reduce((sum, v) => sum + (v.size ?? 0), 0)),
-  );
-
   /** What the last action did: a success text or an error. */
   protected readonly result = signal<{ text: string; failed: boolean } | null>(null);
   protected readonly busy = signal(false);
@@ -196,68 +232,86 @@ export class VolumesView {
     }
   }
 
+  protected toggleCreate(popover: HxPopover, event: Event): void {
+    if (popover.open()) {
+      popover.hide();
+      return;
+    }
+    this.openCreate();
+    popover.show(event);
+  }
+
   protected openCreate(): void {
     this.createProblem.set(null);
-    this.creating.set({ name: "", driver: "", labels: "" });
+    this.createForm().reset(EMPTY_FORM);
+    this.creating.set(true);
   }
 
   protected cancelCreate(): void {
-    this.creating.set(null);
-  }
-
-  protected setField(field: "name" | "driver" | "labels", event: Event): void {
-    const value = (event.target as HTMLInputElement | HTMLTextAreaElement).value;
-    this.creating.update((form) => (form ? { ...form, [field]: value } : form));
+    this.creating.set(false);
   }
 
   protected async confirmCreate(): Promise<void> {
     const endpoint = this.endpoint();
-    const form = this.creating();
-    if (!endpoint || !form || this.busy()) return;
-    const name = form.name.trim();
-    if (!name) {
-      this.createProblem.set("A volume needs a name.");
+    if (!endpoint || !this.creating() || this.busy()) return;
+    // An invalid form marks its fields, which then show their errors, and creates nothing.
+    await submit(this.createForm, async () => {
+      const form = this.createModel();
+      const name = form.name.trim();
+      const request = { name, driver: form.driver.trim(), labels: parseLabels(form.labels) };
+      this.busy.set(true);
+      try {
+        await createVolume(endpoint, request);
+        this.result.set({ text: `Created volume ${name}.`, failed: false });
+        this.creating.set(false);
+      } catch (error) {
+        this.createProblem.set(`Cannot create ${name}: ${toGantryError(error).message}`);
+      } finally {
+        this.busy.set(false);
+        void this.refresh();
+      }
+    });
+  }
+
+  /** Creates, then closes the popover on success or moves the focus to the field in error. */
+  protected async submitCreate(popover: HxPopover): Promise<void> {
+    // A second Enter while creating changes nothing.
+    if (this.busy()) return;
+    await this.confirmCreate();
+    if (this.destroyRef.destroyed) return;
+    if (this.creating()) {
+      this.createForm().errorSummary()[0]?.fieldTree().focusBoundControl();
       return;
     }
-    let labels;
-    try {
-      labels = parseLabels(form.labels);
-    } catch (error) {
-      this.createProblem.set((error as Error).message);
+    const problem = this.createProblem();
+    if (problem) {
+      // The popover was closed while creating: the refusal still has to be read.
+      this.result.set({ text: problem, failed: true });
       return;
     }
-    this.busy.set(true);
-    try {
-      await createVolume(endpoint, { name, driver: form.driver.trim(), labels });
-      this.result.set({ text: `Created volume ${name}.`, failed: false });
-      this.creating.set(null);
-    } catch (error) {
-      this.createProblem.set(`Cannot create ${name}: ${toGantryError(error).message}`);
-    } finally {
-      this.busy.set(false);
-      void this.refresh();
-    }
+    // After the render the toolbar button is enabled again and can take the focus back.
+    afterNextRender(() => popover.hide(), { injector: this.injector });
   }
 
-  protected askRemove(): void {
-    const volume = this.selected();
-    if (!volume) return;
-    this.force.set(false);
-    this.removal.set(volume);
-  }
-
-  protected cancelRemove(): void {
-    this.removal.set(null);
-  }
-
-  protected setForce(event: Event): void {
-    this.force.set((event.target as HTMLInputElement).checked);
-  }
-
-  protected async confirmRemove(): Promise<void> {
+  /** Asks, with `option` as the controls of the question, and removes the selected volume. */
+  protected async askRemove(option: TemplateRef<unknown>): Promise<void> {
     const endpoint = this.endpoint();
-    const volume = this.removal();
-    if (!endpoint || !volume || this.busy()) return;
+    const volume = this.selected();
+    if (!endpoint || !volume) return;
+    this.force.set(false);
+    let message = `This deletes the volume ${volume.name} and its data permanently.`;
+    if (volume.containers.length > 0) {
+      message += ` It is used by ${volume.containers.join(", ")}; the engine refuses to remove a volume that a container still mounts.`;
+    }
+    const accepted = await this.confirmation.confirmAsync({
+      header: `Remove ${volume.name}?`,
+      message,
+      content: option,
+      acceptLabel: "Remove",
+      rejectLabel: "Cancel",
+      acceptSeverity: "danger",
+    });
+    if (!accepted || !this.mayAct(endpoint)) return;
     this.busy.set(true);
     try {
       await removeVolume(endpoint, volume.name, this.force());
@@ -269,22 +323,30 @@ export class VolumesView {
       });
     } finally {
       this.busy.set(false);
-      this.removal.set(null);
       void this.refresh();
     }
   }
 
-  protected askPrune(): void {
-    this.pruneRequest.set(pruneCandidates(this.volumes()));
+  protected setForce(event: Event): void {
+    this.force.set((event.target as HTMLInputElement).checked);
   }
 
-  protected cancelPrune(): void {
-    this.pruneRequest.set(null);
-  }
-
-  protected async confirmPrune(): Promise<void> {
+  protected async askPrune(): Promise<void> {
     const endpoint = this.endpoint();
-    if (!endpoint || !this.pruneRequest() || this.busy()) return;
+    if (!endpoint) return;
+    const volumes = pruneCandidates(this.volumes());
+    const size = formatBytes(volumes.reduce((sum, v) => sum + (v.size ?? 0), 0));
+    const matches = volumes.length
+      ? `This removes ${volumes.length} ${volumes.length === 1 ? "volume" : "volumes"} and their data (${size}): ${volumes.map((v) => v.name).join(", ")}.`
+      : "No volume is unused right now; the engine decides when it runs.";
+    const accepted = await this.confirmation.confirmAsync({
+      header: "Remove all unused volumes?",
+      message: `${matches} Every volume that no container uses is removed, named or not.`,
+      acceptLabel: "Prune",
+      rejectLabel: "Cancel",
+      acceptSeverity: "danger",
+    });
+    if (!accepted || !this.mayAct(endpoint)) return;
     this.busy.set(true);
     try {
       const outcome = await pruneVolumes(endpoint);
@@ -296,9 +358,13 @@ export class VolumesView {
       });
     } finally {
       this.busy.set(false);
-      this.pruneRequest.set(null);
       void this.refresh();
     }
+  }
+
+  /** Whether an accepted question may still act: the view and its endpoint are the ones that asked. */
+  private mayAct(endpoint: object): boolean {
+    return !this.destroyRef.destroyed && this.endpoint() === endpoint && !this.busy();
   }
 
   protected dismissResult(): void {

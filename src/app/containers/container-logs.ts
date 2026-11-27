@@ -11,7 +11,16 @@ import {
   untracked,
   viewChild,
 } from "@angular/core";
-import { HxButton, HxMessage } from "@gravionlabs/helix-ui";
+import {
+  HxButton,
+  HxField,
+  HxInput,
+  HxMessage,
+  HxSelect,
+  HxSwitch,
+  HxToolbar,
+  HxTooltip,
+} from "@gravionlabs/helix-ui";
 
 import type { Endpoint } from "../core/bindings";
 import { streamContainerLogs } from "../core/containers";
@@ -33,11 +42,28 @@ import {
 /** Height of one line in pixels; the virtual scroll needs a fixed size. */
 export const LINE_HEIGHT = 20;
 
+/** The next action for a log that ended without lines, naming only controls that can change that. */
+function nextStep(follow: boolean, since: number | null): string {
+  if (since !== null) return follow ? "Widen Since." : "Widen Since or turn on Follow.";
+  if (!follow) return "Turn on Follow to wait for new lines.";
+  return "Start the container, then turn Follow off and on.";
+}
+
 /** `docker logs -f` of one container: follow mode, options, search, ANSI colors and download. */
 @Component({
   selector: "app-container-logs",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ScrollingModule, HxButton, HxMessage],
+  imports: [
+    ScrollingModule,
+    HxButton,
+    HxField,
+    HxInput,
+    HxMessage,
+    HxSelect,
+    HxSwitch,
+    HxToolbar,
+    HxTooltip,
+  ],
   templateUrl: "./container-logs.html",
   styleUrl: "./container-logs.css",
 })
@@ -51,13 +77,22 @@ export class ContainerLogs {
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
 
   protected readonly lineHeight = LINE_HEIGHT;
-  protected readonly tailChoices = TAIL_CHOICES;
-  protected readonly sinceChoices = SINCE_CHOICES;
+  /** `hx-select` reads null as "nothing selected", so the choices carry strings. */
+  protected readonly tailOptions = TAIL_CHOICES.map((c) => ({
+    label: c.label,
+    value: String(c.value ?? "all"),
+  }));
+  protected readonly sinceOptions = SINCE_CHOICES.map((c) => ({
+    label: c.label,
+    value: String(c.seconds ?? ""),
+  }));
 
   protected readonly follow = signal(true);
   protected readonly tail = signal<number | null>(1000);
   protected readonly since = signal<number | null>(null);
   protected readonly timestamps = signal(false);
+  protected readonly tailValue = computed(() => String(this.tail() ?? "all"));
+  protected readonly sinceValue = computed(() => String(this.since() ?? ""));
   protected readonly query = signal("");
 
   protected readonly lines = signal<LogEntry[]>([]);
@@ -69,6 +104,17 @@ export class ContainerLogs {
   protected readonly matches = computed(() => matchingLines(this.lines(), this.query().trim()));
   protected readonly currentMatch = signal(-1);
   private readonly currentLine = computed(() => this.matches()[this.currentMatch()] ?? -1);
+  /** What a log without lines says; after an error, the message with *Retry* says it all. */
+  protected readonly emptyText = computed(() => {
+    switch (this.phase()) {
+      case "streaming":
+        return "Waiting for log lines…";
+      case "ended":
+        return `No log lines. ${nextStep(this.follow(), this.since())}`;
+      case "error":
+        return null;
+    }
+  });
 
   private stop: (() => void) | null = null;
 
@@ -110,6 +156,12 @@ export class ContainerLogs {
         }
       },
     );
+  }
+
+  /** Starts the stream again with the current options; *Since* counts from now. */
+  protected retry(): void {
+    const options = buildLogOptions(this.follow(), this.tail(), this.since(), this.timestamps());
+    this.start(this.endpoint(), this.containerId(), options);
   }
 
   protected scrollToEnd(): void {

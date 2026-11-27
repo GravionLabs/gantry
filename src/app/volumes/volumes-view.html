@@ -6,14 +6,29 @@
     }
   </header>
 
+  <ng-template #removeOption>
+    <label class="option">
+      <input
+        type="checkbox"
+        hx-checkbox
+        size="small"
+        [checked]="force()"
+        (change)="setForce($event)"
+      />
+      Force
+    </label>
+  </ng-template>
+
   <div class="bar" role="toolbar" aria-label="Volume actions">
     <div class="group group-start">
       <button
         hx-button
         size="small"
         type="button"
+        aria-haspopup="dialog"
+        [attr.aria-expanded]="createPopover.open()"
         [disabled]="!endpoint() || busy()"
-        (click)="openCreate()"
+        (click)="toggleCreate(createPopover, $event)"
       >
         Create…
       </button>
@@ -24,7 +39,7 @@
         severity="secondary"
         type="button"
         [disabled]="!selected() || busy()"
-        (click)="askRemove()"
+        (click)="askRemove(removeOption)"
       >
         Remove…
       </button>
@@ -64,99 +79,49 @@
     </div>
   </div>
 
+  <hx-popover #createPopover ariaLabelledBy="create-title" (hidden)="cancelCreate()">
+    @if (creating()) {
+    <form
+      class="create"
+      novalidate
+      (input)="createProblem.set(null)"
+      (submit)="$event.preventDefault(); submitCreate(createPopover)"
+    >
+      <h2 id="create-title">Create a volume</h2>
+      <hx-field label="Name" required>
+        <input hx-input fluid type="text" [formField]="createForm.name" />
+      </hx-field>
+      <hx-field label="Driver" hint="Empty for local.">
+        <input hx-input fluid type="text" [formField]="createForm.driver" />
+      </hx-field>
+      <hx-field label="Labels" hint="One key=value per line, for example team=core.">
+        <textarea hx-input fluid rows="3" class="labels" [formField]="createForm.labels"></textarea>
+      </hx-field>
+      @if (createProblem(); as text) {
+      <hx-message severity="error" role="alert">{{ text }}</hx-message>
+      }
+      <!-- A press keeps the focus: the error of a field that is left would move the buttons. -->
+      <div class="buttons" (mousedown)="$event.preventDefault()">
+        <button
+          hx-button
+          variant="text"
+          severity="secondary"
+          type="button"
+          (click)="createPopover.hide()"
+        >
+          Cancel
+        </button>
+        <button hx-button type="submit" [loading]="busy()">Create</button>
+      </div>
+    </form>
+    }
+  </hx-popover>
+
   @if (problem(); as text) {
   <hx-message severity="error" role="alert">
     Cannot read the volumes: {{ text }}
     <button hx-button variant="outlined" type="button" (click)="retry()">Retry</button>
   </hx-message>
-  } @if (creating(); as form) {
-  <form
-    class="confirm"
-    aria-labelledby="create-title"
-    (submit)="$event.preventDefault(); confirmCreate()"
-  >
-    <h2 id="create-title">Create a volume</h2>
-    <label>
-      Name
-      <input
-        hx-input
-        size="small"
-        type="text"
-        placeholder="e.g. app-data"
-        [value]="form.name"
-        (input)="setField('name', $event)"
-      />
-    </label>
-    <label>
-      Driver (empty for local)
-      <input
-        hx-input
-        size="small"
-        type="text"
-        placeholder="local"
-        [value]="form.driver"
-        (input)="setField('driver', $event)"
-      />
-    </label>
-    <label>
-      Labels (one key=value per line)
-      <textarea
-        rows="3"
-        placeholder="team=core"
-        [value]="form.labels"
-        (input)="setField('labels', $event)"
-      ></textarea>
-    </label>
-    @if (createProblem(); as text) {
-    <hx-message severity="error" role="alert">{{ text }}</hx-message>
-    }
-    <div class="buttons">
-      <button hx-button variant="outlined" type="button" (click)="cancelCreate()">Cancel</button>
-      <button hx-button type="submit" [disabled]="busy()">Create</button>
-    </div>
-  </form>
-  } @if (removal(); as volume) {
-  <div class="confirm" role="alertdialog" aria-labelledby="remove-title">
-    <h2 id="remove-title">Remove {{ volume.name }}?</h2>
-    <p>This deletes the volume <strong>{{ volume.name }}</strong> and its data permanently.</p>
-    @if (volume.containers.length > 0) {
-    <p>
-      It is used by <strong>{{ volume.containers.join(', ') }}</strong>; the engine refuses to
-      remove a volume that a container still mounts.
-    </p>
-    }
-    <label>
-      <input
-        type="checkbox"
-        hx-checkbox
-        size="small"
-        [checked]="force()"
-        (change)="setForce($event)"
-      />
-      Force
-    </label>
-    <div class="buttons">
-      <button hx-button variant="outlined" type="button" (click)="cancelRemove()">Cancel</button>
-      <button hx-button type="button" [disabled]="busy()" (click)="confirmRemove()">Remove</button>
-    </div>
-  </div>
-  } @if (pruneRequest(); as candidates) {
-  <div class="confirm" role="alertdialog" aria-labelledby="prune-title">
-    <h2 id="prune-title">Remove all unused volumes?</h2>
-    @if (candidates.length === 0) {
-    <p>No volume is unused right now; the engine decides when it runs.</p>
-    } @else {
-    <p>
-      This removes {{ candidates.length }} {{ candidates.length === 1 ? 'volume' : 'volumes' }} and
-      their data ({{ pruneSize() }}): <strong>{{ pruneNames() }}</strong>.
-    </p>
-    }
-    <p>Every volume that no container uses is removed, named or not.</p>
-    <div class="buttons">
-      <button hx-button variant="outlined" type="button" (click)="cancelPrune()">Cancel</button>
-      <button hx-button type="button" [disabled]="busy()" (click)="confirmPrune()">Prune</button>
-    </div>
-  </div>
   } @if (result(); as outcome) {
   <hx-message
     [severity]="outcome.failed ? 'error' : 'success'"

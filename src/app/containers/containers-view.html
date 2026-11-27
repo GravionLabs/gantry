@@ -6,12 +6,26 @@
     }
   </header>
 
+  <ng-template #removeOption>
+    <label class="option">
+      <input
+        type="checkbox"
+        hx-checkbox
+        size="small"
+        [checked]="removeVolumes()"
+        (change)="setRemoveVolumes($event)"
+      />
+      Also remove anonymous volumes
+    </label>
+  </ng-template>
+
   <div class="bar">
     <div class="filters">
       <input
         hx-input
         size="small"
         type="search"
+        class="search"
         aria-label="Filter by name or image"
         placeholder="Filter by name or image"
         [value]="filter()"
@@ -59,7 +73,7 @@
         [variant]="look(kind).variant"
         [severity]="look(kind).severity"
         [disabled]="disabled(kind)"
-        (click)="request(kind)"
+        (click)="request(kind, removeOption)"
       >
         {{ actionLabel[kind] }}
       </button>
@@ -80,25 +94,6 @@
   </hx-message>
   } } @if (progress(); as text) {
   <p class="state" role="status" aria-live="polite">{{ text }}…</p>
-  } @if (removal(); as containers) {
-  <div class="confirm" role="alertdialog" aria-labelledby="remove-title">
-    <h2 id="remove-title">Remove {{ containers.length }} container(s)?</h2>
-    <p>This permanently removes: <strong>{{ removalNames() }}</strong>.</p>
-    <label>
-      <input
-        type="checkbox"
-        hx-checkbox
-        size="small"
-        [checked]="removeVolumes()"
-        (change)="setRemoveVolumes($event)"
-      />
-      Also remove anonymous volumes
-    </label>
-    <div class="buttons">
-      <button hx-button variant="outlined" type="button" (click)="cancelRemoval()">Cancel</button>
-      <button hx-button type="button" (click)="confirmRemoval()">Remove</button>
-    </div>
-  </div>
   } @if (failures().length > 0) {
   <hx-message severity="error" role="alert">
     <ul class="failures">

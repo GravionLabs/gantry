@@ -1,76 +1,96 @@
 <section class="logs" aria-label="Container logs">
-  <div class="options">
-    <label class="check">
-      <input type="checkbox" [checked]="follow()" (change)="follow.set(!follow())" />
-      Follow
-    </label>
-    <label>
-      Show
-      <select (change)="setTail($any($event.target).value)">
-        @for (c of tailChoices; track c.label) {
-        <option [value]="c.value ?? 'all'" [selected]="c.value === tail()">{{ c.label }}</option>
-        }
-      </select>
-    </label>
-    <label>
-      Since
-      <select (change)="setSince($any($event.target).value)">
-        @for (c of sinceChoices; track c.label) {
-        <option [value]="c.seconds ?? ''" [selected]="c.seconds === since()">{{ c.label }}</option>
-        }
-      </select>
-    </label>
-    <label class="check">
-      <input type="checkbox" [checked]="timestamps()" (change)="timestamps.set(!timestamps())" />
-      Timestamps
-    </label>
-    <span class="spacer"></span>
-    <input
-      type="search"
-      class="search"
-      placeholder="Search logs"
-      aria-label="Search logs"
-      [value]="query()"
-      (input)="setQuery($any($event.target).value)"
-      (keydown)="onSearchKey($event)"
-    />
-    <span class="count" aria-live="polite">
-      @if (query().trim()) { @if (matches().length) { {{ currentMatch() + 1 }} / {{ matches().length
-      }} } @else { No matches } }
-    </span>
-    <button
-      hx-button
-      variant="outlined"
-      type="button"
-      aria-label="Previous match"
-      [disabled]="!matches().length"
-      (click)="step(-1)"
-    >
-      ↑
-    </button>
-    <button
-      hx-button
-      variant="outlined"
-      type="button"
-      aria-label="Next match"
-      [disabled]="!matches().length"
-      (click)="step(1)"
-    >
-      ↓
-    </button>
-    <button
-      hx-button
-      variant="outlined"
-      type="button"
-      [disabled]="!lines().length"
-      (click)="download()"
-    >
-      Download
-    </button>
-  </div>
+  <hx-toolbar class="options">
+    <div hxToolbarStart class="group">
+      <hx-field class="switch" label="Follow">
+        <input type="checkbox" hx-switch [checked]="follow()" (change)="follow.set(!follow())" />
+      </hx-field>
+      <hx-field label="Show">
+        <hx-select
+          size="small"
+          [options]="tailOptions"
+          [value]="tailValue()"
+          (valueChange)="setTail($event ?? 'all')"
+        />
+      </hx-field>
+      <hx-field label="Since">
+        <hx-select
+          size="small"
+          [options]="sinceOptions"
+          [value]="sinceValue()"
+          (valueChange)="setSince($event ?? '')"
+        />
+      </hx-field>
+      <hx-field class="switch" label="Timestamps">
+        <input
+          type="checkbox"
+          hx-switch
+          [checked]="timestamps()"
+          (change)="timestamps.set(!timestamps())"
+        />
+      </hx-field>
+    </div>
+    <div hxToolbarEnd class="group">
+      <hx-field class="search" label="Search logs">
+        <input
+          hx-input
+          size="small"
+          type="search"
+          [value]="query()"
+          (input)="setQuery($any($event.target).value)"
+          (keydown)="onSearchKey($event)"
+        />
+      </hx-field>
+      <span class="count" aria-live="polite">
+        @if (query().trim()) { @if (matches().length) { {{ currentMatch() + 1 }} / {{
+        matches().length }} } @else { No matches } }
+      </span>
+      <button
+        hx-button
+        iconOnly
+        size="small"
+        variant="text"
+        severity="secondary"
+        type="button"
+        aria-label="Previous match"
+        hx-tooltip="Previous match"
+        [disabled]="!matches().length"
+        (click)="step(-1)"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 10l4-4 4 4" /></svg>
+      </button>
+      <button
+        hx-button
+        iconOnly
+        size="small"
+        variant="text"
+        severity="secondary"
+        type="button"
+        aria-label="Next match"
+        hx-tooltip="Next match"
+        [disabled]="!matches().length"
+        (click)="step(1)"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" /></svg>
+      </button>
+      <button
+        hx-button
+        size="small"
+        variant="text"
+        severity="secondary"
+        type="button"
+        [disabled]="!lines().length"
+        (click)="download()"
+      >
+        Download
+      </button>
+    </div>
+  </hx-toolbar>
 
   @if (phase() === 'error') {
-  <hx-message severity="error" role="alert">Cannot read the logs: {{ problem() }}</hx-message>
+  <hx-message severity="error" role="alert">
+    Cannot read the logs: {{ problem() }}
+    <button hx-button variant="outlined" type="button" (click)="retry()">Retry</button>
+  </hx-message>
   }
 
   <div class="frame">
@@ -95,10 +115,8 @@
         }
       </div>
     </cdk-virtual-scroll-viewport>
-    @if (!lines().length) {
-    <p class="empty" role="status">
-      {{ phase() === 'streaming' ? 'Waiting for log lines…' : 'No log lines.' }}
-    </p>
+    @if (!lines().length && emptyText(); as text) {
+    <p class="empty" role="status">{{ text }}</p>
     } @if (!autoScroll() && follow()) {
     <button hx-button class="resume" type="button" (click)="resume()">↓ Follow new lines</button>
     }

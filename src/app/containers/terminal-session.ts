@@ -10,6 +10,7 @@ import {
   signal,
   viewChild,
 } from "@angular/core";
+import { HxButton, HxMessage } from "@gravionlabs/helix-ui";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 
@@ -21,6 +22,7 @@ import { toGantryError } from "../core/invoke";
 @Component({
   selector: "app-terminal-session",
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [HxButton, HxMessage],
   templateUrl: "./terminal-session.html",
   styleUrl: "./terminal-session.css",
 })
@@ -49,6 +51,9 @@ export class TerminalSession {
 
   constructor() {
     this.terminal.loadAddon(this.fit);
+    // Registered once: they follow the session of the moment, also after a retry.
+    this.terminal.onData((data) => this.handle?.write(data));
+    this.terminal.onResize(({ cols, rows }) => this.handle?.resize(cols, rows));
     let started = false;
     effect(() => {
       const host = this.host().nativeElement;
@@ -76,6 +81,17 @@ export class TerminalSession {
     });
   }
 
+  /** Starts the same command again in this terminal, after a session that failed. */
+  protected retry(): void {
+    this.handle?.close();
+    this.problem.set(null);
+    this.finished.set(null);
+    this.terminal.reset();
+    this.start();
+    // The button goes away with the message.
+    this.terminal.focus();
+  }
+
   private fitNow(): void {
     if (!this.active()) return;
     const size = this.fit.proposeDimensions();
@@ -83,7 +99,7 @@ export class TerminalSession {
   }
 
   private start(): void {
-    const handle = openExec(
+    this.handle = openExec(
       this.endpoint(),
       this.containerId(),
       {
@@ -102,8 +118,5 @@ export class TerminalSession {
         },
       },
     );
-    this.handle = handle;
-    this.terminal.onData((data) => handle.write(data));
-    this.terminal.onResize(({ cols, rows }) => handle.resize(cols, rows));
   }
 }

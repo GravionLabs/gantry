@@ -1,4 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
+import {
+  HxButton,
+  HxField,
+  HxFieldset,
+  HxList,
+  HxListRow,
+  HxMessage,
+  HxRadio,
+  HxSwitch,
+} from "@gravionlabs/helix-ui";
 
 import {
   REFRESH_INTERVALS,
@@ -20,6 +30,7 @@ import {
 @Component({
   selector: "app-settings-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [HxButton, HxField, HxFieldset, HxList, HxListRow, HxMessage, HxRadio, HxSwitch],
   templateUrl: "./settings-view.html",
   styleUrl: "./settings-view.css",
 })
@@ -45,6 +56,11 @@ export class SettingsView {
     const resolved = resolveCategory(id);
     this.selectedId.set(resolved);
     writeSelectedCategory(localStorage, resolved);
+  }
+
+  /** Writes the settings as they are shown once more. */
+  protected retrySave(): void {
+    void this.settings.update((current) => current);
   }
 
   protected setAutoCheck(event: Event): void {

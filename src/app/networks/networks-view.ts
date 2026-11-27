@@ -1,13 +1,25 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
+  Injector,
   signal,
   untracked,
 } from "@angular/core";
-import { HxButton, HxInput, HxMessage } from "@gravionlabs/helix-ui";
+import { FormField, form, submit, validate } from "@angular/forms/signals";
+import {
+  HxButton,
+  HxConfirmationService,
+  HxField,
+  HxInput,
+  HxMessage,
+  HxPopover,
+  HxSelect,
+} from "@gravionlabs/helix-ui";
 import { AgGridAngular } from "ag-grid-angular";
 import type {
   ColDef,
@@ -62,6 +74,8 @@ const COLUMNS: ColDef<Network>[] = [
   },
 ];
 
+const EMPTY_FORM = { name: "", subnet: "" };
+
 /**
  * The Networks view: the networks of the active endpoint with create, remove, prune and the
  * connection of containers. The list is read again after every action and whenever the live
@@ -70,14 +84,17 @@ const COLUMNS: ColDef<Network>[] = [
 @Component({
   selector: "app-networks-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AgGridAngular, HxButton, HxInput, HxMessage],
+  imports: [AgGridAngular, FormField, HxButton, HxField, HxInput, HxMessage, HxPopover, HxSelect],
   providers: [ContainerList],
   templateUrl: "./networks-view.html",
   styleUrl: "./networks-view.css",
 })
 export class NetworksView {
   private readonly list = inject(ContainerList);
+  private readonly confirmation = inject(HxConfirmationService);
   private readonly endpoints = inject(EndpointStore);
+  private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly endpoint = computed(() => this.endpoints.active()?.endpoint ?? null, {
     equal: (a, b) => a?.address === b?.address,
@@ -110,15 +127,17 @@ export class NetworksView {
   });
   protected readonly toConnect = signal("");
 
-  /** The create form; null while closed. */
-  protected readonly creating = signal<{ name: string; subnet: string } | null>(null);
+  /** Whether the create form is open. */
+  protected readonly creating = signal(false);
+  private readonly createModel = signal(EMPTY_FORM);
+  /** The create form; a field shows its error once it was left or the form was submitted. */
+  protected readonly createForm = form(this.createModel, (path) => {
+    validate(path.name, ({ value }) =>
+      value().trim() ? undefined : { kind: "required", message: "Enter a network name" },
+    );
+  });
+  /** Why the engine refused to create the network. */
   protected readonly createProblem = signal<string | null>(null);
-
-  protected readonly removal = signal<Network | null>(null);
-  protected readonly pruneRequest = signal<readonly Network[] | null>(null);
-  protected readonly pruneNames = computed(() =>
-    (this.pruneRequest() ?? []).map((n) => n.name).join(", "),
-  );
 
   /** What the last action did: a success text or an error. */
   protected readonly result = signal<{ text: string; failed: boolean } | null>(null);
@@ -175,55 +194,84 @@ export class NetworksView {
     }
   }
 
+  protected toggleCreate(popover: HxPopover, event: Event): void {
+    if (popover.open()) {
+      popover.hide();
+      return;
+    }
+    this.openCreate();
+    popover.show(event);
+  }
+
   protected openCreate(): void {
     this.createProblem.set(null);
-    this.creating.set({ name: "", subnet: "" });
+    this.createForm().reset(EMPTY_FORM);
+    this.creating.set(true);
   }
 
   protected cancelCreate(): void {
-    this.creating.set(null);
-  }
-
-  protected setField(field: "name" | "subnet", event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.creating.update((form) => (form ? { ...form, [field]: value } : form));
+    this.creating.set(false);
   }
 
   protected async confirmCreate(): Promise<void> {
     const endpoint = this.endpoint();
-    const form = this.creating();
-    if (!endpoint || !form || this.busy()) return;
-    const name = form.name.trim();
-    if (!name) {
-      this.createProblem.set("A network needs a name.");
+    if (!endpoint || !this.creating() || this.busy()) return;
+    // An invalid form marks its fields, which then show their errors, and creates nothing.
+    await submit(this.createForm, async () => {
+      const form = this.createModel();
+      const name = form.name.trim();
+      this.busy.set(true);
+      try {
+        await createNetwork(endpoint, { name, subnet: form.subnet.trim() });
+        this.result.set({ text: `Created network ${name}.`, failed: false });
+        this.creating.set(false);
+      } catch (error) {
+        this.createProblem.set(`Cannot create ${name}: ${toGantryError(error).message}`);
+      } finally {
+        this.busy.set(false);
+        void this.refresh();
+      }
+    });
+  }
+
+  /** Creates, then closes the popover on success or moves the focus to the field in error. */
+  protected async submitCreate(popover: HxPopover): Promise<void> {
+    // A second Enter while creating changes nothing.
+    if (this.busy()) return;
+    await this.confirmCreate();
+    if (this.destroyRef.destroyed) return;
+    if (this.creating()) {
+      this.createForm().errorSummary()[0]?.fieldTree().focusBoundControl();
       return;
     }
-    this.busy.set(true);
-    try {
-      await createNetwork(endpoint, { name, subnet: form.subnet.trim() });
-      this.result.set({ text: `Created network ${name}.`, failed: false });
-      this.creating.set(null);
-    } catch (error) {
-      this.createProblem.set(`Cannot create ${name}: ${toGantryError(error).message}`);
-    } finally {
-      this.busy.set(false);
-      void this.refresh();
+    const problem = this.createProblem();
+    if (problem) {
+      // The popover was closed while creating: the refusal still has to be read.
+      this.result.set({ text: problem, failed: true });
+      return;
     }
+    // After the render the toolbar button is enabled again and can take the focus back.
+    afterNextRender(() => popover.hide(), { injector: this.injector });
   }
 
-  protected askRemove(): void {
-    const network = this.selected();
-    if (network) this.removal.set(network);
-  }
-
-  protected cancelRemove(): void {
-    this.removal.set(null);
-  }
-
-  protected async confirmRemove(): Promise<void> {
+  protected async askRemove(): Promise<void> {
     const endpoint = this.endpoint();
-    const network = this.removal();
-    if (!endpoint || !network || this.busy()) return;
+    const network = this.selected();
+    if (!endpoint || !network) return;
+    let message = `This deletes the network ${network.name}.`;
+    if (network.builtin) {
+      message += " It is built in; the engine refuses to remove it.";
+    } else if (network.containers.length > 0) {
+      message += ` It is used by ${network.containers.join(", ")}; the engine refuses to remove a network that a container is still connected to.`;
+    }
+    const accepted = await this.confirmation.confirmAsync({
+      header: `Remove ${network.name}?`,
+      message,
+      acceptLabel: "Remove",
+      rejectLabel: "Cancel",
+      acceptSeverity: "danger",
+    });
+    if (!accepted || !this.mayAct(endpoint)) return;
     this.busy.set(true);
     try {
       await removeNetwork(endpoint, network.id);
@@ -235,22 +283,25 @@ export class NetworksView {
       });
     } finally {
       this.busy.set(false);
-      this.removal.set(null);
       void this.refresh();
     }
   }
 
-  protected askPrune(): void {
-    this.pruneRequest.set(pruneCandidates(this.networks()));
-  }
-
-  protected cancelPrune(): void {
-    this.pruneRequest.set(null);
-  }
-
-  protected async confirmPrune(): Promise<void> {
+  protected async askPrune(): Promise<void> {
     const endpoint = this.endpoint();
-    if (!endpoint || !this.pruneRequest() || this.busy()) return;
+    if (!endpoint) return;
+    const networks = pruneCandidates(this.networks());
+    const matches = networks.length
+      ? `This removes ${networks.length} ${networks.length === 1 ? "network" : "networks"}: ${networks.map((n) => n.name).join(", ")}.`
+      : "No network is unused right now; the engine decides when it runs.";
+    const accepted = await this.confirmation.confirmAsync({
+      header: "Remove all unused networks?",
+      message: `${matches} Every network that no container uses is removed; the built-in ones stay.`,
+      acceptLabel: "Prune",
+      rejectLabel: "Cancel",
+      acceptSeverity: "danger",
+    });
+    if (!accepted || !this.mayAct(endpoint)) return;
     this.busy.set(true);
     try {
       const outcome = await pruneNetworks(endpoint);
@@ -262,13 +313,18 @@ export class NetworksView {
       });
     } finally {
       this.busy.set(false);
-      this.pruneRequest.set(null);
       void this.refresh();
     }
   }
 
-  protected setToConnect(event: Event): void {
-    this.toConnect.set((event.target as HTMLSelectElement).value);
+  /** Whether an accepted question may still act: the view and its endpoint are the ones that asked. */
+  private mayAct(endpoint: object): boolean {
+    return !this.destroyRef.destroyed && this.endpoint() === endpoint && !this.busy();
+  }
+
+  /** Null is the cleared select. */
+  protected setToConnect(value: unknown): void {
+    this.toConnect.set(typeof value === "string" ? value : "");
   }
 
   protected async connect(): Promise<void> {

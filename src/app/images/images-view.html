@@ -6,6 +6,19 @@
     }
   </header>
 
+  <ng-template #removeOption>
+    <label class="option">
+      <input
+        type="checkbox"
+        hx-checkbox
+        size="small"
+        [checked]="force()"
+        (change)="setForce($event)"
+      />
+      Force (also when a stopped container uses the image)
+    </label>
+  </ng-template>
+
   <div class="bar">
     <div class="filters">
       <hx-select-button
@@ -24,6 +37,7 @@
         hx-input
         size="small"
         type="text"
+        class="reference"
         aria-label="Image to pull"
         placeholder="Image to pull, e.g. nginx:1.27"
         [value]="reference()"
@@ -52,7 +66,7 @@
         severity="secondary"
         type="button"
         [disabled]="!selected() || busy()"
-        (click)="askRemove()"
+        (click)="askRemove(removeOption)"
       >
         Remove…
       </button>
@@ -107,7 +121,11 @@
       <li>
         <span class="mono layer-id">{{ layer.id }}</span>
         @if (fraction(layer); as share) {
-        <progress max="1" [value]="share" [attr.aria-label]="'Layer ' + layer.id"></progress>
+        <hx-progress-bar
+          [value]="share * 100"
+          [showValue]="false"
+          [ariaLabel]="'Layer ' + layer.id"
+        />
         } @else {
         <span class="no-bar"></span>
         }
@@ -115,50 +133,6 @@
       </li>
       }
     </ul>
-  </div>
-  } @if (removal(); as image) {
-  <div class="confirm" role="alertdialog" aria-labelledby="remove-title">
-    <h2 id="remove-title">Remove {{ name(image) }}?</h2>
-    <p>
-      This removes <strong>{{ name(image) }}</strong> from the engine. A tagged image only loses
-      this tag while other tags point to it.
-    </p>
-    <label>
-      <input
-        type="checkbox"
-        hx-checkbox
-        size="small"
-        [checked]="force()"
-        (change)="setForce($event)"
-      />
-      Force (also when a stopped container uses the image)
-    </label>
-    <div class="buttons">
-      <button hx-button variant="outlined" type="button" (click)="cancelRemove()">Cancel</button>
-      <button hx-button type="button" [disabled]="busy()" (click)="confirmRemove()">Remove</button>
-    </div>
-  </div>
-  } @if (pruneRequest(); as request) {
-  <div class="confirm" role="alertdialog" aria-labelledby="prune-title">
-    <h2 id="prune-title">
-      {{ request.all ? 'Remove all unused images?' : 'Remove the dangling images?' }}
-    </h2>
-    @if (request.images.length === 0) {
-    <p>No image matches right now; the engine decides when it runs.</p>
-    } @else {
-    <p>
-      This removes {{ request.images.length }} {{ request.images.length === 1 ? 'image' : 'images'
-      }} ({{ pruneSize() }}): <strong>{{ pruneNames() }}</strong>.
-    </p>
-    }
-    <p>
-      {{ request.all ? 'Every image that no container uses is removed, tagged or not.' : 'Only
-      images without a tag are removed.' }}
-    </p>
-    <div class="buttons">
-      <button hx-button variant="outlined" type="button" (click)="cancelPrune()">Cancel</button>
-      <button hx-button type="button" [disabled]="busy()" (click)="confirmPrune()">Prune</button>
-    </div>
   </div>
   } @if (result(); as outcome) {
   <hx-message

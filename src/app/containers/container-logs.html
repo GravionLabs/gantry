@@ -87,7 +87,10 @@
   </hx-toolbar>
 
   @if (phase() === 'error') {
-  <hx-message severity="error" role="alert">Cannot read the logs: {{ problem() }}</hx-message>
+  <hx-message severity="error" role="alert">
+    Cannot read the logs: {{ problem() }}
+    <button hx-button variant="outlined" type="button" (click)="retry()">Retry</button>
+  </hx-message>
   }
 
   <div class="frame">
@@ -112,10 +115,8 @@
         }
       </div>
     </cdk-virtual-scroll-viewport>
-    @if (!lines().length) {
-    <p class="empty" role="status">
-      {{ phase() === 'streaming' ? 'Waiting for log lines…' : 'No log lines.' }}
-    </p>
+    @if (!lines().length && emptyText(); as text) {
+    <p class="empty" role="status">{{ text }}</p>
     } @if (!autoScroll() && follow()) {
     <button hx-button class="resume" type="button" (click)="resume()">↓ Follow new lines</button>
     }

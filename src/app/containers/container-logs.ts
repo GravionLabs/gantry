@@ -42,6 +42,13 @@ import {
 /** Height of one line in pixels; the virtual scroll needs a fixed size. */
 export const LINE_HEIGHT = 20;
 
+/** The next action for a log that ended without lines, naming only controls that can change that. */
+function nextStep(follow: boolean, since: number | null): string {
+  if (since !== null) return follow ? "Widen Since." : "Widen Since or turn on Follow.";
+  if (!follow) return "Turn on Follow to wait for new lines.";
+  return "Start the container, then turn Follow off and on.";
+}
+
 /** `docker logs -f` of one container: follow mode, options, search, ANSI colors and download. */
 @Component({
   selector: "app-container-logs",
@@ -97,6 +104,17 @@ export class ContainerLogs {
   protected readonly matches = computed(() => matchingLines(this.lines(), this.query().trim()));
   protected readonly currentMatch = signal(-1);
   private readonly currentLine = computed(() => this.matches()[this.currentMatch()] ?? -1);
+  /** What a log without lines says; after an error, the message with *Retry* says it all. */
+  protected readonly emptyText = computed(() => {
+    switch (this.phase()) {
+      case "streaming":
+        return "Waiting for log lines…";
+      case "ended":
+        return `No log lines. ${nextStep(this.follow(), this.since())}`;
+      case "error":
+        return null;
+    }
+  });
 
   private stop: (() => void) | null = null;
 
@@ -138,6 +156,12 @@ export class ContainerLogs {
         }
       },
     );
+  }
+
+  /** Starts the stream again with the current options; *Since* counts from now. */
+  protected retry(): void {
+    const options = buildLogOptions(this.follow(), this.tail(), this.since(), this.timestamps());
+    this.start(this.endpoint(), this.containerId(), options);
   }
 
   protected scrollToEnd(): void {

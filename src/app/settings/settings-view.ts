@@ -1,4 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
+import {
+  HxButton,
+  HxField,
+  HxFieldset,
+  HxList,
+  HxListRow,
+  HxRadio,
+  HxSwitch,
+} from "@gravionlabs/helix-ui";
 
 import {
   REFRESH_INTERVALS,
@@ -20,6 +29,7 @@ import {
 @Component({
   selector: "app-settings-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [HxButton, HxField, HxFieldset, HxList, HxListRow, HxRadio, HxSwitch],
   templateUrl: "./settings-view.html",
   styleUrl: "./settings-view.css",
 })

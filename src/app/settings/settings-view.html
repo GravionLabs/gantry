@@ -1,40 +1,39 @@
 <section class="settings" aria-label="Settings">
   <nav class="categories" aria-label="Settings categories">
     <h1>Settings</h1>
-    <ul>
+    <hx-list aria-label="Settings categories">
       @for (category of categories; track category.id) {
-      <li>
-        <button
-          type="button"
-          [class.active]="category.id === selected().id"
-          [attr.aria-current]="category.id === selected().id ? 'page' : null"
-          (click)="select(category.id)"
-        >
-          {{ category.label }}
-        </button>
-      </li>
+      <button
+        hx-list-row
+        type="button"
+        [current]="category.id === selected().id ? 'page' : false"
+        (click)="select(category.id)"
+      >
+        <span class="hx-list-row-label">{{ category.label }}</span>
+      </button>
       }
-    </ul>
+    </hx-list>
   </nav>
   <div class="page" role="region" [attr.aria-label]="selected().label">
     <h2>{{ selected().label }}</h2>
     <p class="hint">{{ selected().description }}</p>
     @if (selected().id === 'appearance') {
-    <fieldset class="theme">
-      <legend>Theme</legend>
-      @for (choice of themeChoices; track choice.id) {
-      <label>
-        <input
-          type="radio"
-          name="theme"
-          [value]="choice.id"
-          [checked]="settings.appearance().theme === choice.id"
-          (change)="chooseTheme(choice.id)"
-        />
-        {{ choice.label }}
-      </label>
-      }
-    </fieldset>
+    <hx-fieldset class="section" legend="Theme">
+      <div class="group">
+        @for (choice of themeChoices; track choice.id) {
+        <hx-field [label]="choice.label">
+          <input
+            type="radio"
+            hx-radio
+            name="theme"
+            [value]="choice.id"
+            [checked]="settings.appearance().theme === choice.id"
+            (change)="chooseTheme(choice.id)"
+          />
+        </hx-field>
+        }
+      </div>
+    </hx-fieldset>
     } @if (selected().id === 'updates') {
     <div class="updates">
       @if (updates.isRc) {
@@ -42,20 +41,21 @@
         This is a release candidate build. It does not check for updates automatically.
       </p>
       } @else {
-      <label>
+      <hx-field label="Check for updates automatically">
         <input
           type="checkbox"
+          hx-switch
           [checked]="settings.updates().autoCheck"
           (change)="setAutoCheck($event)"
         />
-        Check for updates automatically
-      </label>
+      </hx-field>
       }
       <div class="check-now">
         <button
+          hx-button
           type="button"
+          [loading]="updates.result().kind === 'checking'"
           (click)="updates.checkNow()"
-          [disabled]="updates.result().kind === 'checking'"
         >
           Check now
         </button>
@@ -71,42 +71,50 @@
       </div>
     </div>
     } @if (selected().id === 'containers') {
-    <fieldset class="containers">
-      <legend>Containers view defaults</legend>
-      <label>
-        <input
-          type="checkbox"
-          [checked]="settings.containers().showStats"
-          (change)="setContainerDefault('showStats', $event)"
-        />
-        Show CPU and memory
-      </label>
-      <label>
-        <input
-          type="checkbox"
-          [checked]="settings.containers().groupByStack"
-          (change)="setContainerDefault('groupByStack', $event)"
-        />
-        Group by stack
-      </label>
-    </fieldset>
+    <hx-fieldset class="section" legend="Containers view defaults">
+      <div class="group">
+        <hx-field label="Show CPU and memory">
+          <input
+            type="checkbox"
+            hx-switch
+            [checked]="settings.containers().showStats"
+            (change)="setContainerDefault('showStats', $event)"
+          />
+        </hx-field>
+        <hx-field label="Group by stack">
+          <input
+            type="checkbox"
+            hx-switch
+            [checked]="settings.containers().groupByStack"
+            (change)="setContainerDefault('groupByStack', $event)"
+          />
+        </hx-field>
+      </div>
+    </hx-fieldset>
     } @if (selected().id === 'engine') {
-    <fieldset class="engine">
-      <legend>Refresh interval of the lists</legend>
-      @for (choice of refreshChoices; track choice.seconds) {
-      <label>
-        <input
-          type="radio"
-          name="refresh"
-          [value]="choice.seconds"
-          [checked]="settings.engine().refreshSeconds === choice.seconds"
-          (change)="chooseRefresh(choice.seconds)"
-        />
-        {{ choice.label }}
-      </label>
-      }
-      <p class="hint">Off refreshes on engine events and the Refresh button only.</p>
-    </fieldset>
+    <hx-fieldset class="section" legend="Refresh interval of the lists">
+      <div class="group">
+        @for (choice of refreshChoices; track choice.seconds) {
+        <hx-field
+          [label]="choice.label"
+          [hint]="
+            choice.seconds === 0
+              ? 'Off refreshes on engine events and the Refresh button only.'
+              : undefined
+          "
+        >
+          <input
+            type="radio"
+            hx-radio
+            name="refresh"
+            [value]="choice.seconds"
+            [checked]="settings.engine().refreshSeconds === choice.seconds"
+            (change)="chooseRefresh(choice.seconds)"
+          />
+        </hx-field>
+        }
+      </div>
+    </hx-fieldset>
     } @if (settings.error(); as message) {
     <p class="problem" role="alert">{{ message }}</p>
     }

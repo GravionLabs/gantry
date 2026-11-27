@@ -224,3 +224,90 @@ describe("container logs controls", () => {
     ]);
   });
 });
+
+describe("container logs states", () => {
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  /** Opens the view and hands out the end callback of the latest stream. */
+  async function openStream() {
+    const opened = await open();
+    const end = (error: unknown = null) => {
+      vi.mocked(streamContainerLogs).mock.lastCall?.[4](error);
+      opened.fixture.detectChanges();
+    };
+    const empty = () => opened.element.querySelector(".empty")?.textContent?.trim() ?? null;
+    const retry = () =>
+      [...opened.element.querySelectorAll<HTMLButtonElement>("hx-message button")].find(
+        (b) => b.textContent?.trim() === "Retry",
+      );
+    return { ...opened, end, empty, retry };
+  }
+
+  it("says that it waits while the stream has no lines", async () => {
+    const { empty, retry } = await openStream();
+
+    expect(empty()).toBe("Waiting for log lines…");
+    expect(retry()).toBeUndefined();
+  });
+
+  it("shows only the error with a retry when the stream fails", async () => {
+    const { element, end, empty, retry } = await openStream();
+
+    end("engine gone");
+
+    expect(element.querySelector("hx-message")?.textContent).toContain(
+      "Cannot read the logs: engine gone",
+    );
+    expect(retry()).toBeDefined();
+    expect(empty()).toBeNull();
+  });
+
+  it("restarts the stream with the current options on retry", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_000_000_000);
+    const stop = vi.fn();
+    const { fixture, element, pick, options, end, empty, retry } = await openStream();
+    vi.mocked(streamContainerLogs).mockImplementationOnce(() => stop);
+    pick("Show", "100");
+    pick("Since", "300");
+    const failed = options();
+    end("engine gone");
+    const calls = vi.mocked(streamContainerLogs).mock.calls.length;
+
+    vi.setSystemTime(1_000_060_000);
+    retry()?.click();
+    fixture.detectChanges();
+
+    expect(streamContainerLogs).toHaveBeenCalledTimes(calls + 1);
+    expect(stop).toHaveBeenCalledTimes(1);
+    // The same choices; "since" counts from the time of the retry.
+    expect(options()).toEqual({ ...failed, since: (failed.since as number) + 60 });
+    expect(element.querySelector("hx-message")).toBeNull();
+    expect(empty()).toBe("Waiting for log lines…");
+  });
+
+  it.each([
+    [true, "", "Start the container, then turn Follow off and on."],
+    [false, "", "Turn on Follow to wait for new lines."],
+    [true, "300", "Widen Since."],
+    [false, "300", "Widen Since or turn on Follow."],
+  ])(
+    "names the next action of an ended empty log (follow %s, since '%s')",
+    async (follow, since, step) => {
+      const { fixture, label, pick, end, empty } = await openStream();
+      if (!follow) {
+        label("Follow").click();
+        fixture.detectChanges();
+      }
+      if (since) pick("Since", since);
+
+      end();
+
+      expect(empty()).toBe(`No log lines. ${step}`);
+    },
+  );
+});

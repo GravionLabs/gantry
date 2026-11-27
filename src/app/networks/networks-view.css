@@ -117,7 +117,6 @@
   align-items: center;
   gap: 0.5rem;
 }
-.attach select {
-  font: inherit;
-  padding: 0.25rem 0.4rem;
+.attach hx-select {
+  min-width: 16rem;
 }

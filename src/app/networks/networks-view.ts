@@ -7,7 +7,7 @@ import {
   signal,
   untracked,
 } from "@angular/core";
-import { HxButton, HxInput, HxMessage } from "@gravionlabs/helix-ui";
+import { HxButton, HxInput, HxMessage, HxSelect } from "@gravionlabs/helix-ui";
 import { AgGridAngular } from "ag-grid-angular";
 import type {
   ColDef,
@@ -70,7 +70,7 @@ const COLUMNS: ColDef<Network>[] = [
 @Component({
   selector: "app-networks-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AgGridAngular, HxButton, HxInput, HxMessage],
+  imports: [AgGridAngular, HxButton, HxInput, HxMessage, HxSelect],
   providers: [ContainerList],
   templateUrl: "./networks-view.html",
   styleUrl: "./networks-view.css",
@@ -267,8 +267,9 @@ export class NetworksView {
     }
   }
 
-  protected setToConnect(event: Event): void {
-    this.toConnect.set((event.target as HTMLSelectElement).value);
+  /** Null is the cleared select. */
+  protected setToConnect(value: unknown): void {
+    this.toConnect.set(typeof value === "string" ? value : "");
   }
 
   protected async connect(): Promise<void> {

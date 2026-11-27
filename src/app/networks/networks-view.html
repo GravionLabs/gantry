@@ -157,16 +157,18 @@
     </ul>
     }
     <div class="attach">
-      <select
-        aria-label="Container to connect"
+      <hx-select
+        size="small"
+        ariaLabel="Container to connect"
+        placeholder="Connect a container…"
+        optionLabel="name"
+        optionValue="name"
+        showClear
+        [filter]="attachable().length >= 10"
+        [options]="attachable()"
         [value]="toConnect()"
-        (change)="setToConnect($event)"
-      >
-        <option value="">Connect a container…</option>
-        @for (container of attachable(); track container.id) {
-        <option [value]="container.name">{{ container.name }}</option>
-        }
-      </select>
+        (valueChange)="setToConnect($event)"
+      />
       <button
         hx-button
         size="small"

@@ -7,7 +7,14 @@ import {
   signal,
   untracked,
 } from "@angular/core";
-import { HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton } from "@gravionlabs/helix-ui";
+import {
+  HxButton,
+  HxCheckbox,
+  HxInput,
+  HxMessage,
+  HxProgressBar,
+  HxSelectButton,
+} from "@gravionlabs/helix-ui";
 import { AgGridAngular } from "ag-grid-angular";
 import type {
   ColDef,
@@ -125,7 +132,7 @@ interface PruneRequest {
 @Component({
   selector: "app-images-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AgGridAngular, HxButton, HxCheckbox, HxInput, HxMessage, HxSelectButton],
+  imports: [AgGridAngular, HxButton, HxCheckbox, HxInput, HxMessage, HxProgressBar, HxSelectButton],
   providers: [ContainerList],
   templateUrl: "./images-view.html",
   styleUrl: "./images-view.css",

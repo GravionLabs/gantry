@@ -12,8 +12,10 @@
         hx-button
         size="small"
         type="button"
+        aria-haspopup="dialog"
+        [attr.aria-expanded]="createPopover.open()"
         [disabled]="!endpoint() || busy()"
-        (click)="openCreate()"
+        (click)="toggleCreate(createPopover, $event)"
       >
         Create…
       </button>
@@ -54,48 +56,60 @@
     </div>
   </div>
 
+  <hx-popover #createPopover ariaLabelledBy="create-title" (hidden)="cancelCreate()">
+    @if (creating(); as form) {
+    <form
+      #createForm
+      class="create"
+      (submit)="$event.preventDefault(); submitCreate(createPopover, createForm)"
+    >
+      <h2 id="create-title">Create a network</h2>
+      <hx-field label="Name" required [error]="nameError()">
+        <input
+          hx-input
+          fluid
+          size="small"
+          type="text"
+          name="name"
+          [value]="form.name"
+          (input)="setField('name', $event)"
+        />
+      </hx-field>
+      <hx-field label="Subnet" hint="Optional, bridge network. For example 172.30.0.0/16.">
+        <input
+          hx-input
+          fluid
+          size="small"
+          type="text"
+          name="subnet"
+          [value]="form.subnet"
+          (input)="setField('subnet', $event)"
+        />
+      </hx-field>
+      @if (formError(); as text) {
+      <hx-message severity="error" role="alert">{{ text }}</hx-message>
+      }
+      <div class="buttons">
+        <button
+          hx-button
+          variant="text"
+          severity="secondary"
+          type="button"
+          (click)="createPopover.hide()"
+        >
+          Cancel
+        </button>
+        <button hx-button type="submit" [loading]="busy()">Create</button>
+      </div>
+    </form>
+    }
+  </hx-popover>
+
   @if (problem(); as text) {
   <hx-message severity="error" role="alert">
     Cannot read the networks: {{ text }}
     <button hx-button variant="outlined" type="button" (click)="retry()">Retry</button>
   </hx-message>
-  } @if (creating(); as form) {
-  <form
-    class="confirm"
-    aria-labelledby="create-title"
-    (submit)="$event.preventDefault(); confirmCreate()"
-  >
-    <h2 id="create-title">Create a network</h2>
-    <label>
-      Name
-      <input
-        hx-input
-        size="small"
-        type="text"
-        placeholder="e.g. app-net"
-        [value]="form.name"
-        (input)="setField('name', $event)"
-      />
-    </label>
-    <label>
-      Subnet (optional, bridge network)
-      <input
-        hx-input
-        size="small"
-        type="text"
-        placeholder="172.30.0.0/16"
-        [value]="form.subnet"
-        (input)="setField('subnet', $event)"
-      />
-    </label>
-    @if (createProblem(); as text) {
-    <hx-message severity="error" role="alert">{{ text }}</hx-message>
-    }
-    <div class="buttons">
-      <button hx-button variant="outlined" type="button" (click)="cancelCreate()">Cancel</button>
-      <button hx-button type="submit" [disabled]="busy()">Create</button>
-    </div>
-  </form>
   } @if (removal(); as network) {
   <div class="confirm" role="alertdialog" aria-labelledby="remove-title">
     <h2 id="remove-title">Remove {{ network.name }}?</h2>

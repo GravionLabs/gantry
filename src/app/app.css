@@ -16,6 +16,7 @@
 }
 .empty h1 {
   margin: 0;
+  font-size: var(--h-font-size-lg);
 }
 .empty p {
   margin: 0;
@@ -33,7 +34,7 @@
   background: var(--gantry-container);
 }
 .dot[data-state="unreachable"] {
-  background: var(--h-red-500, #e5484d);
+  background: var(--h-red-500);
 }
 .buttons {
   display: flex;
@@ -45,8 +46,8 @@
   color: var(--h-text-muted-color);
 }
 .switcher .manage {
-  border-top: 1px solid var(--h-border-color, rgb(128 128 128 / 30%));
+  border-top: 1px solid var(--h-border-divider);
 }
 .dot[data-state="denied"] {
-  background: var(--h-red-500, #e5484d);
+  background: var(--h-red-500);
 }

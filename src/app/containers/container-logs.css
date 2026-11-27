@@ -26,7 +26,7 @@
 .count {
   min-width: 4.5rem;
   color: var(--h-text-muted-color);
-  font-size: 0.85em;
+  font-size: var(--h-font-size-sm);
 }
 .frame {
   position: relative;
@@ -34,13 +34,13 @@
 .viewport {
   height: 60vh;
   min-height: 12rem;
-  border: 1px solid var(--h-border-color, currentColor);
+  border: 1px solid var(--h-content-border-color);
   background: #111;
   color: #ddd;
 }
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.85rem;
+  font-size: var(--h-font-size-sm);
 }
 .line {
   white-space: pre;
@@ -83,7 +83,7 @@
 }
 .status {
   margin: 0;
-  font-size: 0.85em;
+  font-size: var(--h-font-size-sm);
   color: var(--h-text-muted-color);
 }
 .ansi-bold {

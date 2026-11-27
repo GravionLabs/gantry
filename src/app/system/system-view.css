@@ -15,7 +15,7 @@
 }
 .head h1 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--h-font-size-lg);
   font-weight: 600;
 }
 .bar {
@@ -37,7 +37,7 @@
 }
 .panels h2 {
   margin: 0 0 0.4rem;
-  font-size: 1rem;
+  font-size: var(--h-font-size-md);
 }
 .info {
   display: grid;
@@ -61,7 +61,7 @@
 .usage td {
   padding: 0.35rem 0.6rem;
   text-align: left;
-  border-bottom: 1px solid var(--h-border-color, rgba(128, 128, 128, 0.3));
+  border-bottom: 1px solid var(--h-border-divider);
 }
 .usage .num {
   text-align: right;

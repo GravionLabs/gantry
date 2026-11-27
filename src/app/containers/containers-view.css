@@ -19,7 +19,7 @@
 }
 .head h1 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--h-font-size-lg);
   font-weight: 600;
 }
 .total,
@@ -41,7 +41,7 @@
   gap: 0.4rem;
   flex-wrap: wrap;
 }
-.filters input[type="search"] {
+.search {
   width: 16rem;
 }
 .toggle {

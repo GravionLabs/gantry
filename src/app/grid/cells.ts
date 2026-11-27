@@ -31,9 +31,9 @@ export const DOT_STYLES = `
   .dot[data-state="running"] { background: var(--gantry-container); }
   .dot[data-state="restarting"],
   .dot[data-state="paused"],
-  .dot[data-health="starting"] { background: var(--h-amber-500, #e5a00d); }
+  .dot[data-health="starting"] { background: var(--h-amber-500); }
   .dot[data-health="unhealthy"],
-  .dot[data-state="dead"] { background: var(--h-red-500, #e5484d); }
+  .dot[data-state="dead"] { background: var(--h-red-500); }
 `;
 
 /** The name of a container as a link to its details. */
@@ -146,8 +146,8 @@ export class ContainerStateCell implements ICellRendererAngularComp {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-family: var(--h-font-mono, monospace);
-      font-size: 0.9em;
+      font-family: var(--helix-font-mono, monospace);
+      font-size: var(--h-font-size-sm);
     }
     .port {
       color: inherit;

@@ -17,10 +17,10 @@
   min-height: 12rem;
 }
 .grid ::ng-deep .child {
-  background: var(--h-surface-hover-color, rgb(128 128 128 / 6%));
+  background: var(--h-surface-hover);
 }
 .grid ::ng-deep .mono {
-  font-family: var(--h-font-mono, monospace);
+  font-family: var(--helix-font-mono, monospace);
 }
 .head {
   display: flex;
@@ -34,11 +34,11 @@ h2 {
   margin: 0;
 }
 .head h1 {
-  font-size: 1.15rem;
+  font-size: var(--h-font-size-lg);
   font-weight: 600;
 }
 h2 {
-  font-size: 1rem;
+  font-size: var(--h-font-size-md);
 }
 .facts {
   display: grid;
@@ -59,7 +59,7 @@ h2 {
   color: var(--h-text-muted-color);
 }
 .mono {
-  font-family: var(--h-font-mono, monospace);
+  font-family: var(--helix-font-mono, monospace);
 }
 .actions {
   display: grid;
@@ -81,7 +81,7 @@ h2 {
   max-height: 20rem;
   overflow: auto;
   white-space: pre-wrap;
-  border: 1px solid var(--h-border-color, #8884);
+  border: 1px solid var(--h-content-border-color);
   border-radius: 0.5rem;
 }
 .state {

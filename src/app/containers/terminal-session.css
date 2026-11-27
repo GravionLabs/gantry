@@ -6,15 +6,15 @@
   min-height: 12rem;
   padding: 0.25rem;
   background: #111;
-  border: 1px solid var(--h-border-color, currentColor);
+  border: 1px solid var(--h-content-border-color);
 }
 .notice {
   margin: 0.5rem 0 0;
-  font-size: 0.85em;
+  font-size: var(--h-font-size-sm);
   color: var(--h-text-muted-color);
 }
 .notice.error {
-  color: #e5534b;
+  color: var(--h-message-error-color);
 }
 :host([hidden]) {
   display: none;

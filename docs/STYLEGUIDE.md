@@ -36,7 +36,7 @@ Binding for every UI change. Read the base guide named above first (`pnpm instal
 
 ### Endpoint switcher
 
-- The switcher is an `hx-popover` that the status bar button opens, not the popover of `hx-status-item`, which opens past the window edge for an item at the start. The app sets `aria-haspopup` and `aria-expanded` on that button.
+- The switcher is an `hx-popover` that the status bar button opens, not the popover of `hx-status-item`, which opens past the window edge for an item at the start ([GravionLabs/helix#1283](https://github.com/GravionLabs/helix/issues/1283)). The app sets `aria-haspopup` and `aria-expanded` on that button.
 - Each row names the status of its endpoint in text (`.hx-list-row-meta`, `stateLabel`); the dot adds to it.
 
 ### Headings and type

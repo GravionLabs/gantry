@@ -89,20 +89,13 @@
     >
       <h2 id="create-title">Create a volume</h2>
       <hx-field label="Name" required>
-        <input hx-input fluid size="small" type="text" [formField]="createForm.name" />
+        <input hx-input fluid type="text" [formField]="createForm.name" />
       </hx-field>
       <hx-field label="Driver" hint="Empty for local.">
-        <input hx-input fluid size="small" type="text" [formField]="createForm.driver" />
+        <input hx-input fluid type="text" [formField]="createForm.driver" />
       </hx-field>
       <hx-field label="Labels" hint="One key=value per line, for example team=core.">
-        <textarea
-          hx-input
-          fluid
-          size="small"
-          rows="3"
-          class="labels"
-          [formField]="createForm.labels"
-        ></textarea>
+        <textarea hx-input fluid rows="3" class="labels" [formField]="createForm.labels"></textarea>
       </hx-field>
       @if (createProblem(); as text) {
       <hx-message severity="error" role="alert">{{ text }}</hx-message>

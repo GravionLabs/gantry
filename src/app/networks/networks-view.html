@@ -66,10 +66,10 @@
     >
       <h2 id="create-title">Create a network</h2>
       <hx-field label="Name" required>
-        <input hx-input fluid size="small" type="text" [formField]="createForm.name" />
+        <input hx-input fluid type="text" [formField]="createForm.name" />
       </hx-field>
       <hx-field label="Subnet" hint="Optional, bridge network. For example 172.30.0.0/16.">
-        <input hx-input fluid size="small" type="text" [formField]="createForm.subnet" />
+        <input hx-input fluid type="text" [formField]="createForm.subnet" />
       </hx-field>
       @if (createProblem(); as text) {
       <hx-message severity="error" role="alert">{{ text }}</hx-message>

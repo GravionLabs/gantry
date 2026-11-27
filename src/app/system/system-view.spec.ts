@@ -83,7 +83,7 @@ async function openCleanup() {
     active.set({ endpoint: { address: "ssh://user@host" } });
     await render();
   };
-  return { host, render, dialog, button, click, select, escape, open, switchEndpoint };
+  return { host, render, dialog, button, click, boxes, select, escape, open, switchEndpoint };
 }
 
 describe("system cleanup", () => {
@@ -116,7 +116,7 @@ describe("system cleanup", () => {
     expect(host.querySelector("input[hx-checkbox], [role=alertdialog]")).toBeNull();
   });
 
-  it("labels every category and offers no preview without a selection", async () => {
+  it("labels every category and shows no error when the dialog opens", async () => {
     const { dialog, button } = await openCleanup();
 
     expect([...dialog()!.querySelectorAll("label")].map((l) => l.textContent?.trim())).toEqual([
@@ -125,7 +125,59 @@ describe("system cleanup", () => {
       "Volumes",
       "Build cache",
     ]);
-    expect(button("Preview").disabled).toBe(true);
+    expect(button("Preview").disabled).toBe(false);
+    expect(dialog()!.textContent).not.toContain("Select at least one category");
+  });
+
+  it("says what is missing on submit without a category and calls no command", async () => {
+    const { dialog, boxes, click } = await openCleanup();
+
+    await click("Preview");
+
+    const error = dialog()!.querySelector('hx-fieldset [role="alert"]');
+    expect(error?.textContent?.trim()).toBe("Select at least one category");
+    expect(document.activeElement).toBe(boxes()[0]);
+    for (const box of boxes()) {
+      expect(box.getAttribute("aria-describedby")?.split(" ")).toContain(error!.id);
+      expect(box.getAttribute("aria-describedby")?.split(" ")).toHaveLength(2);
+    }
+    expect(previewCleanup).not.toHaveBeenCalled();
+    expect(runCleanup).not.toHaveBeenCalled();
+  });
+
+  it("removes the error when a category is selected", async () => {
+    const { dialog, boxes, click, select } = await openCleanup();
+    await click("Preview");
+
+    await select(1);
+
+    expect(dialog()!.textContent).not.toContain("Select at least one category");
+    expect(boxes()[1]!.getAttribute("aria-describedby")).not.toContain("cleanup-categories-error");
+    await select(1);
+    expect(dialog()!.textContent).not.toContain("Select at least one category");
+  });
+
+  it("opens again without the error", async () => {
+    const { dialog, click, open } = await openCleanup();
+    await click("Preview");
+
+    await click("Cancel");
+    await open();
+
+    expect(dialog()!.textContent).not.toContain("Select at least one category");
+  });
+
+  it("keeps the focus in the dialog after a preview, away from Remove", async () => {
+    const { dialog, button, select, click } = await openCleanup();
+    await select(0);
+    button("Preview").focus();
+
+    await click("Preview");
+
+    expect(dialog()!.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(dialog()!.querySelector('[role="status"]'));
+    expect(document.activeElement).not.toBe(button("Remove"));
+    expect(runCleanup).not.toHaveBeenCalled();
   });
 
   it("previews the selection, then removes it on Remove", async () => {

@@ -1,9 +1,11 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
   effect,
   inject,
+  Injector,
   signal,
   untracked,
 } from "@angular/core";
@@ -46,6 +48,7 @@ import {
 })
 export class SystemView {
   private readonly endpoints = inject(EndpointStore);
+  private readonly injector = inject(Injector);
 
   protected readonly endpoint = computed(() => this.endpoints.active()?.endpoint ?? null, {
     equal: (a, b) => a?.address === b?.address,
@@ -64,6 +67,8 @@ export class SystemView {
     confirming: boolean;
   } | null>(null);
   protected readonly previewProblem = signal<string | null>(null);
+  /** A preview was asked for while no category was selected. */
+  protected readonly categoryMissing = signal(false);
   private previewRequests = 0;
 
   /** What the last cleanup did: a text and whether it failed in part or fully. */
@@ -149,6 +154,7 @@ export class SystemView {
 
   protected openCleanup(): void {
     this.previewProblem.set(null);
+    this.categoryMissing.set(false);
     this.cleaning.set({ selected: [], previews: null, confirming: false });
   }
 
@@ -176,11 +182,19 @@ export class SystemView {
       return { selected, previews: null, confirming: false };
     });
     this.previewProblem.set(null);
+    if (this.cleaning()?.selected.length) this.categoryMissing.set(false);
   }
 
   /** Enter in the form asks for the preview; removing needs its button. */
-  protected submitCleanup(): void {
-    if (!this.cleaning()?.confirming) void this.preview();
+  protected submitCleanup(form: HTMLFormElement): void {
+    const state = this.cleaning();
+    if (!state || state.confirming) return;
+    if (state.selected.length === 0) {
+      this.categoryMissing.set(true);
+      form.querySelector("input")?.focus();
+      return;
+    }
+    void this.preview();
   }
 
   /** Reads what the selected categories remove, without removing anything. */
@@ -195,6 +209,10 @@ export class SystemView {
       const previews = await previewCleanup(endpoint, state.selected);
       if (request !== this.previewRequests) return;
       this.cleaning.update((s) => (s ? { ...s, previews, confirming: true } : s));
+      // Remove replaces the Preview button. The focus goes to the preview, where Enter does nothing.
+      afterNextRender(() => document.getElementById("cleanup-preview")?.focus(), {
+        injector: this.injector,
+      });
     } catch (error) {
       if (request !== this.previewRequests) return;
       this.previewProblem.set(`Cannot preview the cleanup: ${toGantryError(error).message}`);

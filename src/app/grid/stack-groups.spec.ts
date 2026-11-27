@@ -9,6 +9,8 @@ import {
   ValidationModule,
   createGrid,
 } from "ag-grid-community";
+import { TestBed } from "@angular/core/testing";
+import { BrowserTestingModule, platformBrowserTesting } from "@angular/platform-browser/testing";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { Container } from "../core/bindings";
@@ -22,6 +24,8 @@ import {
   stackGroupOptions,
   toRows,
 } from "./stack-groups";
+
+TestBed.initTestEnvironment(BrowserTestingModule, platformBrowserTesting());
 
 const c = (
   name: string,
@@ -237,5 +241,45 @@ describe("StackGroupCell", () => {
     expect(cell["collapsed"]()).toBe(true);
     expect(cell.refresh({ data: { ...group, running: 2 }, context })).toBe(true);
     expect(cell["row"]()?.running).toBe(2);
+  });
+
+  it("is a Helix text button that names the stack and shows whether it is expanded", () => {
+    const stacks = new Set<string | null>();
+    const context = {
+      isCollapsed: (s: string | null) => stacks.has(s),
+      toggle: (s: string | null) => void (stacks.delete(s) || stacks.add(s)),
+    };
+    const fixture = TestBed.createComponent(StackGroupCell);
+    fixture.componentInstance.agInit({ data: group, context });
+    fixture.detectChanges();
+    const button = (fixture.nativeElement as HTMLElement).querySelector("button")!;
+    /** The chevron, the name and the count; the flex gap separates them on screen. */
+    const label = () => [...button.children].map((e) => e.textContent?.trim());
+
+    expect(button.hasAttribute("hx-button")).toBe(true);
+    expect(button.classList).toContain("hx-button-text");
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    expect(label()).toEqual(["▾", "app", "1 of 2 running"]);
+
+    button.click();
+    fixture.detectChanges();
+    expect(stacks.has("app")).toBe(true);
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+    expect(label()).toEqual(["▸", "app", "1 of 2 running"]);
+
+    button.click();
+    fixture.detectChanges();
+    expect(stacks.has("app")).toBe(false);
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("labels the group of the containers without a stack", () => {
+    const fixture = TestBed.createComponent(StackGroupCell);
+    fixture.componentInstance.agInit({
+      data: { ...group, stack: null },
+      context: { isCollapsed: () => false, toggle: () => {} },
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain("No stack");
   });
 });

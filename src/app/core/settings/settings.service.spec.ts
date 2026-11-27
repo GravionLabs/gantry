@@ -54,7 +54,7 @@ describe("SettingsService", () => {
     const { service } = setup(new Error("settings file /x: bad"));
     await service.load();
     expect(service.settings()).toEqual(DEFAULT_SETTINGS);
-    expect(service.error()).toBe("settings file /x: bad");
+    expect(service.error()).toEqual({ action: "load", message: "settings file /x: bad" });
     expect(service.loaded()).toBe(true);
   });
 
@@ -71,6 +71,6 @@ describe("SettingsService", () => {
     const { service, save } = setup({}, true);
     await service.update((s) => ({ ...s, appearance: { theme: "neon" as never } }));
     expect(save).toHaveBeenCalledWith(DEFAULT_SETTINGS);
-    expect(service.error()).toBe("disk full");
+    expect(service.error()).toEqual({ action: "save", message: "disk full" });
   });
 });

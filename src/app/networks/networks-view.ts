@@ -10,6 +10,7 @@ import {
   signal,
   untracked,
 } from "@angular/core";
+import { FormField, form, submit, validate } from "@angular/forms/signals";
 import {
   HxButton,
   HxConfirmationService,
@@ -73,6 +74,8 @@ const COLUMNS: ColDef<Network>[] = [
   },
 ];
 
+const EMPTY_FORM = { name: "", subnet: "" };
+
 /**
  * The Networks view: the networks of the active endpoint with create, remove, prune and the
  * connection of containers. The list is read again after every action and whenever the live
@@ -81,7 +84,7 @@ const COLUMNS: ColDef<Network>[] = [
 @Component({
   selector: "app-networks-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AgGridAngular, HxButton, HxField, HxInput, HxMessage, HxPopover, HxSelect],
+  imports: [AgGridAngular, FormField, HxButton, HxField, HxInput, HxMessage, HxPopover, HxSelect],
   providers: [ContainerList],
   templateUrl: "./networks-view.html",
   styleUrl: "./networks-view.css",
@@ -124,15 +127,17 @@ export class NetworksView {
   });
   protected readonly toConnect = signal("");
 
-  /** The create form; null while closed. */
-  protected readonly creating = signal<{ name: string; subnet: string } | null>(null);
+  /** Whether the create form is open. */
+  protected readonly creating = signal(false);
+  private readonly createModel = signal(EMPTY_FORM);
+  /** The create form; a field shows its error once it was left or the form was submitted. */
+  protected readonly createForm = form(this.createModel, (path) => {
+    validate(path.name, ({ value }) =>
+      value().trim() ? undefined : { kind: "required", message: "Enter a network name" },
+    );
+  });
+  /** Why the engine refused to create the network. */
   protected readonly createProblem = signal<string | null>(null);
-  /** The problem, when the name is what it is about. */
-  protected readonly nameError = computed(() =>
-    this.creating()?.name.trim() === "" ? this.createProblem() : null,
-  );
-  /** A problem that belongs to no field, such as the refusal of the engine. */
-  protected readonly formError = computed(() => (this.nameError() ? null : this.createProblem()));
 
   /** What the last action did: a success text or an error. */
   protected readonly result = signal<{ text: string; failed: boolean } | null>(null);
@@ -200,49 +205,43 @@ export class NetworksView {
 
   protected openCreate(): void {
     this.createProblem.set(null);
-    this.creating.set({ name: "", subnet: "" });
+    this.createForm().reset(EMPTY_FORM);
+    this.creating.set(true);
   }
 
   protected cancelCreate(): void {
-    this.creating.set(null);
-  }
-
-  protected setField(field: "name" | "subnet", event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.creating.update((form) => (form ? { ...form, [field]: value } : form));
-    this.createProblem.set(null);
+    this.creating.set(false);
   }
 
   protected async confirmCreate(): Promise<void> {
     const endpoint = this.endpoint();
-    const form = this.creating();
-    if (!endpoint || !form || this.busy()) return;
-    const name = form.name.trim();
-    if (!name) {
-      this.createProblem.set("A network needs a name.");
-      return;
-    }
-    this.busy.set(true);
-    try {
-      await createNetwork(endpoint, { name, subnet: form.subnet.trim() });
-      this.result.set({ text: `Created network ${name}.`, failed: false });
-      this.creating.set(null);
-    } catch (error) {
-      this.createProblem.set(`Cannot create ${name}: ${toGantryError(error).message}`);
-    } finally {
-      this.busy.set(false);
-      void this.refresh();
-    }
+    if (!endpoint || !this.creating() || this.busy()) return;
+    // An invalid form marks its fields, which then show their errors, and creates nothing.
+    await submit(this.createForm, async () => {
+      const form = this.createModel();
+      const name = form.name.trim();
+      this.busy.set(true);
+      try {
+        await createNetwork(endpoint, { name, subnet: form.subnet.trim() });
+        this.result.set({ text: `Created network ${name}.`, failed: false });
+        this.creating.set(false);
+      } catch (error) {
+        this.createProblem.set(`Cannot create ${name}: ${toGantryError(error).message}`);
+      } finally {
+        this.busy.set(false);
+        void this.refresh();
+      }
+    });
   }
 
   /** Creates, then closes the popover on success or moves the focus to the field in error. */
-  protected async submitCreate(popover: HxPopover, element: HTMLElement): Promise<void> {
+  protected async submitCreate(popover: HxPopover): Promise<void> {
     // A second Enter while creating changes nothing.
     if (this.busy()) return;
     await this.confirmCreate();
     if (this.destroyRef.destroyed) return;
     if (this.creating()) {
-      if (this.nameError()) element.querySelector<HTMLElement>('[name="name"]')?.focus();
+      this.createForm().errorSummary()[0]?.fieldTree().focusBoundControl();
       return;
     }
     const problem = this.createProblem();

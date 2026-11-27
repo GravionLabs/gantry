@@ -80,55 +80,35 @@
   </div>
 
   <hx-popover #createPopover ariaLabelledBy="create-title" (hidden)="cancelCreate()">
-    @if (creating(); as form) {
+    @if (creating()) {
     <form
-      #createForm
       class="create"
-      (submit)="$event.preventDefault(); submitCreate(createPopover, createForm)"
+      novalidate
+      (input)="createProblem.set(null)"
+      (submit)="$event.preventDefault(); submitCreate(createPopover)"
     >
       <h2 id="create-title">Create a volume</h2>
-      <hx-field label="Name" required [error]="nameError()">
-        <input
-          hx-input
-          fluid
-          size="small"
-          type="text"
-          name="name"
-          [value]="form.name"
-          (input)="setField('name', $event)"
-        />
+      <hx-field label="Name" required>
+        <input hx-input fluid size="small" type="text" [formField]="createForm.name" />
       </hx-field>
       <hx-field label="Driver" hint="Empty for local.">
-        <input
-          hx-input
-          fluid
-          size="small"
-          type="text"
-          name="driver"
-          [value]="form.driver"
-          (input)="setField('driver', $event)"
-        />
+        <input hx-input fluid size="small" type="text" [formField]="createForm.driver" />
       </hx-field>
-      <hx-field
-        label="Labels"
-        hint="One key=value per line, for example team=core."
-        [error]="labelsError()"
-      >
+      <hx-field label="Labels" hint="One key=value per line, for example team=core.">
         <textarea
           hx-input
           fluid
           size="small"
           rows="3"
-          name="labels"
           class="labels"
-          [value]="form.labels"
-          (input)="setField('labels', $event)"
+          [formField]="createForm.labels"
         ></textarea>
       </hx-field>
-      @if (formError(); as text) {
+      @if (createProblem(); as text) {
       <hx-message severity="error" role="alert">{{ text }}</hx-message>
       }
-      <div class="buttons">
+      <!-- A press keeps the focus: the error of a field that is left would move the buttons. -->
+      <div class="buttons" (mousedown)="$event.preventDefault()">
         <button
           hx-button
           variant="text"

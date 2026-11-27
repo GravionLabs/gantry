@@ -57,39 +57,25 @@
   </div>
 
   <hx-popover #createPopover ariaLabelledBy="create-title" (hidden)="cancelCreate()">
-    @if (creating(); as form) {
+    @if (creating()) {
     <form
-      #createForm
       class="create"
-      (submit)="$event.preventDefault(); submitCreate(createPopover, createForm)"
+      novalidate
+      (input)="createProblem.set(null)"
+      (submit)="$event.preventDefault(); submitCreate(createPopover)"
     >
       <h2 id="create-title">Create a network</h2>
-      <hx-field label="Name" required [error]="nameError()">
-        <input
-          hx-input
-          fluid
-          size="small"
-          type="text"
-          name="name"
-          [value]="form.name"
-          (input)="setField('name', $event)"
-        />
+      <hx-field label="Name" required>
+        <input hx-input fluid size="small" type="text" [formField]="createForm.name" />
       </hx-field>
       <hx-field label="Subnet" hint="Optional, bridge network. For example 172.30.0.0/16.">
-        <input
-          hx-input
-          fluid
-          size="small"
-          type="text"
-          name="subnet"
-          [value]="form.subnet"
-          (input)="setField('subnet', $event)"
-        />
+        <input hx-input fluid size="small" type="text" [formField]="createForm.subnet" />
       </hx-field>
-      @if (formError(); as text) {
+      @if (createProblem(); as text) {
       <hx-message severity="error" role="alert">{{ text }}</hx-message>
       }
-      <div class="buttons">
+      <!-- A press keeps the focus: the error of a field that is left would move the buttons. -->
+      <div class="buttons" (mousedown)="$event.preventDefault()">
         <button
           hx-button
           variant="text"

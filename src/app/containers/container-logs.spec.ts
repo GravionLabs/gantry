@@ -3,7 +3,7 @@ import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { By } from "@angular/platform-browser";
 import { BrowserTestingModule, platformBrowserTesting } from "@angular/platform-browser/testing";
-import { HxSelect } from "@gravionlabs/helix-ui";
+import { HxButton, HxInput, HxSelect, HxTooltip } from "@gravionlabs/helix-ui";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LogOptions } from "../core/bindings";
@@ -76,7 +76,7 @@ describe("container logs controls", () => {
     }
     expect(new Set(Object.keys(expected).map((text) => control(text))).size).toBe(5);
     expect(
-      element.querySelector(".options [aria-hidden='true']:not(.hx-select-chevron)"),
+      element.querySelector(".options [aria-hidden='true']:not(.hx-select-chevron, svg)"),
     ).toBeNull();
     for (const text of Object.keys(expected)) {
       expect(control(text).hasAttribute("aria-label"), text).toBe(false);
@@ -167,5 +167,60 @@ describe("container logs controls", () => {
     expect(press(false)).toBe("1 / 2");
     expect(press(false)).toBe("2 / 2");
     expect(press(true)).toBe("1 / 2");
+  });
+
+  it("puts the options and actions in a toolbar with small controls", async () => {
+    const { fixture, element } = await open();
+    const toolbar = element.querySelector("hx-toolbar") as HTMLElement;
+    const controls = toolbar.querySelectorAll("input, button");
+
+    // Follow, Show, Since, Timestamps, Search, two match buttons and Download.
+    expect(controls.length).toBe(8);
+    expect(element.querySelectorAll("hx-toolbar")).toHaveLength(1);
+    for (const [type, count] of [
+      [HxButton, 3],
+      [HxInput, 1],
+      [HxSelect, 2],
+    ] as const) {
+      const sized = fixture.debugElement
+        .query(By.css("hx-toolbar"))
+        .queryAll(By.directive(type))
+        .map((d) => d.injector.get<{ size: () => unknown }>(type).size());
+      expect(sized, type.name).toEqual(Array(count).fill("small"));
+    }
+  });
+
+  it("styles the toolbar actions as secondary text buttons", async () => {
+    const { fixture } = await open();
+    const buttons = fixture.debugElement.queryAll(By.css("hx-toolbar button[hx-button]"));
+
+    expect(buttons.length).toBe(3);
+    for (const button of buttons) {
+      const element = button.nativeElement as HTMLElement;
+      expect([...element.classList]).toEqual(
+        expect.arrayContaining(["hx-button-text", "hx-button-secondary", "hx-button-sm"]),
+      );
+    }
+    expect(
+      buttons.map((b) => (b.nativeElement as HTMLElement).matches(".hx-button-icon-only")),
+    ).toEqual([true, true, false]);
+  });
+
+  it("names the match buttons and shows the same text as their tooltip", async () => {
+    const { fixture } = await open();
+    const buttons = fixture.debugElement.queryAll(By.css("button[hx-button][aria-label]"));
+    const named = buttons.map((b) => {
+      const element = b.nativeElement as HTMLElement;
+      return [
+        element.getAttribute("aria-label"),
+        b.injector.get(HxTooltip).text(),
+        element.querySelector("svg")?.getAttribute("aria-hidden"),
+      ];
+    });
+
+    expect(named).toEqual([
+      ["Previous match", "Previous match", "true"],
+      ["Next match", "Next match", "true"],
+    ]);
   });
 });

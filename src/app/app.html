@@ -112,19 +112,25 @@
       <span class="dot" [attr.data-state]="endpoints.connection()"></span>
       {{ endpoints.activeName() }} · {{ connectionLabel() }}
       <div hxStatusPopover class="switcher">
-        <ul>
+        <hx-list aria-label="Endpoints">
           @for (entry of endpoints.entries(); track entry.id) {
-          <li>
-            <button type="button" (click)="switchTo(entry.id)">
-              <span class="dot" [attr.data-state]="entry.status.state"></span>
-              {{ entry.endpoint.name }} @if (entry.id === endpoints.activeId()) { (active) }
-            </button>
-          </li>
-          } @empty {
-          <li class="none">No endpoints found</li>
+          <button
+            hx-list-row
+            type="button"
+            [current]="entry.id === endpoints.activeId() ? 'true' : false"
+            (click)="switchTo(entry.id)"
+          >
+            <span class="hx-list-row-icon dot" [attr.data-state]="entry.status.state"></span>
+            <span class="hx-list-row-label">{{ entry.endpoint.name }}</span>
+          </button>
           }
-        </ul>
-        <button type="button" class="manage" (click)="manage()">Manage endpoints…</button>
+        </hx-list>
+        @if (endpoints.entries().length === 0) {
+        <p class="none">No endpoints found</p>
+        }
+        <button hx-button variant="text" fluid class="manage" type="button" (click)="manage()">
+          Manage endpoints…
+        </button>
       </div>
     </hx-status-item>
     @if (endpoints.engineVersion(); as version) {

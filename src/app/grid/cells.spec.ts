@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
@@ -6,10 +7,17 @@ import {
   TmplAstForLoopBlock,
   TmplAstIfBlock,
 } from "@angular/compiler";
-import { describe, expect, it } from "vitest";
+import { TestBed } from "@angular/core/testing";
+import { BrowserTestingModule, platformBrowserTesting } from "@angular/platform-browser/testing";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-// The environment has no DOM: the template and styles of the cell are read from its source and the
-// template is parsed with the Angular compiler.
+import type { StackRow } from "../core/stacks";
+import { StackNameCell } from "./cells";
+
+TestBed.initTestEnvironment(BrowserTestingModule, platformBrowserTesting());
+
+// The template and styles of the ports cell are read from the source and the template is parsed with
+// the Angular compiler.
 
 const source = readFileSync(resolve(process.cwd(), "src/app/grid/cells.ts"), "utf8");
 const component = source.slice(
@@ -79,5 +87,57 @@ describe("ContainerPortsCell styles", () => {
   it("ends an overflowing list with an ellipsis and shows the focus", () => {
     expect(styles).toContain("text-overflow: ellipsis");
     expect(styles).toMatch(/a\.port:focus-visible\s*\{\s*outline:/);
+  });
+});
+
+describe("StackNameCell toggle", () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const stack = (expanded: boolean) =>
+    ({ kind: "stack", expanded, stack: { name: "blog" } }) as unknown as StackRow;
+
+  function render(expanded: boolean) {
+    const toggle = vi.fn();
+    const context = { toggle, openStack: vi.fn(), details: vi.fn() };
+    const fixture = TestBed.createComponent(StackNameCell);
+    const refresh = (open: boolean) => {
+      fixture.componentInstance.refresh({ data: stack(open), context } as never);
+      fixture.detectChanges();
+    };
+    refresh(expanded);
+    const button = () => (fixture.nativeElement as HTMLElement).querySelector("button")!;
+    return { toggle, refresh, button };
+  }
+
+  it("is an icon-only text button of Helix with a hidden icon", () => {
+    const { button } = render(false);
+    expect(button().hasAttribute("hx-button")).toBe(true);
+    expect(button().classList).toContain("hx-button-text");
+    expect(button().classList).toContain("hx-button-icon-only");
+    expect(button().querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("offers to expand a closed stack and to collapse an open one", () => {
+    const { button, refresh } = render(false);
+    expect(button().getAttribute("aria-expanded")).toBe("false");
+    expect(button().getAttribute("aria-label")).toBe("Expand blog");
+
+    refresh(true);
+
+    expect(button().getAttribute("aria-expanded")).toBe("true");
+    expect(button().getAttribute("aria-label")).toBe("Collapse blog");
+  });
+
+  it("shows the label as a tooltip", () => {
+    const { button } = render(false);
+    button().dispatchEvent(new MouseEvent("mouseenter"));
+    TestBed.tick();
+    expect(document.querySelector('[role="tooltip"]')?.textContent?.trim()).toBe("Expand blog");
+  });
+
+  it("toggles the stack through the view", () => {
+    const { button, toggle } = render(false);
+    button().click();
+    expect(toggle).toHaveBeenCalledWith("blog");
   });
 });

@@ -158,12 +158,12 @@ describe("endpoint switcher", () => {
     expect(document.activeElement).toBe(trigger());
   });
 
-  it("opens the endpoint view with the text button", async () => {
+  it("opens the endpoint view with the link button", async () => {
     const { shell, switcher } = open([entry("local", "reachable")]);
     await switcher();
     const manage = document.querySelector<HTMLButtonElement>("button[hx-button].manage")!;
     expect(manage.textContent?.trim()).toBe("Manage endpoints…");
-    expect(manage.classList).toContain("hx-button-text");
+    expect(manage.classList).toContain("hx-button-link");
 
     manage.click();
 

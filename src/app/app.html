@@ -63,7 +63,11 @@
       <app-settings-view />
       } @else if (needsEndpoint() && endpoints.connection() === 'unreachable') {
       <section class="empty" role="alert" [attr.aria-label]="shell.activeView().label">
+        @if (endpoints.active()) {
         <h1>{{ endpoints.activeName() }} is unreachable</h1>
+        } @else {
+        <h1>No endpoint available</h1>
+        }
         <p>{{ endpoints.activeError() }}</p>
         <div class="buttons">
           <button hx-button type="button" (click)="endpoints.retry()">Retry</button>

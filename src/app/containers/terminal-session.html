@@ -1,6 +1,9 @@
 <div class="terminal" #host aria-label="Terminal" role="group"></div>
 @if (problem(); as message) {
-<p class="notice error" role="alert">Cannot run the command: {{ message }}</p>
+<hx-message class="failure" severity="error" role="alert">
+  Cannot run the command: {{ message }}
+  <button hx-button variant="outlined" type="button" (click)="retry()">Retry</button>
+</hx-message>
 } @else if (finished(); as message) {
 <p class="notice" role="status">{{ message }}. Close the tab or open a new terminal.</p>
 }

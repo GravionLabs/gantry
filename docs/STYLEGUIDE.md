@@ -27,7 +27,7 @@ Binding for every UI change. Read the base guide named above first (`pnpm instal
 ### Terminals and logs
 
 - Terminals of one container are tabs of an `hx-tab-bar`, one per session. Closing a tab ends its process, and the close button says so in its label.
-- Without a running container no terminal can be opened, and a message says why. A session that ended says so in place.
+- Without a running container no terminal can be opened, and a message says why. A session that ended says so in place; a failed one shows the engine's text in an error message with _Retry_, which starts the same command again in that tab.
 - The log options and actions sit in an `hx-toolbar`.
 - Terminal and log output is monospace on a dark surface.
 - The log is virtually scrolled with a fixed line height and keeps a capped number of lines (`MAX_LOG_LINES`).

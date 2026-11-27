@@ -1,0 +1,20 @@
+/* Lint probe (#159): a hard-coded color and font size that the helix-lint preset reports. */
+.probe {
+  color: #123456;
+  font-size: 13px;
+  background: rgb(0 0 0);
+}
+
+/* A native control styled in component CSS, a .btn class (also compound), and a font shorthand with a px size. */
+button {
+  font: 600 13px sans-serif;
+}
+.btn-primary {
+  margin: 0;
+}
+a.btn {
+  margin: 0;
+}
+.x.btn-link {
+  margin: 0;
+}

@@ -1,0 +1,21 @@
+{
+  "comment": "Exceptions to the helix-lint preset (#159). Every entry needs `files` (file paths, no globs), `rules` and a `reason`; helixAllow throws without one and so fails `pnpm lint`. One entry per file and rule. Stylelint rules and `helix/no-raw-control` are listed under their own key.",
+  "stylelint": [
+    {
+      "files": ["src/app/containers/container-logs.css"],
+      "rules": ["color-no-hex"],
+      "reason": "The log viewer is a dark surface in light and dark theme with an ANSI palette per color class; Helix has no tokens for it (docs/STYLEGUIDE.md, Deviations)"
+    },
+    {
+      "files": ["src/app/containers/container-logs.css"],
+      "rules": ["function-disallowed-list"],
+      "reason": "The stderr line background is a translucent tint of the literal stderr red on the dark log surface; a Helix token would change with the theme"
+    },
+    {
+      "files": ["src/app/containers/terminal-session.css"],
+      "rules": ["color-no-hex"],
+      "reason": "The terminal is a dark surface in light and dark theme (xterm theme set in TypeScript); Helix has no token for it (docs/STYLEGUIDE.md, Deviations)"
+    }
+  ],
+  "eslint": []
+}

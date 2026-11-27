@@ -78,6 +78,18 @@ describe("networks view controls", () => {
     expect(connect().disabled).toBe(true);
   });
 
+  it("leaves Create… as the only filled primary button", () => {
+    const { fixture, connect } = open();
+
+    expect(connect().classList).toContain("hx-button-secondary");
+    const filledPrimary = [
+      ...(fixture.nativeElement as HTMLElement).querySelectorAll(
+        ".bar button[hx-button], .members button[hx-button]",
+      ),
+    ].filter((b) => !/hx-button-(secondary|danger|outlined|text|link)\b/.test(b.className));
+    expect(filledPrimary.map((b) => b.textContent?.trim())).toEqual(["Create…"]);
+  });
+
   it("drives the container to connect with the select, also when cleared", () => {
     const { fixture, view, select, connect } = open();
 

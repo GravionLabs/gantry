@@ -11,7 +11,7 @@
   place-self: center;
   display: grid;
   justify-items: center;
-  gap: 0.5rem;
+  gap: var(--h-space-2);
   text-align: center;
 }
 .empty h1 {
@@ -27,7 +27,7 @@
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
-  margin-inline-end: 0.25rem;
+  margin-inline-end: var(--h-space-1);
   background: var(--h-text-muted-color);
 }
 .dot[data-state="connected"],
@@ -40,7 +40,7 @@
 }
 .buttons {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--h-space-2);
 }
 /* Stays inside the window with many endpoints or long names. */
 .switcher {
@@ -51,7 +51,7 @@
 }
 .switcher .none {
   margin: 0;
-  padding: 0.25rem 0.75rem;
+  padding: var(--h-space-1) var(--h-space-3);
   color: var(--h-text-muted-color);
 }
 .switcher .manage {

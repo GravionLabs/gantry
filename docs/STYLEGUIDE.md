@@ -43,6 +43,7 @@ Binding for every UI change. Read the base guide named above first (`pnpm instal
 
 - The heading of a view (`h1`) is `--h-font-size-lg`, weight 600; the heading of a section, form or panel in it (`h2`) is `--h-font-size-md`. In Settings, the category heading is the size of the view heading.
 - `pnpm lint` (and so CI) runs the Helix lint preset: `helix/no-raw-control` in templates, and Stylelint on `src/**/*.css` and inline `styles`: no hex or `rgb()`/`hsl()` color, `font-size` from the type scale, no rule set for a native control or a `.btn*` class. An exception is an entry of `scripts/lint/helix-allow.json` with one file, one rule and a reason; `helixAllow` throws without a reason. `src/testing/lint-probe/` holds deliberate violations and its spec fails when a rule stops reporting.
+- In the stylesheets of the app shell, Volumes, Networks, System, Settings, the container logs and the terminals, `src/app/component-styles.spec.ts` fails on a gap, padding or margin that is no `--h-space-*` step (or `0`) and on a radius that is no `--h-border-radius-*` step. An exception is an entry of `LITERAL_EXCEPTIONS` there, with a reason.
 
 ## Dialogs
 

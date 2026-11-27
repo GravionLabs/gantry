@@ -3,7 +3,7 @@
 }
 .logs {
   display: grid;
-  gap: 0.5rem;
+  gap: var(--h-space-2);
 }
 /* The labeled fields of a toolbar slot line up with the buttons at their lower edge. */
 .group {
@@ -48,7 +48,7 @@
 .line {
   white-space: pre;
   line-height: 20px;
-  padding: 0 0.5rem;
+  padding: 0 var(--h-space-2);
   box-sizing: border-box;
 }
 .line.stderr {

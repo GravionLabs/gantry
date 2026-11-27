@@ -3,7 +3,7 @@
 }
 .terminals {
   display: grid;
-  gap: 0.5rem;
+  gap: var(--h-space-2);
 }
 .options {
   display: flex;

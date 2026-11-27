@@ -7,10 +7,10 @@
 .system {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--h-space-2);
   height: 100%;
   box-sizing: border-box;
-  padding: 0.75rem 1rem;
+  padding: var(--h-space-3) var(--h-space-4);
   overflow: auto;
 }
 .head h1 {
@@ -22,27 +22,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--h-space-3);
   flex-wrap: wrap;
 }
 .group {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--h-space-2);
   flex-wrap: wrap;
 }
 .panels {
   display: grid;
-  gap: 1.25rem;
+  gap: var(--h-space-5);
 }
 .panels h2 {
-  margin: 0 0 0.4rem;
+  margin: 0 0 var(--h-space-2);
   font-size: var(--h-font-size-md);
 }
 .info {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 0.25rem 1.25rem;
+  gap: var(--h-space-1) var(--h-space-5);
   margin: 0;
 }
 .info dt {
@@ -59,7 +59,7 @@
 }
 .usage th,
 .usage td {
-  padding: 0.35rem 0.6rem;
+  padding: var(--h-space-1) var(--h-space-2);
   text-align: left;
   border-bottom: 1px solid var(--h-border-divider);
 }
@@ -71,7 +71,7 @@
   width: 6rem;
 }
 .state {
-  margin: 2rem 0;
+  margin: var(--h-space-8) 0;
   text-align: center;
   color: var(--h-text-muted-color);
 }

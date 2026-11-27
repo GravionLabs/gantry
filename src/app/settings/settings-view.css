@@ -11,19 +11,19 @@
 .categories {
   flex: 0 0 13rem;
   box-sizing: border-box;
-  padding: 0.75rem;
+  padding: var(--h-space-3);
   border-right: 1px solid var(--h-content-border-color);
   overflow: auto;
 }
 .categories h1 {
-  margin: 0 0 0.6rem;
+  margin: 0 0 var(--h-space-2);
   font-size: var(--h-font-size-lg);
   font-weight: 600;
 }
 .page {
   flex: 1;
   box-sizing: border-box;
-  padding: 0.75rem 1.25rem;
+  padding: var(--h-space-3) var(--h-space-5);
   overflow: auto;
 }
 .page h2 {
@@ -39,7 +39,7 @@
   margin-top: var(--h-space-4);
 }
 .section {
-  margin-top: 1rem;
+  margin-top: var(--h-space-4);
 }
 .group {
   display: flex;
@@ -47,7 +47,7 @@
   gap: var(--h-space-4);
 }
 .updates {
-  margin: 1rem 0 0;
+  margin: var(--h-space-4) 0 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -56,7 +56,7 @@
 .check-now {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--h-space-3);
 }
 .note {
   margin: 0;

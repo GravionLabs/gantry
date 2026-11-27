@@ -7,16 +7,16 @@
 .volumes {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--h-space-2);
   height: 100%;
   box-sizing: border-box;
-  padding: 0.75rem 1rem;
+  padding: var(--h-space-3) var(--h-space-4);
   overflow: auto;
 }
 .head {
   display: flex;
   align-items: baseline;
-  gap: 0.6rem;
+  gap: var(--h-space-2);
 }
 .head h1 {
   margin: 0;
@@ -31,13 +31,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--h-space-3);
   flex-wrap: wrap;
 }
 .group {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--h-space-2);
   flex-wrap: wrap;
 }
 .grid {
@@ -51,19 +51,19 @@
   font-family: var(--helix-font-mono, monospace);
 }
 .state {
-  margin: 2rem 0;
+  margin: var(--h-space-8) 0;
   text-align: center;
   color: var(--h-text-muted-color);
 }
 .buttons {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--h-space-2);
   justify-content: flex-end;
 }
 .option {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--h-space-1);
 }
 .create {
   display: flex;

@@ -93,9 +93,9 @@ describe.each(["networks", "volumes", "system"])("%s styles", (view) => {
     expect(bar).toContain("flex-wrap: wrap");
   });
 
-  it("spaces the buttons of a group like the images actions", () => {
+  it("spaces the buttons of a group with a spacing step", () => {
     const group = /\.group\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
-    expect(group).toContain("gap: 0.4rem");
+    expect(group).toContain("gap: var(--h-space-2)");
     expect(group).toContain("flex-wrap: wrap");
   });
 });

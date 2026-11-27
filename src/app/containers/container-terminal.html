@@ -5,18 +5,18 @@
   </hx-message>
   }
   <div class="options">
-    <label>
-      Shell
-      <select [value]="shell()" (change)="setShell($any($event.target).value)">
-        @for (s of shells; track s.id) {
-        <option [value]="s.id" [selected]="s.id === shell()">{{ s.label }}</option>
-        }
-      </select>
-    </label>
+    <hx-field label="Shell">
+      <hx-select
+        optionValue="id"
+        [options]="shells"
+        [value]="shell()"
+        (valueChange)="setShell($event ?? 'sh')"
+      />
+    </hx-field>
     @if (shell() === 'custom') {
-    <label>
-      Command
+    <hx-field label="Command">
       <input
+        hx-input
         type="text"
         class="command mono"
         placeholder="/bin/zsh -l"
@@ -24,11 +24,11 @@
         (input)="custom.set($any($event.target).value)"
         (keydown)="onCustomKey($event)"
       />
-    </label>
+    </hx-field>
     }
-    <label>
-      User
+    <hx-field label="User">
       <input
+        hx-input
         type="text"
         class="user"
         placeholder="container default"
@@ -36,35 +36,19 @@
         (input)="user.set($any($event.target).value)"
         (keydown)="onCustomKey($event)"
       />
-    </label>
+    </hx-field>
     <button hx-button type="button" [disabled]="!running()" (click)="open()">Open terminal</button>
   </div>
   @if (problem(); as message) {
   <hx-message severity="error" role="alert">{{ message }}</hx-message>
   } @if (tabs().length) {
-  <div class="tabs" role="tablist" aria-label="Terminals">
-    @for (t of tabs(); track t.id) {
-    <span class="tab" [class.selected]="t.id === activeId()">
-      <button
-        type="button"
-        role="tab"
-        class="select"
-        [attr.aria-selected]="t.id === activeId()"
-        (click)="select(t.id)"
-      >
-        {{ t.title }}
-      </button>
-      <button
-        type="button"
-        class="close"
-        [attr.aria-label]="'Close ' + t.title + ' and end its process'"
-        (click)="close(t.id)"
-      >
-        ×
-      </button>
-    </span>
-    }
-  </div>
+  <hx-tab-bar
+    ariaLabel="Terminals"
+    [tabs]="barTabs()"
+    [value]="activeId() === null ? null : '' + activeId()"
+    (valueChange)="select(+$event!)"
+    (closed)="close(+$event)"
+  />
   @for (t of tabs(); track t.id) {
   <app-terminal-session
     role="tabpanel"

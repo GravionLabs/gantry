@@ -7,7 +7,14 @@ import {
   signal,
   untracked,
 } from "@angular/core";
-import { HxButton, HxCheckbox, HxMessage } from "@gravionlabs/helix-ui";
+import {
+  HxButton,
+  HxCheckbox,
+  HxDialog,
+  HxField,
+  HxFieldset,
+  HxMessage,
+} from "@gravionlabs/helix-ui";
 
 import { pollRefresh } from "../core/settings/refresh-poll";
 import type { CleanupCategory, CleanupPreview, DiskUsage, EngineDetails } from "../core/bindings";
@@ -33,7 +40,7 @@ import {
 @Component({
   selector: "app-system-view",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HxButton, HxCheckbox, HxMessage],
+  imports: [HxButton, HxCheckbox, HxDialog, HxField, HxFieldset, HxMessage],
   templateUrl: "./system-view.html",
   styleUrl: "./system-view.css",
 })
@@ -62,6 +69,10 @@ export class SystemView {
   /** What the last cleanup did: a text and whether it failed in part or fully. */
   protected readonly result = signal<{ text: string; failed: boolean } | null>(null);
   protected readonly busy = signal(false);
+  /** The confirmed cleanup is running: the dialog cannot be closed. */
+  protected readonly removing = computed(
+    () => this.busy() && (this.cleaning()?.confirming ?? false),
+  );
 
   protected readonly categories = CATEGORIES;
   protected readonly categoryLabel = categoryLabel;
@@ -111,7 +122,7 @@ export class SystemView {
         this.engine.set(null);
         this.usage.set([]);
         this.loaded.set(false);
-        this.cleaning.set(null);
+        this.closeCleanup();
         this.result.set(null);
         void this.refresh();
       });
@@ -142,6 +153,10 @@ export class SystemView {
   }
 
   protected closeCleanup(): void {
+    // The dialog also reports a close that the view made itself.
+    if (!this.cleaning()) return;
+    // A dropped preview no longer ends the busy state itself; a running removal does.
+    if (!this.removing()) this.busy.set(false);
     this.previewRequests++;
     this.cleaning.set(null);
   }
@@ -161,6 +176,11 @@ export class SystemView {
       return { selected, previews: null, confirming: false };
     });
     this.previewProblem.set(null);
+  }
+
+  /** Enter in the form asks for the preview; removing needs its button. */
+  protected submitCleanup(): void {
+    if (!this.cleaning()?.confirming) void this.preview();
   }
 
   /** Reads what the selected categories remove, without removing anything. */

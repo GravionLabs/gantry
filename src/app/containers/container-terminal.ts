@@ -1,5 +1,14 @@
-import { ChangeDetectionStrategy, Component, input, signal } from "@angular/core";
-import { HxButton, HxMessage } from "@gravionlabs/helix-ui";
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  afterRenderEffect,
+  computed,
+  inject,
+  input,
+  signal,
+} from "@angular/core";
+import { HxButton, HxField, HxInput, HxMessage, HxSelect, HxTabBar } from "@gravionlabs/helix-ui";
 
 import type { Endpoint } from "../core/bindings";
 import { SHELL_CHOICES, type ShellId, resolveShell, sessionTitle } from "../core/exec";
@@ -16,7 +25,7 @@ interface Tab {
 @Component({
   selector: "app-container-terminal",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TerminalSession, HxButton, HxMessage],
+  imports: [TerminalSession, HxButton, HxField, HxInput, HxMessage, HxSelect, HxTabBar],
   templateUrl: "./container-terminal.html",
   styleUrl: "./container-terminal.css",
 })
@@ -34,7 +43,23 @@ export class ContainerTerminal {
 
   protected readonly tabs = signal<Tab[]>([]);
   protected readonly activeId = signal<number | null>(null);
+  protected readonly barTabs = computed(() =>
+    this.tabs().map((t) => ({ id: String(t.id), label: t.title })),
+  );
   private nextId = 1;
+
+  constructor() {
+    const host: HTMLElement = inject(ElementRef).nativeElement;
+    // `hx-tab-bar` names its close buttons "Close <label>" and has no input for that text, but
+    // closing a terminal has to say that it ends the process.
+    afterRenderEffect(() => {
+      const tabs = this.tabs();
+      host.querySelectorAll(".hx-tab-bar-close").forEach((button, index) => {
+        const title = tabs[index]?.title;
+        if (title) button.setAttribute("aria-label", `Close ${title} and end its process`);
+      });
+    });
+  }
 
   protected open(): void {
     try {

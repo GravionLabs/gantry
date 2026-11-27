@@ -8,7 +8,16 @@ import {
   signal,
   untracked,
 } from "@angular/core";
-import { HxButton, HxMessage } from "@gravionlabs/helix-ui";
+import {
+  HxButton,
+  HxMessage,
+  HxTab,
+  HxTabContent,
+  HxTabList,
+  HxTabPanel,
+  HxTabPanels,
+  HxTabs,
+} from "@gravionlabs/helix-ui";
 
 import type { ContainerDetails, Endpoint } from "../core/bindings";
 import {
@@ -58,7 +67,19 @@ export type DetailsPhase = "loading" | "ready" | "notFound" | "error";
 @Component({
   selector: "app-container-details",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ContainerLogs, ContainerStats, ContainerTerminal, HxButton, HxMessage],
+  imports: [
+    ContainerLogs,
+    ContainerStats,
+    ContainerTerminal,
+    HxButton,
+    HxMessage,
+    HxTab,
+    HxTabContent,
+    HxTabList,
+    HxTabPanel,
+    HxTabPanels,
+    HxTabs,
+  ],
   templateUrl: "./container-details.html",
   styleUrl: "./container-details.css",
 })
@@ -124,20 +145,12 @@ export class ContainerDetailsView {
   /** Terminals stay alive while other tabs are shown, so the view is created on first use. */
   protected readonly terminalOpened = signal(false);
 
-  protected select(tab: DetailTab): void {
+  /** `hx-tabs` reports the value of the chosen tab. */
+  protected select(value: string | null): void {
+    const tab = TABS.find((t) => t.id === value)?.id;
+    if (!tab) return;
     if (tab === "terminal") this.terminalOpened.set(true);
     this.tab.set(tab);
-  }
-
-  /** Arrow keys move between the tabs, as the tab pattern asks. */
-  protected onTabKey(event: KeyboardEvent): void {
-    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
-    if (!step) return;
-    event.preventDefault();
-    const index = TABS.findIndex((t) => t.id === this.tab());
-    const next = TABS[(index + step + TABS.length) % TABS.length];
-    this.select(next.id);
-    (event.currentTarget as HTMLElement).querySelector<HTMLElement>(`#tab-${next.id}`)?.focus();
   }
 
   protected isRevealed(name: string): boolean {

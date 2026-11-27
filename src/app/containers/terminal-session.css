@@ -13,8 +13,9 @@
   font-size: var(--h-font-size-sm);
   color: var(--h-text-muted-color);
 }
-.notice.error {
-  color: var(--h-message-error-color);
+.failure {
+  display: block;
+  margin-top: var(--h-space-2);
 }
 :host([hidden]) {
   display: none;

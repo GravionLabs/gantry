@@ -15,7 +15,7 @@ vi.mock("../core/containers", () => ({ streamContainerLogs: vi.fn(() => () => {}
 
 TestBed.initTestEnvironment(BrowserTestingModule, platformBrowserTesting());
 
-function open() {
+async function open() {
   renderTemplateOf(ContainerLogs, "containers/container-logs.html");
   const fixture = TestBed.createComponent(ContainerLogs);
   // The JIT compiler of the tests does not know signal inputs: set them on the instance.
@@ -24,6 +24,8 @@ function open() {
     containerId: signal("abc"),
   });
   fixture.detectChanges();
+  // `hx-field` wires its label after the first render.
+  await fixture.whenStable();
   const view = fixture.componentInstance as unknown as {
     follow: () => boolean;
     timestamps: () => boolean;
@@ -32,18 +34,25 @@ function open() {
     query: () => string;
   };
   const element = fixture.nativeElement as HTMLElement;
-  const select = (label: string) =>
+  const label = (text: string) =>
+    [...element.querySelectorAll("label")].find(
+      (l) => l.textContent?.trim() === text,
+    ) as HTMLLabelElement;
+  /** The control the visible label with this text points at. */
+  const control = <T extends HTMLElement = HTMLInputElement>(text: string) =>
+    element.querySelector<T>(`[id="${label(text)?.htmlFor}"]`) as T;
+  const select = (text: string) =>
     fixture.debugElement
       .queryAll(By.directive(HxSelect))
-      .map((d) => d.componentInstance as HxSelect<string>)
-      .find((s) => s.ariaLabel() === label) as HxSelect<string>;
+      .find((d) => (d.nativeElement as HTMLElement).contains(control(text)))
+      ?.componentInstance as HxSelect<string>;
   /** What the select does when the user picks an option. */
   const pick = (label: string, value: string) => {
     select(label).value.set(value);
     fixture.detectChanges();
   };
   const options = () => vi.mocked(streamContainerLogs).mock.lastCall?.[2] as LogOptions;
-  return { fixture, view, element, select, pick, options };
+  return { fixture, view, element, label, control, select, pick, options };
 }
 
 describe("container logs controls", () => {
@@ -52,16 +61,46 @@ describe("container logs controls", () => {
     vi.clearAllMocks();
   });
 
-  it("drives follow and timestamps with switches", () => {
-    const { fixture, view, element, options } = open();
-    const [follow, timestamps] = element.querySelectorAll<HTMLInputElement>("input[hx-switch]");
-    expect(follow?.checked).toBe(true);
-    expect(timestamps?.checked).toBe(false);
-    expect(follow?.closest("label")?.textContent).toContain("Follow");
-    expect(timestamps?.closest("label")?.textContent).toContain("Timestamps");
+  it("reaches every control of the toolbar by its visible label", async () => {
+    const { element, control } = await open();
+    const expected = {
+      Follow: "input[hx-switch]",
+      Show: "hx-select button",
+      Since: "hx-select button",
+      Timestamps: "input[hx-switch]",
+      "Search logs": 'input[hx-input][type="search"]',
+    };
 
-    follow?.click();
-    timestamps?.click();
+    for (const [text, selector] of Object.entries(expected)) {
+      expect(control(text)?.matches(selector), text).toBe(true);
+    }
+    expect(new Set(Object.keys(expected).map((text) => control(text))).size).toBe(5);
+    expect(
+      element.querySelector(".options [aria-hidden='true']:not(.hx-select-chevron)"),
+    ).toBeNull();
+    for (const text of Object.keys(expected)) {
+      expect(control(text).hasAttribute("aria-label"), text).toBe(false);
+    }
+  });
+
+  it("opens a select by clicking its label", async () => {
+    const { fixture, label, control } = await open();
+    for (const text of ["Show", "Since"]) {
+      label(text).click();
+      fixture.detectChanges();
+      expect(control(text).getAttribute("aria-expanded"), text).toBe("true");
+    }
+  });
+
+  it("drives follow and timestamps with switches", async () => {
+    const { fixture, view, label, control, options } = await open();
+    const follow = control("Follow");
+    const timestamps = control("Timestamps");
+    expect(follow.checked).toBe(true);
+    expect(timestamps.checked).toBe(false);
+
+    label("Follow").click();
+    label("Timestamps").click();
     fixture.detectChanges();
 
     expect(view.follow()).toBe(false);
@@ -69,8 +108,8 @@ describe("container logs controls", () => {
     expect(options()).toMatchObject({ follow: false, timestamps: true });
   });
 
-  it("drives the tail with a select, also for all lines", () => {
-    const { view, select, pick, options } = open();
+  it("drives the tail with a select, also for all lines", async () => {
+    const { view, select, pick, options } = await open();
     expect(select("Show").selected()?.label).toBe("1000 lines");
 
     pick("Show", "all");
@@ -83,8 +122,8 @@ describe("container logs controls", () => {
     expect(options().tail).toBe(100);
   });
 
-  it("drives since with a select, also back to the beginning", () => {
-    const { view, select, pick, options } = open();
+  it("drives since with a select, also back to the beginning", async () => {
+    const { view, select, pick, options } = await open();
     expect(select("Since").selected()?.label).toBe("Beginning");
 
     pick("Since", "3600");
@@ -97,11 +136,9 @@ describe("container logs controls", () => {
     expect(options().since).toBeNull();
   });
 
-  it("drives the query with the search field", () => {
-    const { fixture, view, element } = open();
-    const search = element.querySelector<HTMLInputElement>(
-      'input[hx-input][aria-label="Search logs"]',
-    ) as HTMLInputElement;
+  it("drives the query with the search field", async () => {
+    const { fixture, view, element, control } = await open();
+    const search = control("Search logs");
 
     search.value = "boom";
     search.dispatchEvent(new Event("input"));
@@ -109,5 +146,26 @@ describe("container logs controls", () => {
 
     expect(view.query()).toBe("boom");
     expect(element.querySelector(".count")?.textContent).toContain("No matches");
+  });
+
+  it("steps through the matches with Enter and Shift+Enter in the search field", async () => {
+    vi.mocked(streamContainerLogs).mockImplementationOnce((_endpoint, _id, _options, onLines) => {
+      onLines(["boom one", "quiet", "boom two"].map((text) => ({ stream: "stdout", text })));
+      return () => {};
+    });
+    const { fixture, element, control } = await open();
+    const search = control("Search logs");
+    const press = (shiftKey: boolean) => {
+      search.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", shiftKey }));
+      fixture.detectChanges();
+      return element.querySelector(".count")?.textContent?.trim();
+    };
+    search.value = "boom";
+    search.dispatchEvent(new Event("input"));
+    fixture.detectChanges();
+
+    expect(press(false)).toBe("1 / 2");
+    expect(press(false)).toBe("2 / 2");
+    expect(press(true)).toBe("1 / 2");
   });
 });

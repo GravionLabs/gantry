@@ -11,7 +11,7 @@ import {
   untracked,
   viewChild,
 } from "@angular/core";
-import { HxButton, HxInput, HxMessage, HxSelect, HxSwitch } from "@gravionlabs/helix-ui";
+import { HxButton, HxField, HxInput, HxMessage, HxSelect, HxSwitch } from "@gravionlabs/helix-ui";
 
 import type { Endpoint } from "../core/bindings";
 import { streamContainerLogs } from "../core/containers";
@@ -37,7 +37,7 @@ export const LINE_HEIGHT = 20;
 @Component({
   selector: "app-container-logs",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ScrollingModule, HxButton, HxInput, HxMessage, HxSelect, HxSwitch],
+  imports: [ScrollingModule, HxButton, HxField, HxInput, HxMessage, HxSelect, HxSwitch],
   templateUrl: "./container-logs.html",
   styleUrl: "./container-logs.css",
 })

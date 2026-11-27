@@ -1,50 +1,43 @@
 <section class="logs" aria-label="Container logs">
   <div class="options">
-    <label class="check">
+    <hx-field class="switch" label="Follow">
       <input type="checkbox" hx-switch [checked]="follow()" (change)="follow.set(!follow())" />
-      Follow
-    </label>
-    <span class="field">
-      <span aria-hidden="true">Show</span>
+    </hx-field>
+    <hx-field label="Show">
       <hx-select
         size="small"
-        ariaLabel="Show"
         [options]="tailOptions"
         [value]="tailValue()"
         (valueChange)="setTail($event ?? 'all')"
       />
-    </span>
-    <span class="field">
-      <span aria-hidden="true">Since</span>
+    </hx-field>
+    <hx-field label="Since">
       <hx-select
         size="small"
-        ariaLabel="Since"
         [options]="sinceOptions"
         [value]="sinceValue()"
         (valueChange)="setSince($event ?? '')"
       />
-    </span>
-    <label class="check">
+    </hx-field>
+    <hx-field class="switch" label="Timestamps">
       <input
         type="checkbox"
         hx-switch
         [checked]="timestamps()"
         (change)="timestamps.set(!timestamps())"
       />
-      Timestamps
-    </label>
+    </hx-field>
     <span class="spacer"></span>
-    <input
-      hx-input
-      size="small"
-      type="search"
-      class="search"
-      placeholder="Search logs"
-      aria-label="Search logs"
-      [value]="query()"
-      (input)="setQuery($any($event.target).value)"
-      (keydown)="onSearchKey($event)"
-    />
+    <hx-field class="search" label="Search logs">
+      <input
+        hx-input
+        size="small"
+        type="search"
+        [value]="query()"
+        (input)="setQuery($any($event.target).value)"
+        (keydown)="onSearchKey($event)"
+      />
+    </hx-field>
     <span class="count" aria-live="polite">
       @if (query().trim()) { @if (matches().length) { {{ currentMatch() + 1 }} / {{ matches().length
       }} } @else { No matches } }

@@ -64,12 +64,14 @@ function open() {
   renderTemplateOf(ContainerTerminal, "containers/container-terminal.html");
   renderTemplateOf(TerminalSession, "containers/terminal-session.html");
   const fixture = TestBed.createComponent(ContainerTerminal);
+  const running = signal(true);
   Object.assign(fixture.componentInstance, {
     endpoint: signal(endpoint),
     containerId: signal("abc"),
-    running: signal(true),
+    running,
   });
   const element = fixture.nativeElement as HTMLElement;
+  document.body.append(element);
   const render = () => {
     fixture.detectChanges();
     TestBed.tick();
@@ -78,7 +80,10 @@ function open() {
   const all = <T extends Element = HTMLElement>(selector: string) =>
     Array.from(element.querySelectorAll<T>(selector));
   const field = (label: string) => {
-    const found = all("label").find((l) => l.textContent?.trim() === label) as HTMLLabelElement;
+    // A required field adds its marker to the label.
+    const found = all("label").find(
+      (l) => l.textContent?.replace("*", "").trim() === label,
+    ) as HTMLLabelElement;
     return element.querySelector<HTMLInputElement>(`#${found.getAttribute("for")}`)!;
   };
   const type = (label: string, value: string) => {
@@ -93,10 +98,32 @@ function open() {
     select.value.set(value);
     render();
   };
-  const openTerminal = () => {
-    all<HTMLButtonElement>("button")
-      .find((b) => b.textContent?.trim() === "Open terminal")!
-      .click();
+  const submitButton = () =>
+    all<HTMLButtonElement>("button").find((b) => b.textContent?.trim() === "Open terminal")!;
+  /** The submit settles in a later task. */
+  const settle = async () => {
+    await new Promise((resolve) => setTimeout(resolve));
+    render();
+  };
+  /** A press on the button, which is also what Enter in a field of a form does in a browser. */
+  const openTerminal = async () => {
+    submitButton().click();
+    await settle();
+  };
+  /** The user goes to the field and on to the next one. */
+  const leave = (label: string) => {
+    field(label).focus();
+    field("User").focus();
+    render();
+  };
+  /** The text of the elements that describe the control. */
+  const description = (control: Element) =>
+    (control.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .map((id) => element.querySelector(`#${id}`)?.textContent?.trim())
+      .join(" ");
+  const setRunning = (value: boolean) => {
+    running.set(value);
     render();
   };
   const tabs = () => all('[role="tab"]');
@@ -110,6 +137,10 @@ function open() {
     type,
     pickShell,
     openTerminal,
+    submitButton,
+    leave,
+    description,
+    setRunning,
     tabs,
     selected,
     hidden,
@@ -121,6 +152,7 @@ describe("container terminal", () => {
     TestBed.resetTestingModule();
     vi.clearAllMocks();
     closes.length = 0;
+    document.body.innerHTML = "";
   });
 
   it("labels the shell, command and user fields", () => {
@@ -128,7 +160,7 @@ describe("container terminal", () => {
     expect(element.querySelector("hx-select")?.textContent).toContain("/bin/sh");
     expect(field("Shell").closest("hx-select")).not.toBeNull();
     expect(field("User").hasAttribute("hx-input")).toBe(true);
-    expect(element.querySelector("input.command")).toBeNull();
+    expect(element.querySelector("input.mono")).toBeNull();
 
     pickShell("custom");
 
@@ -136,11 +168,11 @@ describe("container terminal", () => {
     expect(field("Command").classList).toContain("mono");
   });
 
-  it("opens a terminal with the chosen shell and user", () => {
+  it("opens a terminal with the chosen shell and user", async () => {
     const { type, pickShell, openTerminal, tabs } = open();
     pickShell("bash");
     type("User", "root");
-    openTerminal();
+    await openTerminal();
 
     expect(resolveShell).toHaveBeenCalledWith({ shell: "bash", custom: "", user: "root" });
     expect(openExec).toHaveBeenCalledTimes(1);
@@ -153,23 +185,104 @@ describe("container terminal", () => {
     expect(tabs().map((t) => t.textContent?.trim())).toEqual(["bash (root)"]);
   });
 
-  it("opens a custom command with Enter", () => {
-    const { render, field, type, pickShell } = open();
+  it("submits the form of the fields, so Enter opens a terminal", async () => {
+    const { field, type, pickShell, submitButton, openTerminal } = open();
     pickShell("custom");
     type("Command", "/bin/zsh -l");
-    field("Command").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
-    render();
+    const form = submitButton().closest("form")!;
+    expect(submitButton().type).toBe("submit");
+    expect(field("Command").form).toBe(form);
+    expect(field("User").form).toBe(form);
 
+    await openTerminal();
+
+    expect(openExec).toHaveBeenCalledTimes(1);
     expect(vi.mocked(openExec).mock.lastCall?.[2]).toMatchObject({
       command: ["/bin/zsh", "-l"],
       user: null,
     });
   });
 
-  it("switches tabs without opening or ending a session", () => {
+  it("explains the fields in hints, without a placeholder", () => {
+    const { all, field, pickShell, description } = open();
+    pickShell("custom");
+
+    expect(all("input[placeholder]")).toEqual([]);
+    expect(description(field("Command"))).toContain("for example /bin/zsh -l");
+    expect(description(field("User"))).toContain("Empty for the container's default user.");
+    expect(field("Command").getAttribute("aria-required")).toBe("true");
+    expect(field("User").hasAttribute("aria-required")).toBe(false);
+  });
+
+  it.each(["", "   "])(
+    "shows the error on the command %j on submit and opens nothing",
+    async (value) => {
+      const { type, pickShell, openTerminal, field, description, tabs, element } = open();
+      pickShell("custom");
+      type("Command", value);
+      expect(field("Command").hasAttribute("aria-invalid")).toBe(false);
+
+      await openTerminal();
+
+      expect(openExec).not.toHaveBeenCalled();
+      expect(tabs()).toHaveLength(0);
+      expect(field("Command").getAttribute("aria-invalid")).toBe("true");
+      expect(description(field("Command"))).toContain("Enter a command to run");
+      expect(element.querySelector("hx-message")).toBeNull();
+      expect(document.activeElement).toBe(field("Command"));
+
+      type("Command", "zsh");
+      expect(field("Command").hasAttribute("aria-invalid")).toBe(false);
+    },
+  );
+
+  it("shows an open quote on the command field and opens nothing", async () => {
+    const { type, pickShell, openTerminal, field, description } = open();
+    pickShell("custom");
+    type("Command", 'sh -c "ls');
+    await openTerminal();
+
+    expect(openExec).not.toHaveBeenCalled();
+    expect(description(field("Command"))).toContain('Missing closing " in the command');
+  });
+
+  it("shows the error when the empty command is left, until the field is shown anew", () => {
+    const { pickShell, leave, field, description } = open();
+    pickShell("custom");
+    leave("Command");
+
+    expect(field("Command").getAttribute("aria-invalid")).toBe("true");
+    expect(description(field("Command"))).toContain("Enter a command to run");
+
+    pickShell("sh");
+    pickShell("custom");
+
+    expect(field("Command").hasAttribute("aria-invalid")).toBe(false);
+  });
+
+  it("opens a preset shell although the hidden command is empty", async () => {
+    const { pickShell, leave, openTerminal } = open();
+    pickShell("custom");
+    leave("Command");
+    pickShell("sh");
+    await openTerminal();
+
+    expect(openExec).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables Open terminal only while the container is not running", () => {
+    const { pickShell, submitButton, setRunning } = open();
+    pickShell("custom");
+    expect(submitButton().disabled).toBe(false);
+
+    setRunning(false);
+    expect(submitButton().disabled).toBe(true);
+  });
+
+  it("switches tabs without opening or ending a session", async () => {
     const { render, openTerminal, tabs, selected, hidden } = open();
-    openTerminal();
-    openTerminal();
+    await openTerminal();
+    await openTerminal();
     expect(selected()).toEqual(["false", "true"]);
     expect(hidden()).toEqual([true, false]);
 
@@ -187,10 +300,10 @@ describe("container terminal", () => {
     expect(closes.map((c) => c.mock.calls.length)).toEqual([0, 0]);
   });
 
-  it("ends the process of the tab that is closed", () => {
+  it("ends the process of the tab that is closed", async () => {
     const { render, all, openTerminal, selected, element } = open();
-    openTerminal();
-    openTerminal();
+    await openTerminal();
+    await openTerminal();
     const buttons = () => all<HTMLButtonElement>(".hx-tab-bar-close");
     expect(buttons().map((b) => b.getAttribute("aria-label"))).toEqual([
       "Close sh and end its process",

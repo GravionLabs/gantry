@@ -4,44 +4,36 @@
     The container is not running. Start it to open a terminal.
   </hx-message>
   }
-  <div class="options">
-    <hx-field label="Shell">
-      <hx-select
-        optionValue="id"
-        [options]="shells"
-        [value]="shell()"
-        (valueChange)="setShell($event ?? 'sh')"
-      />
-    </hx-field>
-    @if (shell() === 'custom') {
-    <hx-field label="Command">
-      <input
-        hx-input
-        type="text"
-        class="command mono"
-        placeholder="/bin/zsh -l"
-        [value]="custom()"
-        (input)="custom.set($any($event.target).value)"
-        (keydown)="onCustomKey($event)"
-      />
-    </hx-field>
-    }
-    <hx-field label="User">
-      <input
-        hx-input
-        type="text"
-        class="user"
-        placeholder="container default"
-        [value]="user()"
-        (input)="user.set($any($event.target).value)"
-        (keydown)="onCustomKey($event)"
-      />
-    </hx-field>
-    <button hx-button type="button" [disabled]="!running()" (click)="open()">Open terminal</button>
-  </div>
-  @if (problem(); as message) {
-  <hx-message severity="error" role="alert">{{ message }}</hx-message>
-  } @if (tabs().length) {
+  <form class="options" novalidate (submit)="$event.preventDefault(); open()">
+    <div class="fields">
+      <hx-field label="Shell">
+        <hx-select
+          optionValue="id"
+          [options]="shells"
+          [value]="shell()"
+          (valueChange)="setShell($event ?? 'sh')"
+        />
+      </hx-field>
+      @if (shell() === 'custom') {
+      <hx-field
+        class="command-field"
+        label="Command"
+        hint="Program and arguments, for example /bin/zsh -l. Quotes keep spaces together."
+        required
+      >
+        <input hx-input type="text" class="mono" [formField]="terminalForm.custom" />
+      </hx-field>
+      }
+      <hx-field class="user-field" label="User" hint="Empty for the container's default user.">
+        <input hx-input type="text" [formField]="terminalForm.user" />
+      </hx-field>
+    </div>
+    <!-- A press keeps the focus: the error of a field that is left would move the button. -->
+    <div (mousedown)="$event.preventDefault()">
+      <button hx-button type="submit" [disabled]="!running()">Open terminal</button>
+    </div>
+  </form>
+  @if (tabs().length) {
   <hx-tab-bar
     ariaLabel="Terminals"
     [tabs]="barTabs()"

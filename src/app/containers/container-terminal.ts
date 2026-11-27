@@ -8,10 +8,17 @@ import {
   input,
   signal,
 } from "@angular/core";
+import { FormField, form, submit, validate } from "@angular/forms/signals";
 import { HxButton, HxField, HxInput, HxMessage, HxSelect, HxTabBar } from "@gravionlabs/helix-ui";
 
 import type { Endpoint } from "../core/bindings";
-import { SHELL_CHOICES, type ShellId, resolveShell, sessionTitle } from "../core/exec";
+import {
+  SHELL_CHOICES,
+  type ShellId,
+  resolveShell,
+  sessionTitle,
+  splitCommand,
+} from "../core/exec";
 import { TerminalSession } from "./terminal-session";
 
 interface Tab {
@@ -21,11 +28,22 @@ interface Tab {
   readonly user: string | null;
 }
 
+/** What is wrong with a custom command line, saying what to enter. */
+function commandError(line: string): { kind: string; message: string } | undefined {
+  try {
+    if (splitCommand(line).length > 0) return undefined;
+    return { kind: "required", message: "Enter a command to run" };
+  } catch (error) {
+    const reason = (error as Error).message;
+    return { kind: "command", message: `Enter a complete command: ${reason}` };
+  }
+}
+
 /** Terminals in a running container, one per tab. Closing a tab ends its process. */
 @Component({
   selector: "app-container-terminal",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TerminalSession, HxButton, HxField, HxInput, HxMessage, HxSelect, HxTabBar],
+  imports: [TerminalSession, FormField, HxButton, HxField, HxInput, HxMessage, HxSelect, HxTabBar],
   templateUrl: "./container-terminal.html",
   styleUrl: "./container-terminal.css",
 })
@@ -37,9 +55,14 @@ export class ContainerTerminal {
 
   protected readonly shells = SHELL_CHOICES;
   protected readonly shell = signal<ShellId>("sh");
-  protected readonly custom = signal("");
-  protected readonly user = signal("");
-  protected readonly problem = signal<string | null>(null);
+  private readonly model = signal({ custom: "", user: "" });
+  /** The fields of a new terminal; a field shows its error once it was left or the form was submitted. */
+  protected readonly terminalForm = form(this.model, (path) => {
+    // The command counts only while its field is shown.
+    validate(path.custom, ({ value }) =>
+      this.shell() === "custom" ? commandError(value()) : undefined,
+    );
+  });
 
   protected readonly tabs = signal<Tab[]>([]);
   protected readonly activeId = signal<number | null>(null);
@@ -61,20 +84,17 @@ export class ContainerTerminal {
     });
   }
 
-  protected open(): void {
-    try {
-      const { command, user } = resolveShell({
-        shell: this.shell(),
-        custom: this.custom(),
-        user: this.user(),
-      });
+  /** Opens a terminal, or moves the focus to the field in error. */
+  protected async open(): Promise<void> {
+    // An invalid form marks its fields, which then show their errors, and opens nothing.
+    await submit(this.terminalForm, async () => {
+      if (!this.running()) return;
+      const { command, user } = resolveShell({ shell: this.shell(), ...this.model() });
       const tab: Tab = { id: this.nextId++, title: sessionTitle(command, user), command, user };
-      this.problem.set(null);
       this.tabs.update((tabs) => [...tabs, tab]);
       this.activeId.set(tab.id);
-    } catch (error) {
-      this.problem.set(error instanceof Error ? error.message : String(error));
-    }
+    });
+    this.terminalForm().errorSummary()[0]?.fieldTree().focusBoundControl();
   }
 
   protected select(id: number): void {
@@ -94,12 +114,7 @@ export class ContainerTerminal {
 
   protected setShell(value: string): void {
     this.shell.set(value as ShellId);
-  }
-
-  protected onCustomKey(event: KeyboardEvent): void {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      this.open();
-    }
+    // A command field that is shown again has not been left yet.
+    this.terminalForm.custom().reset();
   }
 }

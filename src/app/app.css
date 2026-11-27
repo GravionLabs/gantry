@@ -30,15 +30,24 @@
   margin-inline-end: 0.25rem;
   background: var(--h-text-muted-color);
 }
-.dot[data-state="connected"] {
+.dot[data-state="connected"],
+.dot[data-state="reachable"] {
   background: var(--gantry-container);
 }
-.dot[data-state="unreachable"] {
-  background: var(--h-red-500);
+.dot[data-state="unreachable"],
+.dot[data-state="denied"] {
+  background: var(--h-error-color);
 }
 .buttons {
   display: flex;
   gap: 0.5rem;
+}
+/* Stays inside the window with many endpoints or long names. */
+.switcher {
+  min-width: 16rem;
+  max-width: calc(100vw - 4rem);
+  max-height: calc(100vh - 6rem);
+  overflow: auto;
 }
 .switcher .none {
   margin: 0;
@@ -47,7 +56,4 @@
 }
 .switcher .manage {
   border-top: 1px solid var(--h-border-divider);
-}
-.dot[data-state="denied"] {
-  background: var(--h-red-500);
 }

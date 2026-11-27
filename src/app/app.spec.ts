@@ -4,8 +4,8 @@ import { resolve } from "node:path";
 import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { BrowserTestingModule, platformBrowserTesting } from "@angular/platform-browser/testing";
-import { HxStatusItem, HxStatusPopover } from "@gravionlabs/helix-desktop";
-import { HxButton, HxList, HxListRow } from "@gravionlabs/helix-ui";
+import { HxStatusItem } from "@gravionlabs/helix-desktop";
+import { HxButton, HxList, HxListRow, HxPopover } from "@gravionlabs/helix-ui";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./app";
@@ -37,16 +37,19 @@ function open(list: EndpointEntry[]) {
     init: vi.fn(),
   };
   const shell = { items: [], activeId: signal("volumes"), containerId: signal(null) };
-  // Only the switcher is under test: the template is cut to the status item that holds it.
+  // Only the switcher is under test: the template is cut to its status item and its popover.
   const template = readFileSync(resolve(process.cwd(), "src/app/app.html"), "utf8");
   TestBed.overrideComponent(App, {
     set: {
-      template: /<hx-status-item\s[^>]*?class="endpoint"[\s\S]*?<\/hx-status-item>/.exec(
-        template,
-      )![0],
+      template: [
+        /<hx-status-item\s[^>]*?class="endpoint"[\s\S]*?<\/hx-status-item>/,
+        /<hx-popover\s[\s\S]*?<\/hx-popover>/,
+      ]
+        .map((part) => part.exec(template)![0])
+        .join("\n"),
       templateUrl: undefined,
       styleUrl: undefined,
-      imports: [HxStatusItem, HxStatusPopover, HxButton, HxList, HxListRow],
+      imports: [HxStatusItem, HxButton, HxList, HxListRow, HxPopover],
     },
   });
   TestBed.configureTestingModule({
@@ -59,50 +62,106 @@ function open(list: EndpointEntry[]) {
     ],
   });
   const fixture = TestBed.createComponent(App);
+  // Focus needs an element of the document.
+  document.body.append(fixture.nativeElement);
   fixture.detectChanges();
   const element = fixture.nativeElement as HTMLElement;
-  const switcher = () => {
-    element.querySelector<HTMLElement>("hx-status-item button")?.click();
+  const trigger = () => element.querySelector<HTMLButtonElement>("hx-status-item button")!;
+  // The popover is an overlay of the document, outside the element of the fixture.
+  const popover = () => document.querySelector<HTMLElement>(".hx-popover");
+  const switcher = async () => {
+    trigger().click();
     fixture.detectChanges();
+    await fixture.whenStable();
   };
-  const rows = () => [...element.querySelectorAll<HTMLButtonElement>("button[hx-list-row]")];
-  return { fixture, element, endpoints, shell, switcher, rows };
+  const rows = () => [...document.querySelectorAll<HTMLButtonElement>("button[hx-list-row]")];
+  const text = (row: Element, part: string) =>
+    row.querySelector(`.hx-list-row-${part}`)?.textContent?.trim();
+  return { fixture, element, endpoints, shell, trigger, popover, switcher, rows, text };
 }
 
 describe("endpoint switcher", () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it("lists one row per endpoint and marks the active one", () => {
-    const { element, switcher, rows } = open([
+  it("lists one row per endpoint and marks the active one", async () => {
+    const { popover, switcher, rows, text } = open([
       entry("local", "reachable"),
       entry("remote", "unreachable"),
     ]);
-    switcher();
+    await switcher();
 
-    expect(element.querySelector("hx-list")?.getAttribute("aria-label")).toBe("Endpoints");
-    expect(rows().map((r) => r.textContent?.trim())).toEqual(["local", "remote"]);
+    expect(popover()?.querySelector("hx-list")?.getAttribute("aria-label")).toBe("Endpoints");
+    expect(rows().map((r) => text(r, "label"))).toEqual(["local", "remote"]);
     expect(rows().map((r) => r.getAttribute("aria-current"))).toEqual(["true", null]);
     expect(rows()[1]?.querySelector(".dot")?.getAttribute("data-state")).toBe("unreachable");
-    expect(element.textContent).not.toContain("No endpoints found");
+    expect(popover()?.textContent).not.toContain("No endpoints found");
   });
 
-  it("switches to the endpoint of a row and closes", () => {
-    const { endpoints, switcher, rows } = open([
+  it("names the status of each row in text", async () => {
+    const { switcher, rows, text } = open([
+      entry("a", "reachable"),
+      entry("b", "unreachable"),
+      entry("c", "denied"),
+      entry("d", "checking"),
+    ]);
+    await switcher();
+
+    expect(rows().map((r) => text(r, "meta"))).toEqual([
+      "Reachable",
+      "Unreachable",
+      "Permission denied",
+      "Checking…",
+    ]);
+  });
+
+  it("says on the status bar button whether the switcher is open", async () => {
+    const { fixture, trigger, switcher } = open([entry("local", "reachable")]);
+    await fixture.whenStable();
+    expect(trigger().getAttribute("aria-haspopup")).toBe("dialog");
+    expect(trigger().getAttribute("aria-expanded")).toBe("false");
+
+    await switcher();
+    expect(trigger().getAttribute("aria-expanded")).toBe("true");
+
+    await switcher();
+    expect(trigger().getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("returns the focus to the status bar button after Escape", async () => {
+    const { fixture, trigger, popover, switcher, rows } = open([entry("local", "reachable")]);
+    await switcher();
+    expect(document.activeElement).toBe(rows()[0]);
+
+    rows()[0]?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(popover()).toBeNull();
+    expect(document.activeElement).toBe(trigger());
+  });
+
+  it("switches to the endpoint of a row, closes and returns the focus", async () => {
+    const { fixture, endpoints, trigger, popover, switcher, rows } = open([
       entry("local", "reachable"),
       entry("remote", "reachable"),
     ]);
-    switcher();
+    await switcher();
 
+    rows()[1]?.focus();
     rows()[1]?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
 
     expect(endpoints.select).toHaveBeenCalledWith("manual:remote");
     expect(endpoints.activeId()).toBe("manual:remote");
+    expect(popover()).toBeNull();
+    expect(document.activeElement).toBe(trigger());
   });
 
-  it("opens the endpoint view with the text button", () => {
-    const { element, shell, switcher } = open([entry("local", "reachable")]);
-    switcher();
-    const manage = element.querySelector<HTMLButtonElement>("button[hx-button].manage")!;
+  it("opens the endpoint view with the text button", async () => {
+    const { shell, switcher } = open([entry("local", "reachable")]);
+    await switcher();
+    const manage = document.querySelector<HTMLButtonElement>("button[hx-button].manage")!;
     expect(manage.textContent?.trim()).toBe("Manage endpoints…");
     expect(manage.classList).toContain("hx-button-text");
 
@@ -111,12 +170,12 @@ describe("endpoint switcher", () => {
     expect(shell.activeId()).toBe("endpoints");
   });
 
-  it("says that there are no endpoints", () => {
-    const { element, switcher, rows } = open([]);
-    switcher();
+  it("says that there are no endpoints", async () => {
+    const { popover, switcher, rows } = open([]);
+    await switcher();
 
     expect(rows()).toHaveLength(0);
-    expect(element.textContent).toContain("No endpoints found");
+    expect(popover()?.textContent).toContain("No endpoints found");
   });
 });
 

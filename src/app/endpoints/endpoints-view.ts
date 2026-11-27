@@ -2,16 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@a
 import { HxButton, HxCheckbox, HxInput, HxMessage, HxTable } from "@gravionlabs/helix-ui";
 
 import type { TlsFiles } from "../core/bindings";
-import { EndpointEntry, EndpointState, EndpointStore, kindLabel } from "../core/endpoint-store";
+import { EndpointEntry, EndpointStore, kindLabel, stateLabel } from "../core/endpoint-store";
 import { describeEngine } from "../core/engine";
 import { toGantryError } from "../core/invoke";
-
-const STATE_LABEL: Record<EndpointState, string> = {
-  checking: "Checking…",
-  reachable: "Reachable",
-  unreachable: "Unreachable",
-  denied: "Permission denied",
-};
 
 const ORIGIN_LABEL = { detected: "Detected", context: "Docker context", manual: "Manual" } as const;
 
@@ -52,7 +45,7 @@ export class EndpointsView {
     return ORIGIN_LABEL[entry.origin];
   }
   protected state(entry: EndpointEntry): string {
-    return STATE_LABEL[entry.status.state];
+    return stateLabel(entry.status.state);
   }
   protected version(entry: EndpointEntry): string {
     const info = entry.status.info;

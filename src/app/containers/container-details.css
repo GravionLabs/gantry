@@ -18,28 +18,17 @@
 }
 .head h1 {
   margin: 0;
+  font-size: var(--h-font-size-lg);
+  font-weight: 600;
+}
+.state h2 {
+  font-size: var(--h-font-size-md);
 }
 .state {
   margin: 2rem 0;
   text-align: center;
   color: var(--h-text-muted-color);
 }
-.tabs {
-  display: flex;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--h-border-color, currentColor);
-}
-.tab {
-  all: unset;
-  cursor: pointer;
-  padding: 0.5rem 0.9rem;
-  border-bottom: 2px solid transparent;
-}
-.tab[aria-selected="true"] {
-  border-bottom-color: currentColor;
-  font-weight: 600;
-}
-.tab:focus-visible,
 .panel:focus-visible,
 .raw:focus-visible {
   outline: 2px solid currentColor;
@@ -80,7 +69,7 @@
   overflow-wrap: anywhere;
 }
 .mono {
-  font-family: var(--h-font-mono, monospace);
+  font-family: var(--helix-font-mono, monospace);
 }
 .raw {
   margin: 0;

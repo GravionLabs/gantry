@@ -20,7 +20,7 @@
 }
 .head h1 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--h-font-size-lg);
   font-weight: 600;
 }
 .total {
@@ -45,10 +45,10 @@
   min-height: 12rem;
 }
 .grid ::ng-deep .mono {
-  font-family: var(--h-font-mono, monospace);
+  font-family: var(--helix-font-mono, monospace);
 }
 .mono {
-  font-family: var(--h-font-mono, monospace);
+  font-family: var(--helix-font-mono, monospace);
 }
 .state {
   margin: 2rem 0;
@@ -73,8 +73,8 @@
 }
 .create h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--h-font-size-md);
 }
-.create textarea {
+.labels {
   resize: vertical;
 }

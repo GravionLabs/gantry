@@ -33,6 +33,11 @@ Binding for every UI change. Read the base guide named above first (`pnpm instal
 - Scrolling up pauses following and offers a button to follow again.
 - In the log search, Enter goes to the next match and Shift+Enter to the previous one.
 
+### Headings and type
+
+- The heading of a view (`h1`) is `--h-font-size-lg`, weight 600; the heading of a section, form or panel in it (`h2`) is `--h-font-size-md`. In Settings, the category heading is the size of the view heading.
+- `src/app/component-styles.spec.ts` fails on a rule set for a native control, a font size off the type scale, a literal color or an unknown token in `src/app/**/*.css`. An exception is an entry of its `ALLOW` list with a reason.
+
 ## Dialogs
 
 Every question goes through the one `<hx-confirm-dialog />` of `app.html`. An `hx-dialog` sets `size` by this table, and each one is listed in it.
@@ -53,7 +58,7 @@ Every question goes through the one `<hx-confirm-dialog />` of `app.html`. An `h
 | Base rule                                                                                          | This project                                                                                                                                                        | Reason                                                               |
 | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | STYLEGUIDE.md, Typography and spacing: a denser app sets the density option                        | The root font size is 13px (`src/styles.scss`) and `GRID_THEME` sets its own font sizes, row heights and spacing                                                    | A compact density that matches the desktop chrome of helix-desktop   |
-| STYLEGUIDE.md, Tokens: colors are `var(--h-…)` tokens                                              | Log and terminal surfaces are dark with literal colors, in light and dark; ANSI output has a color class per palette entry                                          | The surface is dark independent of the theme (#158)                  |
+| STYLEGUIDE.md, Tokens: colors are `var(--h-…)` tokens                                              | Log and terminal surfaces are dark with literal colors, in light and dark; ANSI output has a color class per palette entry                                          | Dark independent of the theme; allowlisted in the style spec (#158)  |
 | STYLEGUIDE.md, Typography and spacing: every `font-size` is a `--h-font-size-*` step               | The xterm terminal sets its font family and a numeric size in TypeScript                                                                                            | Open: why not read from the tokens?                                  |
 | color.md, Status: a status is never color alone                                                    | A `stderr` log line is marked by a colored edge and tint only                                                                                                       | Open: why no text or icon?                                           |
 | STYLEGUIDE.md, Components: toolbar actions sit in `hx-toolbar`                                     | The bars of the resource views are elements of the app                                                                                                              | Open: why not `hx-toolbar`?                                          |

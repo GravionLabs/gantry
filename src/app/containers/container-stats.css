@@ -15,15 +15,15 @@
   display: grid;
   gap: 0.25rem;
   padding: 0.75rem 1rem;
-  border: 1px solid var(--h-border-color, currentColor);
+  border: 1px solid var(--h-content-border-color);
   border-radius: 0.5rem;
 }
 .label {
   color: var(--h-text-muted-color);
-  font-size: 0.85rem;
+  font-size: var(--h-font-size-sm);
 }
 .value {
-  font-size: 1.15rem;
+  font-size: var(--h-font-size-lg);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }

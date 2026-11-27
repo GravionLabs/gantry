@@ -11,6 +11,7 @@ import {
   untracked,
   TemplateRef,
 } from "@angular/core";
+import { FormField, form, submit, validate } from "@angular/forms/signals";
 import {
   HxButton,
   HxCheckbox,
@@ -84,6 +85,8 @@ const COLUMNS: ColDef<Volume>[] = [
   },
 ];
 
+const EMPTY_FORM = { name: "", driver: "", labels: "" };
+
 /**
  * The Volumes view: the volumes of the active endpoint with create, remove and prune. The list is
  * read again after every action and whenever the live container list changes, so that the
@@ -94,6 +97,7 @@ const COLUMNS: ColDef<Volume>[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     AgGridAngular,
+    FormField,
     HxButton,
     HxCheckbox,
     HxField,
@@ -145,30 +149,26 @@ export class VolumesView {
     () => this.visible().find((v) => v.name === this.selectedName()) ?? null,
   );
 
-  /** The create form; null while closed. */
-  protected readonly creating = signal<{ name: string; driver: string; labels: string } | null>(
-    null,
-  );
-  protected readonly createProblem = signal<string | null>(null);
-  /** The problem, when the name is what it is about. */
-  protected readonly nameError = computed(() =>
-    this.creating()?.name.trim() === "" ? this.createProblem() : null,
-  );
-  /** The problem, when the labels are what it is about. */
-  protected readonly labelsError = computed(() => {
-    const form = this.creating();
-    if (!form || this.nameError()) return null;
-    try {
-      parseLabels(form.labels);
-      return null;
-    } catch {
-      return this.createProblem();
-    }
+  /** Whether the create form is open. */
+  protected readonly creating = signal(false);
+  private readonly createModel = signal(EMPTY_FORM);
+  /** The create form; a field shows its error once it was left or the form was submitted. */
+  protected readonly createForm = form(this.createModel, (path) => {
+    validate(path.name, ({ value }) =>
+      value().trim() ? undefined : { kind: "required", message: "Enter a volume name" },
+    );
+    validate(path.labels, ({ value }) => {
+      try {
+        parseLabels(value());
+        return undefined;
+      } catch (error) {
+        const reason = (error as Error).message;
+        return { kind: "labels", message: `Enter one key=value per line: ${reason}` };
+      }
+    });
   });
-  /** A problem that belongs to no field, such as the refusal of the engine. */
-  protected readonly formError = computed(() =>
-    this.nameError() || this.labelsError() ? null : this.createProblem(),
-  );
+  /** Why the engine refused to create the volume. */
+  protected readonly createProblem = signal<string | null>(null);
 
   /** The option of the remove question. */
   protected readonly force = signal(false);
@@ -243,57 +243,44 @@ export class VolumesView {
 
   protected openCreate(): void {
     this.createProblem.set(null);
-    this.creating.set({ name: "", driver: "", labels: "" });
+    this.createForm().reset(EMPTY_FORM);
+    this.creating.set(true);
   }
 
   protected cancelCreate(): void {
-    this.creating.set(null);
-  }
-
-  protected setField(field: "name" | "driver" | "labels", event: Event): void {
-    const value = (event.target as HTMLInputElement | HTMLTextAreaElement).value;
-    this.creating.update((form) => (form ? { ...form, [field]: value } : form));
-    this.createProblem.set(null);
+    this.creating.set(false);
   }
 
   protected async confirmCreate(): Promise<void> {
     const endpoint = this.endpoint();
-    const form = this.creating();
-    if (!endpoint || !form || this.busy()) return;
-    const name = form.name.trim();
-    if (!name) {
-      this.createProblem.set("A volume needs a name.");
-      return;
-    }
-    let labels;
-    try {
-      labels = parseLabels(form.labels);
-    } catch (error) {
-      this.createProblem.set((error as Error).message);
-      return;
-    }
-    this.busy.set(true);
-    try {
-      await createVolume(endpoint, { name, driver: form.driver.trim(), labels });
-      this.result.set({ text: `Created volume ${name}.`, failed: false });
-      this.creating.set(null);
-    } catch (error) {
-      this.createProblem.set(`Cannot create ${name}: ${toGantryError(error).message}`);
-    } finally {
-      this.busy.set(false);
-      void this.refresh();
-    }
+    if (!endpoint || !this.creating() || this.busy()) return;
+    // An invalid form marks its fields, which then show their errors, and creates nothing.
+    await submit(this.createForm, async () => {
+      const form = this.createModel();
+      const name = form.name.trim();
+      const request = { name, driver: form.driver.trim(), labels: parseLabels(form.labels) };
+      this.busy.set(true);
+      try {
+        await createVolume(endpoint, request);
+        this.result.set({ text: `Created volume ${name}.`, failed: false });
+        this.creating.set(false);
+      } catch (error) {
+        this.createProblem.set(`Cannot create ${name}: ${toGantryError(error).message}`);
+      } finally {
+        this.busy.set(false);
+        void this.refresh();
+      }
+    });
   }
 
   /** Creates, then closes the popover on success or moves the focus to the field in error. */
-  protected async submitCreate(popover: HxPopover, element: HTMLElement): Promise<void> {
+  protected async submitCreate(popover: HxPopover): Promise<void> {
     // A second Enter while creating changes nothing.
     if (this.busy()) return;
     await this.confirmCreate();
     if (this.destroyRef.destroyed) return;
     if (this.creating()) {
-      const invalid = this.nameError() ? "name" : this.labelsError() ? "labels" : null;
-      if (invalid) element.querySelector<HTMLElement>(`[name="${invalid}"]`)?.focus();
+      this.createForm().errorSummary()[0]?.fieldTree().focusBoundControl();
       return;
     }
     const problem = this.createProblem();

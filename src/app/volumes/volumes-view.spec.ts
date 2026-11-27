@@ -57,7 +57,7 @@ async function openCreateForm() {
   toolbar.click();
   await render();
   const popover = () => document.querySelector<HTMLElement>('.hx-popover[role="dialog"]');
-  const field = (name: string) => popover()!.querySelector<HTMLInputElement>(`[name="${name}"]`)!;
+  const field = (name: string) => popover()!.querySelector<HTMLInputElement>(`[name$=".${name}"]`)!;
   const type = async (name: string, value: string) => {
     field(name).value = value;
     field(name).dispatchEvent(new Event("input", { bubbles: true }));
@@ -65,6 +65,12 @@ async function openCreateForm() {
   };
   const press = async (key: string, target: Element) => {
     target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    await render();
+  };
+  /** The user goes to the field and on to the next one. */
+  const leave = async (name: string) => {
+    field(name).focus();
+    field(name === "name" ? "driver" : "name").focus();
     await render();
   };
   /** What Enter in a field does in a browser: a click on the submit button of the form. */
@@ -78,7 +84,7 @@ async function openCreateForm() {
       .split(" ")
       .map((id) => document.getElementById(id)?.textContent?.trim())
       .join(" ");
-  return { render, button, toolbar, popover, field, type, press, enter, description };
+  return { render, button, toolbar, popover, field, type, leave, press, enter, description };
 }
 
 describe("volume create form", () => {
@@ -101,6 +107,61 @@ describe("volume create form", () => {
     expect(field("labels").tagName).toBe("TEXTAREA");
     expect(field("labels").hasAttribute("hx-input")).toBe(true);
   });
+
+  it("shows no error when the popover opens", async () => {
+    const { popover, field } = await openCreateForm();
+
+    expect(popover()!.querySelector("[aria-invalid]")).toBeNull();
+    expect(popover()!.textContent).not.toContain("Enter a volume name");
+    expect(field("name").getAttribute("aria-required")).toBe("true");
+  });
+
+  it.each(["", "   "])("shows the error when the name %j is left", async (value) => {
+    const { type, leave, field, description } = await openCreateForm();
+    await type("name", value);
+    await leave("name");
+
+    expect(field("name").getAttribute("aria-invalid")).toBe("true");
+    expect(description(field("name"))).toContain("Enter a volume name");
+    expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it("shows a fresh form after an error and a close", async () => {
+    const { render, button, toolbar, popover, type, leave } = await openCreateForm();
+    await type("name", " ");
+    await leave("name");
+    button("Cancel", popover()!).click();
+    await render();
+    toolbar.click();
+    await render();
+
+    expect(popover()!.querySelector("[aria-invalid]")).toBeNull();
+    expect(popover()!.querySelector("input")!.value).toBe("");
+  });
+
+  it("shows an invalid labels value when the field is left", async () => {
+    const { type, leave, field, description } = await openCreateForm();
+    await type("labels", "=core");
+    expect(field("labels").hasAttribute("aria-invalid")).toBe(false);
+    await leave("labels");
+
+    expect(field("labels").getAttribute("aria-invalid")).toBe("true");
+    expect(description(field("labels"))).toContain(
+      'Enter one key=value per line: "=core" has no label key',
+    );
+    expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it.each(["Cancel", "Create"])(
+    "keeps the focus in the field while %s is pressed",
+    async (label) => {
+      const { button, popover } = await openCreateForm();
+      const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+      button(label, popover()!).dispatchEvent(press);
+
+      expect(press.defaultPrevented).toBe(true);
+    },
+  );
 
   it("submits with Enter and closes the popover", async () => {
     const { toolbar, popover, type, enter } = await openCreateForm();
@@ -126,7 +187,7 @@ describe("volume create form", () => {
 
     expect(createMock).not.toHaveBeenCalled();
     expect(field("name").getAttribute("aria-invalid")).toBe("true");
-    expect(description(field("name"))).toContain("A volume needs a name.");
+    expect(description(field("name"))).toContain("Enter a volume name");
     expect(popover()!.querySelector("hx-message")).toBeNull();
     expect(document.activeElement).toBe(field("name"));
 

@@ -109,7 +109,12 @@
     (visibleChange)="$event || closeCleanup()"
   >
     @if (cleaning(); as state) {
-    <form id="cleanup-form" class="cleanup" (submit)="$event.preventDefault(); submitCleanup()">
+    <form
+      #cleanupForm
+      id="cleanup-form"
+      class="cleanup"
+      (submit)="$event.preventDefault(); submitCleanup(cleanupForm)"
+    >
       <p>Choose what to remove. Nothing is removed before you confirm the preview.</p>
       <hx-fieldset legend="Categories">
         <div class="choices">
@@ -120,16 +125,33 @@
               hx-checkbox
               [checked]="isSelected(category)"
               [disabled]="busy()"
+              [attr.aria-describedby]="categoryMissing() ? 'cleanup-categories-error' : null"
               (change)="toggle(category, $event)"
             />
           </hx-field>
+          } @if (categoryMissing()) {
+          <hx-message
+            id="cleanup-categories-error"
+            severity="error"
+            variant="simple"
+            size="small"
+            role="alert"
+          >
+            Select at least one category
+          </hx-message>
           }
         </div>
       </hx-fieldset>
       @if (previewProblem(); as text) {
       <hx-message severity="error" role="alert">{{ text }}</hx-message>
       } @if (state.previews; as previews) {
-      <div class="preview" role="status" aria-label="Cleanup preview">
+      <div
+        id="cleanup-preview"
+        class="preview"
+        role="status"
+        aria-label="Cleanup preview"
+        tabindex="-1"
+      >
         @if (previewCount() === 0) {
         <p>There is nothing to remove in the selected categories.</p>
         } @else {
@@ -175,14 +197,7 @@
       Remove
     </button>
     } @else {
-    <button
-      hxDialogFooter
-      hx-button
-      type="submit"
-      form="cleanup-form"
-      [loading]="busy()"
-      [disabled]="!cleaning()?.selected?.length"
-    >
+    <button hxDialogFooter hx-button type="submit" form="cleanup-form" [loading]="busy()">
       Preview
     </button>
     }
